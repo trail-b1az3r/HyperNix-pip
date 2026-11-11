@@ -7,6 +7,7 @@
 <summary>0.73.0.dev2 — pre-alpha 2: security</summary>
 
 - **Security:** Strife chat templates refuse underscore attributes however they are spelled.
+- **Security:** Strife's native kernel library (`~/.hypernix/strife/kernels/`) is written owner-only and not loaded if others can write it. It is compiled only when `hnx strife kernels build` is run.
 - **Security:** the Strife build registry (`~/.hypernix/strife/builds.json`) is written owner-only and refused if others can write it. The T1 API selects builds by registered name only.
 
 </details>

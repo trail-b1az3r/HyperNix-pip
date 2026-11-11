@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 263936,
-  "code_files": 891,
+  "total_lines": 265451,
+  "code_files": 895,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -127,11 +127,11 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 259374,
+      "additions": 259377,
       "deletions": 19259,
-      "net": 240115,
-      "changes": 278633,
-      "commits": 315,
+      "net": 240118,
+      "changes": 278636,
+      "commits": 316,
       "files": 1771
     },
     {
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "0c2f6f1ae031175191606664989d55c8a145ecfc",
+  "commit": "6b9111e4fb8906ca7f8d61298c98278cb09d8726",
   "generated_at": null
 }

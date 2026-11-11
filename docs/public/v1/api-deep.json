@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "0c2f6f1ae031175191606664989d55c8a145ecfc",
+  "commit": "6b9111e4fb8906ca7f8d61298c98278cb09d8726",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -43159,6 +43159,39 @@
       ]
     },
     {
+      "module": "hypernix.strife.blasctl",
+      "source": "src/hypernix/strife/blasctl.py",
+      "line_count": 88,
+      "summary": "strife.blasctl \u2014 how many threads BLAS uses, set at run time.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "controllable",
+          "signature": "def controllable -> bool",
+          "line": 67,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "set_threads",
+          "signature": "def set_threadscount: int -> bool",
+          "line": 76,
+          "doc": "Hold BLAS to *count* threads. ``False`` when nothing here can do that."
+        },
+        {
+          "kind": "function",
+          "name": "get_threads",
+          "signature": "def get_threads -> int | None",
+          "line": 92,
+          "doc": "The BLAS thread count, when it can be read."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
       "module": "hypernix.strife.builds",
       "source": "src/hypernix/strife/builds.py",
       "line_count": 182,
@@ -43325,63 +43358,70 @@
     {
       "module": "hypernix.strife.cli",
       "source": "src/hypernix/strife/cli.py",
-      "line_count": 372,
+      "line_count": 441,
       "summary": "``hnx strife`` \u2014 inspect, run, chat with and diagnose GGUF models on Strife.",
       "api": [
         {
           "kind": "function",
+          "name": "cmd_kernels",
+          "signature": "def cmd_kernelsargs: argparse.Namespace -> int",
+          "line": 130,
+          "doc": ""
+        },
+        {
+          "kind": "function",
           "name": "cmd_build",
           "signature": "def cmd_buildargs: argparse.Namespace -> int",
-          "line": 118,
+          "line": 176,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_inspect",
           "signature": "def cmd_inspectargs: argparse.Namespace -> int",
-          "line": 191,
+          "line": 250,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_run",
           "signature": "def cmd_runargs: argparse.Namespace -> int",
-          "line": 232,
+          "line": 291,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_chat",
           "signature": "def cmd_chatargs: argparse.Namespace -> int",
-          "line": 270,
+          "line": 329,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_diag",
           "signature": "def cmd_diagargs: argparse.Namespace -> int",
-          "line": 321,
+          "line": 380,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_types",
           "signature": "def cmd_typesargs: argparse.Namespace -> int",
-          "line": 374,
+          "line": 447,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_selftest",
           "signature": "def cmd_selftestargs: argparse.Namespace -> int",
-          "line": 386,
+          "line": 459,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 416,
+          "line": 489,
           "doc": ""
         }
       ],
@@ -43494,7 +43534,7 @@
     {
       "module": "hypernix.strife.engine",
       "source": "src/hypernix/strife/engine.py",
-      "line_count": 353,
+      "line_count": 411,
       "summary": "strife.engine \u2014 load once, serve requests: sessions, streaming, stops, limits.",
       "api": [
         {
@@ -43515,49 +43555,49 @@
             {
               "name": "new_session",
               "signature": "def new_sessionself -> str",
-              "line": 106,
+              "line": 142,
               "doc": ""
             },
             {
               "name": "session_for",
               "signature": "def session_forself, ids: list[int] -> str",
-              "line": 114,
+              "line": 150,
               "doc": "The session whose state shares the longest prefix with *ids*, or a new one when none shares a useful part (fewer than 16 tokens)."
             },
             {
               "name": "close_session",
               "signature": "def close_sessionself, sid: str -> bool",
-              "line": 136,
+              "line": 172,
               "doc": ""
             },
             {
               "name": "prompt_tokens",
               "signature": "def prompt_tokensself, prompt: str | None=None, messages: list[dict[str, Any]] | None=None, template_vars: dict[str, Any] | None=None -> list[int]",
-              "line": 153,
+              "line": 189,
               "doc": ""
             },
             {
               "name": "generate",
               "signature": "def generateself, prompt: str | None=None, **kwargs: Any -> GenerationResult",
-              "line": 166,
+              "line": 202,
               "doc": ":meth:`stream`, collected."
             },
             {
               "name": "stream",
               "signature": "def streamself, prompt: str | None=None, *, messages: list[dict[str, str]] | None=None, session: str | None=None, max_tokens: int=256, stop: list[str] | None=None, sampling: SamplerConfig | None=None, timeout: float | None=None, cancel: threading.Event | None=None, template_vars: dict[str, Any] | None=None, prompt_ids: list[int] | None=None -> Iterator[dict[str, Any]]",
-              "line": 175,
+              "line": 211,
               "doc": ""
             },
             {
               "name": "status",
               "signature": "def statusself -> dict[str, Any]",
-              "line": 342,
+              "line": 378,
               "doc": ""
             },
             {
               "name": "close",
               "signature": "def closeself -> None",
-              "line": 351,
+              "line": 390,
               "doc": ""
             }
           ]
@@ -44041,6 +44081,115 @@
       ]
     },
     {
+      "module": "hypernix.strife.kernels",
+      "source": "src/hypernix/strife/kernels.py",
+      "line_count": 445,
+      "summary": "strife.kernels \u2014 Strife's native kernels: built here, verified, then used.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "source_path",
+          "signature": "def source_path -> Path",
+          "line": 80,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "kernels_dir",
+          "signature": "def kernels_dir -> Path",
+          "line": 84,
+          "doc": ""
+        },
+        {
+          "kind": "class",
+          "name": "Kernels",
+          "signature": "class Kernels",
+          "line": 93,
+          "doc": "A loaded, verified kernel library. ``types`` are the ones it may be used for.",
+          "methods": [
+            {
+              "name": "has",
+              "signature": "def hasself, ggml_type: int -> bool",
+              "line": 118,
+              "doc": ""
+            },
+            {
+              "name": "decode",
+              "signature": "def decodeself, raw: Any, ggml_type: int, elements: int, threads: int=0 -> np.ndarray",
+              "line": 131,
+              "doc": "*elements* values of *ggml_type* from the buffer *raw*, as float32."
+            },
+            {
+              "name": "matmul",
+              "signature": "def matmulself, raw: Any, ggml_type: int, rows: int, cols: int, x: np.ndarray, threads: int=0 -> np.ndarray",
+              "line": 144,
+              "doc": "``x @ W.T`` for the quantised ``(rows, cols)`` weight in *raw*; ``x`` is ``(n, cols)``."
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 162,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "build",
+          "signature": "def build*, force: bool=False, compiler: str | None=None, flags: list[str] | None=None -> Kernels",
+          "line": 278,
+          "doc": "Compile, verify and record the kernels for this machine."
+        },
+        {
+          "kind": "function",
+          "name": "verify",
+          "signature": "def verify -> dict[str, Any]",
+          "line": 420,
+          "doc": "Check the built library again, and update what it may be used for."
+        },
+        {
+          "kind": "function",
+          "name": "reset",
+          "signature": "def reset -> None",
+          "line": 447,
+          "doc": "Forget the loaded library (after a build, a removal, or in tests)."
+        },
+        {
+          "kind": "function",
+          "name": "load",
+          "signature": "def load -> Kernels | None",
+          "line": 454,
+          "doc": "The verified kernels for this machine, or ``None`` (numpy is used)."
+        },
+        {
+          "kind": "function",
+          "name": "status",
+          "signature": "def status -> dict[str, Any]",
+          "line": 490,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "remove",
+          "signature": "def remove -> int",
+          "line": 501,
+          "doc": "Delete every built kernel library. Returns how many builds were removed."
+        }
+      ],
+      "errors": [
+        "StrifeError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        }
+      ],
+      "changes": []
+    },
+    {
       "module": "hypernix.strife.model",
       "source": "src/hypernix/strife/model.py",
       "line_count": 364,
@@ -44372,7 +44521,7 @@
     {
       "module": "hypernix.strife.placement",
       "source": "src/hypernix/strife/placement.py",
-      "line_count": 114,
+      "line_count": 115,
       "summary": "strife.placement \u2014 what this machine has, and where the model will run.",
       "api": [
         {
@@ -44392,7 +44541,7 @@
         {
           "kind": "function",
           "name": "plan",
-          "signature": "def planreport: ModelReport, model_plan: Any=None, *, n_ctx: int, gpu_layers: int=0, max_sessions: int=1, hardware: dict[str, Any] | None=None -> dict[str, Any]",
+          "signature": "def planreport: ModelReport, model_plan: Any=None, *, n_ctx: int, gpu_layers: int=0, max_sessions: int=1, hardware: dict[str, Any] | None=None, backend: str='cpu-numpy' -> dict[str, Any]",
           "line": 96,
           "doc": "Where everything goes. *model_plan* is the :class:`~.archs.Plan` (read from ``report.path`` when not given)."
         }
@@ -44646,7 +44795,7 @@
     {
       "module": "hypernix.strife.server",
       "source": "src/hypernix/strife/server.py",
-      "line_count": 278,
+      "line_count": 281,
       "summary": "Serve a GGUF on Strife over the OpenAI API, as llama-server does.",
       "api": [
         {
@@ -45359,87 +45508,87 @@
     {
       "module": "hypernix.strife.weights",
       "source": "src/hypernix/strife/weights.py",
-      "line_count": 155,
+      "line_count": 186,
       "summary": "strife.weights \u2014 the model file, memory-mapped, decoded on demand.",
       "api": [
         {
           "kind": "function",
           "name": "default_cache_bytes",
           "signature": "def default_cache_bytes -> int",
-          "line": 36,
+          "line": 41,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "WeightStore",
           "signature": "class WeightStore",
-          "line": 45,
+          "line": 50,
           "doc": "",
           "methods": [
             {
               "name": "tensor",
               "signature": "def tensorself, name: str -> GGUFTensor",
-              "line": 68,
+              "line": 81,
               "doc": ""
             },
             {
               "name": "has",
               "signature": "def hasself, name: str -> bool",
-              "line": 75,
+              "line": 88,
               "doc": ""
             },
             {
               "name": "raw",
               "signature": "def rawself, t: GGUFTensor -> memoryview",
-              "line": 78,
+              "line": 91,
               "doc": ""
             },
             {
               "name": "shape2d",
               "signature": "def shape2dself, t: GGUFTensor -> tuple[int, int]",
-              "line": 82,
+              "line": 95,
               "doc": "``(rows, row_length)``: GGUF's ``ne[0]`` is the row length."
             },
             {
               "name": "get",
               "signature": "def getself, name: str -> np.ndarray",
-              "line": 96,
+              "line": 119,
               "doc": "The whole tensor as float32, shaped ``(rows, row_length)`` (1-D for vectors)."
             },
             {
               "name": "cacheable",
               "signature": "def cacheableself, name: str -> bool",
-              "line": 120,
+              "line": 144,
               "doc": ""
             },
             {
               "name": "rows",
               "signature": "def rowsself, name: str, ids: np.ndarray -> np.ndarray",
-              "line": 123,
+              "line": 147,
               "doc": "Decoded rows *ids* of a 2-D tensor, decoding only those rows."
             },
             {
               "name": "matmul",
               "signature": "def matmulself, x: np.ndarray, name: str, rows: tuple[int, int] | None=None -> np.ndarray",
-              "line": 138,
+              "line": 163,
               "doc": "``x @ W.T`` for weight *name* stored ``(out, in)``: ``x`` is ``(n, in)``."
             },
             {
               "name": "stats",
               "signature": "def statsself -> dict[str, Any]",
-              "line": 164,
+              "line": 196,
               "doc": ""
             },
             {
               "name": "describe",
               "signature": "def describeself, name: str -> dict[str, Any]",
-              "line": 170,
+              "line": 204,
               "doc": ""
             },
             {
               "name": "close",
               "signature": "def closeself -> None",
-              "line": 175,
+              "line": 209,
               "doc": ""
             }
           ]

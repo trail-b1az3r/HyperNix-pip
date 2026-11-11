@@ -87,6 +87,22 @@ out, not for a server other people depend on.
   history, which the relay condenses if it no longer fits, and the model
   resumes from its last words. Streamed answers continue in the same stream.
 
+๋࣭⭑ **Strife native kernels**: `hnx strife kernels build` compiles one C file
+  for your CPU (AVX-512, AVX2 or plain C, with OpenMP threads) and checks
+  every tensor type against the Python decoders before Strife uses it.
+  With them, a weight is multiplied while still quantised, so nothing is
+  decoded whole.
+  - Kernels for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 and Q2_K to
+    Q6_K. Models that are mostly HyperNix sub-bit or low-bit types keep the
+    numpy path.
+  - On LFM3 1.2B Q4_K_M on one 4-vCPU AVX-512 machine: decode 7.8 tok/s
+    against 6.2 with numpy, the first answer after load in 9 s against
+    41 s, and 1 MB of decoded weights in RAM against 6.6 GB. Warm prefill is
+    slower: 76 tok/s against 139.
+  - Nothing is compiled unless asked. `--kernels off` and
+    `HNX_STRIFE_KERNELS=off` keep numpy; `diag` and `status()` say which
+    path runs and why.
+
 ✨ **`benchmarks/strife_bench.py`**: prefill and decode tokens per second on
   one GGUF, the median of fresh-session runs, beside llama.cpp's
   `llama-bench` on the same file when a build is found. `--target` reports
@@ -112,6 +128,9 @@ out, not for a server other people depend on.
   template spells it (`.__class__`, `|attr('__class__')`, `['__' ~ 'class__']`),
   not only as a literal.
 
+🔒 The native kernel library is code Strife loads, so it and its folder are
+  written owner-only and not loaded if anyone else can write them.
+
 🔒 The Strife build registry names programs to run, so it is written
   owner-only and refused if anyone else can write it.
 
@@ -132,7 +151,16 @@ out, not for a server other people depend on.
   covers user builds, `tests/models/test_hnx0xv3.py` covers V3, and
   `tests/runtime/test_relay.py` covers continuations.
 
+🧪 `tests/strife/test_strife_kernels.py` (77 tests): the kernels built three
+  ways (this CPU's widest path, AVX2, plain C), each type's decode and
+  multiply against the Python decoders, the engine's tokens with and
+  without them on every architecture, permissions, and the BLAS hand-back.
+
 ### Known Issues
+
+❗ With the native kernels, Strife's prefill of a long prompt is slower than
+  numpy's once numpy has decoded the whole model (76 against 139 tok/s in
+  the measurement above). `--kernels off` picks numpy.
 
 ❗ HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers.
   `brew export --format gguf` refuses it with that reason.

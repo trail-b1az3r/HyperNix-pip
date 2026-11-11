@@ -25,7 +25,7 @@ def test_record_and_target(tmp_path, capsys):
                        "--target", "0.001", "--json", str(out)]) == 0
     record = json.loads(out.read_text())
     strife = record["results"][0]
-    assert strife["runtime"] == "strife" and strife["prefill_tps"] > 0
+    assert strife["runtime"].startswith("strife (") and strife["prefill_tps"] > 0
     assert len(strife["decoded_tokens"]) == 2 and record["target_met"]
     assert len(record["sha256"]) == 64
     # An impossible target is reported unmet, and the exit code says so.

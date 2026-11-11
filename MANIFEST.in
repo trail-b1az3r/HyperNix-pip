@@ -16,6 +16,7 @@ recursive-include src/hypernix *.py *.json py.typed
 recursive-include src/hypernix/interfaces/hyped_pro_app *.ts *.json bun.lock
 recursive-include src/hypernix/monitoring/tvtop_max_app *.ts *.json bun.lock
 recursive-include src/hypernix/hyperlink/web *.html *.css *.js *.svg
+recursive-include src/hypernix/strife/native *.c
 recursive-include tests *.py
 # The whole examples/ tree, not just *.py: the T1 API deployment
 # examples are Dockerfiles, compose files, nginx config and .env

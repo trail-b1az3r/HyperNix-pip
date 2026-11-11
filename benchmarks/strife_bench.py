@@ -5,6 +5,7 @@
     python benchmarks/strife_bench.py qwen3.5-2b -p 512 -n 128 -r 3 --json out.json
     python benchmarks/strife_bench.py model.gguf --target 8      # decode tok/s to meet
     python benchmarks/strife_bench.py model.gguf --no-llama      # Strife only
+    python benchmarks/strife_bench.py model.gguf --numpy         # also without the native kernels
 
 What is measured, each the median of ``--repeat`` runs in a fresh session
 (so no run reuses another's prefix):
@@ -12,6 +13,10 @@ What is measured, each the median of ``--repeat`` runs in a fresh session
 prefill   ``-p`` prompt tokens, in tokens per second
 decode    up to ``-n`` generated tokens, in tokens per second (a model that
           ends its answer early decodes fewer; the count is reported)
+
+Strife runs with its native kernels when they are built (``hnx strife
+kernels build``) and says which it used; ``--numpy`` adds a second run with
+them off, so the two can be compared on the same file.
 
 When a llama.cpp build is found (the same search the runner uses), its
 ``llama-bench`` is run on the same file with the same ``-p``/``-n``, and the
@@ -49,14 +54,14 @@ def _spread(values: list[float]) -> float:
 
 
 def bench_strife(path: Path, *, prompt_tokens: int, gen_tokens: int, repeat: int,
-                 ctx: int, threads: int, seed: int) -> dict[str, Any]:
+                 ctx: int, threads: int, seed: int, kernels: str | None = None) -> dict[str, Any]:
     import numpy as np
 
     from hypernix.strife import Engine, SamplerConfig
 
     started = time.monotonic()
     engine = Engine(path, n_ctx=ctx or max(prompt_tokens + gen_tokens + 8, 256),
-                    threads=threads or None)
+                    threads=threads or None, kernels=kernels)
     load_s = time.monotonic() - started
     try:
         vocab = engine.report.n_vocab
@@ -85,7 +90,8 @@ def bench_strife(path: Path, *, prompt_tokens: int, gen_tokens: int, repeat: int
             decoded.append(len(final.get("tokens", [])))
         status = engine.status()
         return {
-            "runtime": "strife",
+            "runtime": "strife (native)" if engine.weights.native_matmul else "strife (numpy)",
+            "kernels": status.get("kernels", {}).get("note", ""),
             "load_seconds": round(load_s, 3),
             "prefill_tps": _median(prefill), "prefill_spread": _spread(prefill),
             "decode_tps": _median(decode), "decode_spread": _spread(decode),
@@ -158,6 +164,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--target", type=float, default=None,
                         help="decode tokens per second to meet; below it is reported unmet")
     parser.add_argument("--no-llama", action="store_true", help="skip the llama.cpp comparison")
+    parser.add_argument("--numpy", action="store_true",
+                        help="also run with the native kernels off, to compare")
     parser.add_argument("--no-hash", action="store_true",
                         help="skip the file's SHA-256 (slow on a large model)")
     parser.add_argument("--json", metavar="OUT", default=None, help="write the record here")
@@ -184,6 +192,12 @@ def main(argv: list[str] | None = None) -> int:
     strife = bench_strife(path, prompt_tokens=args.prompt_tokens, gen_tokens=args.gen_tokens,
                           repeat=args.repeat, ctx=args.ctx, threads=args.threads, seed=args.seed)
     record["results"].append(strife)
+    if args.numpy and strife["runtime"] != "strife (numpy)":
+        print("Strife again, without the native kernels...", file=sys.stderr)
+        record["results"].append(bench_strife(
+            path, prompt_tokens=args.prompt_tokens, gen_tokens=args.gen_tokens,
+            repeat=args.repeat, ctx=args.ctx, threads=args.threads, seed=args.seed,
+            kernels="off"))
     if not args.no_llama:
         print("llama.cpp: llama-bench on the same file...", file=sys.stderr)
         record["results"].append(bench_llama(path, prompt_tokens=args.prompt_tokens,
@@ -193,12 +207,16 @@ def main(argv: list[str] | None = None) -> int:
         record["target_decode_tps"] = args.target
         record["target_met"] = strife["decode_tps"] >= args.target
 
-    print(f"\n{'runtime':<10} {'prefill tok/s':>14} {'decode tok/s':>13}")
+    print(f"\n{'runtime':<16} {'prefill tok/s':>14} {'decode tok/s':>13} {'load s':>8}")
     for row in record["results"]:
         if row.get("skipped"):
-            print(f"{row['runtime']:<10} skipped: {row['skipped']}")
+            print(f"{row['runtime']:<16} skipped: {row['skipped']}")
             continue
-        print(f"{row['runtime']:<10} {row.get('prefill_tps', 0):>14.2f} {row.get('decode_tps', 0):>13.2f}")
+        load = f"{row['load_seconds']:>8.2f}" if "load_seconds" in row else ""
+        print(f"{row['runtime']:<16} {row.get('prefill_tps', 0):>14.2f} "
+              f"{row.get('decode_tps', 0):>13.2f} {load}")
+    if strife.get("kernels"):
+        print(f"\nkernels: {strife['kernels']}")
     if strife["decoded_tokens"] and min(strife["decoded_tokens"]) < args.gen_tokens:
         print(f"\nnote: the model ended early in some runs (decoded {strife['decoded_tokens']}).")
     if args.target is not None:

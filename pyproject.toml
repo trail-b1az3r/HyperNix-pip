@@ -248,6 +248,9 @@ include = ["hypernix*"]
 [tool.setuptools.package-data]
 hypernix = [
     "py.typed", "webui_static/*", "*.js", "t1api/data/*.json",
+    # Strife's native kernels: one C file, compiled on the user's machine by
+    # `hnx strife kernels build`.
+    "strife/native/*.c",
     # hyped-pro's OpenTUI app. Sources only: its node_modules hold a
     # platform-specific native library and are installed on first run.
     "interfaces/hyped_pro_app/package.json",

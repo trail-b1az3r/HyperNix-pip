@@ -94,7 +94,8 @@ def detect() -> dict[str, Any]:
 
 
 def plan(report: ModelReport, model_plan: Any = None, *, n_ctx: int, gpu_layers: int = 0,
-         max_sessions: int = 1, hardware: dict[str, Any] | None = None) -> dict[str, Any]:
+         max_sessions: int = 1, hardware: dict[str, Any] | None = None,
+         backend: str = "cpu-numpy") -> dict[str, Any]:
     """Where everything goes. *model_plan* is the :class:`~.archs.Plan`
     (read from ``report.path`` when not given)."""
     hw = hardware or detect()
@@ -122,7 +123,7 @@ def plan(report: ModelReport, model_plan: Any = None, *, n_ctx: int, gpu_layers:
                        "read from disk as needed, which is slow")
     per_session = state["total"] + state["checkpoints_max"]
     return {
-        "backend": "cpu-numpy",
+        "backend": backend,
         "layers_total": model_plan.n_layers, "gpu_layers_requested": int(gpu_layers),
         "gpu_layers_used": 0, "cpu_layers": model_plan.n_layers,
         "weights_mapped_bytes": report.weight_bytes,
