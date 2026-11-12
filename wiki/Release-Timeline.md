@@ -1212,3 +1212,26 @@ timeline
         : bcdad140 - chore- refresh generated docs data and release summaries
 ```
 
+## Release v0.73.0a1 (2026-11-12)
+
+```mermaid
+timeline
+    title Release v0.73.0a1 Commits
+    0.73.0a1
+        : de229114 - 0.73.0a1- Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1
+        : 50234c67 - chore- refresh generated docs data and release summaries
+        : 638e1b28 - build(deps)- bump github/codeql-action/upload-sarif
+        : 5d7c5839 - build(deps)- bump softprops/action-gh-release from 3.0.3 to 3.0.4
+        : ad0512d8 - hnx chat never downloads on its own; relay works in a 512-token context
+        : 8760ba6f - chore- update JSON stats (scheduled)
+        : 5cd037f3 - chore- refresh generated docs data and release summaries
+        : a244c099 - Fix Strife argparse percentage help formatting
+        : 44b43caa - Lint- explicit strict= on the 3H interpreter's zips; regenerated docs data
+        : 93d34cdb - Strife native kernels- quantised decode and matmul in C, built and verified on the user's machine
+        : 64357b94 - Docs- add 3H, Hydrogen elements and .hnx syntax guides
+        : 059a01ad - Sort Hydrogen standard-library imports
+        : 26e9a6f7 - Document the 3H element scripting isotope
+        : 532ed927 - Fix element attachment module formatting
+        : bd1a7587 - Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime
+```
+
