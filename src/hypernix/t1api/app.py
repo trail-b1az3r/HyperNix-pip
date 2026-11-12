@@ -528,14 +528,26 @@ def create_app(
             async with previous_lifespan(lifespan_app) as state:
                 yield state
         finally:
-            if web is not None:
-                web.stop()
-            if pinger is not None:
-                pinger.stop()
-            retention.stop()
-            hyperchat = getattr(lifespan_app.state, "t1_hyperchat", None)
-            if hyperchat is not None:
-                hyperchat.close()
+            try:
+                if web is not None:
+                    web.stop()
+                if pinger is not None:
+                    pinger.stop()
+                retention.stop()
+                hyperchat = getattr(lifespan_app.state, "t1_hyperchat", None)
+                if hyperchat is not None:
+                    hyperchat.close()
+            finally:
+                # Uvicorn does not stop child processes automatically.
+                # Unload the model while this app still owns its process
+                # handle, so an API restart cannot leave a listener behind,
+                # even when another shutdown hook fails.
+                runner = getattr(lifespan_app.state, "t1_runner", None)
+                if runner is not None:
+                    try:
+                        runner.unload()
+                    except Exception:  # noqa: BLE001 - shutdown must continue
+                        logger.warning("t1api: could not stop the managed runner", exc_info=True)
 
     app.router.lifespan_context = _lifespan
     app.state.t1_preference_store = PreferenceStore(db)
