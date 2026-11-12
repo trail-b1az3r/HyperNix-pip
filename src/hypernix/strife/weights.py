@@ -12,6 +12,11 @@ model's size. ``stats()`` reports mapped bytes, cached bytes, hits and
 misses separately.
 
 Embedding lookups decode only the rows asked for.
+
+With the native kernels (:mod:`.kernels`) a weight is multiplied while it
+is still quantised, so it is never decoded whole and never cached: RAM is
+the map plus the small tensors. Tensors of a type the kernels were not
+verified on take the numpy path above, unchanged.
 """
 from __future__ import annotations
 
@@ -43,7 +48,8 @@ def default_cache_bytes() -> int:
 
 
 class WeightStore:
-    def __init__(self, gguf: GGUFFile, *, cache_bytes: int | None = None) -> None:
+    def __init__(self, gguf: GGUFFile, *, cache_bytes: int | None = None,
+                 kernels: Any = None, native_matmul: bool = False, threads: int = 0) -> None:
         if gguf.path is None:
             raise StrifeError("strife.model.unreadable", "the model has no file behind it")
         self.gguf = gguf
@@ -62,6 +68,15 @@ class WeightStore:
         self._lock = threading.Lock()
         self.hits = self.misses = 0
         self.peak_cached = 0
+        #: The native kernels (``None``: numpy only). Used to decode any type
+        #: they were verified on; for matmul only when *native_matmul* is set,
+        #: which the engine does when the kernels can carry the whole model.
+        self.kernels = kernels
+        self.native_matmul = bool(native_matmul and kernels is not None)
+        self.threads = max(0, int(threads))
+        self.native_matmuls = self.native_decodes = 0
+        #: Matrices of the layers offloaded to a GPU (:mod:`.gpu`), or ``None``.
+        self.device: Any = None
 
     # -- raw access --------------------------------------------------------
 
@@ -93,6 +108,33 @@ class WeightStore:
         rows, cols = self.shape2d(t)
         return rows * cols * 4
 
+    def _decode(self, raw: memoryview, ggml_type: int, elements: int) -> np.ndarray:
+        """float32 from *raw*: natively when the type has a verified kernel."""
+        if self.kernels is not None and self.kernels.has(ggml_type):
+            self.native_decodes += 1
+            return self.kernels.decode(raw, ggml_type, elements, self.threads)
+        return decode(raw, ggml_type)
+
+    def offload(self, device: Any, layers: int) -> int:
+        """Put the matrices of blocks ``0 .. layers-1`` on *device*. Returns the bytes placed.
+
+        Each is decoded (natively when it can be), moved, and dropped from
+        host memory; the map still holds its quantised form.
+        """
+        from .gpu import layer_of
+
+        self.device = device
+        for t in self.gguf.tensors:
+            index = layer_of(t.name)
+            if index is None or index >= layers or len(t.shape) < 2:
+                continue
+            rows, cols = self.shape2d(t)
+            device.put(t.name, self._decode(self.raw(t), t.ggml_type, rows * cols).reshape(rows, cols))
+        return int(device.bytes)
+
+    def _native(self, t: GGUFTensor) -> bool:
+        return self.native_matmul and self.kernels.has(t.ggml_type)
+
     def get(self, name: str) -> np.ndarray:
         """The whole tensor as float32, shaped ``(rows, row_length)`` (1-D for vectors)."""
         with self._lock:
@@ -103,8 +145,9 @@ class WeightStore:
                 return hit
         t = self.tensor(name)
         rows, cols = self.shape2d(t)
-        array = decode(self.raw(t), t.ggml_type).reshape(rows, cols) if len(t.shape) > 1 \
-            else decode(self.raw(t), t.ggml_type)
+        array = self._decode(self.raw(t), t.ggml_type, rows * cols)
+        if len(t.shape) > 1:
+            array = array.reshape(rows, cols)
         size = array.nbytes
         with self._lock:
             self.misses += 1
@@ -124,7 +167,8 @@ class WeightStore:
         """Decoded rows *ids* of a 2-D tensor, decoding only those rows."""
         t = self.tensor(name)
         n_rows, cols = self.shape2d(t)
-        if self.cacheable(name):
+        native = self._native(t)
+        if not native and self.cacheable(name):
             return self.get(name)[ids]
         per_row = cols // type_block_size(t.ggml_type) * type_size_bytes(t.ggml_type)
         raw = self.raw(t)
@@ -132,7 +176,7 @@ class WeightStore:
         for i, rid in enumerate(np.asarray(ids).tolist()):
             if not 0 <= rid < n_rows:
                 raise StrifeError("strife.runtime.bad_token", f"token id {rid} is out of range")
-            out[i] = decode(raw[rid * per_row:(rid + 1) * per_row], t.ggml_type)
+            out[i] = self._decode(raw[rid * per_row:(rid + 1) * per_row], t.ggml_type, cols)
         return out
 
     def matmul(self, x: np.ndarray, name: str, rows: tuple[int, int] | None = None) -> np.ndarray:
@@ -146,16 +190,25 @@ class WeightStore:
         first, last = rows if rows is not None else (0, n_rows)
         if not 0 <= first < last <= n_rows:
             raise StrifeError("strife.runtime.bad_rows", f"rows {first}:{last} of {name}")
+        if self.device is not None and x.ndim == 2 and self.device.has(name):
+            return self.device.matmul(x, name, rows)
+        per_row = cols // type_block_size(t.ggml_type) * type_size_bytes(t.ggml_type)
+        if self._native(t) and x.ndim == 2:
+            # The weight stays quantised: nothing is decoded whole or cached.
+            self.native_matmuls += 1
+            raw = self.raw(t)
+            return self.kernels.matmul(raw[first * per_row:last * per_row], t.ggml_type,
+                                       last - first, cols, x, self.threads)
         if self.cacheable(name):
             w = self.get(name)
             return x @ (w if rows is None else w[first:last]).T
-        per_row = cols // type_block_size(t.ggml_type) * type_size_bytes(t.ggml_type)
         slab = max(1, _SLAB_BYTES // max(1, cols * 4))
         raw = self.raw(t)
         out = np.empty((x.shape[0], last - first), dtype=np.float32)
         for start in range(first, last, slab):
             stop = min(last, start + slab)
-            block = decode(raw[start * per_row:stop * per_row], t.ggml_type).reshape(-1, cols)
+            block = self._decode(raw[start * per_row:stop * per_row], t.ggml_type,
+                                 (stop - start) * cols).reshape(-1, cols)
             out[:, start - first:stop - first] = x @ block.T
         return out
 
@@ -165,7 +218,10 @@ class WeightStore:
         return {"mapped_bytes": len(self._map), "cache_limit_bytes": self.cache_bytes,
                 "cached_bytes": self._cached, "peak_cached_bytes": self.peak_cached,
                 "cache_hits": self.hits, "cache_misses": self.misses,
-                "tensors_cached": len(self._cache)}
+                "tensors_cached": len(self._cache),
+                "native_matmul": self.native_matmul, "native_matmuls": self.native_matmuls,
+                "native_decodes": self.native_decodes,
+                "device": self.device.stats() if self.device is not None else None}
 
     def describe(self, name: str) -> dict[str, Any]:
         t = self.tensor(name)
@@ -176,6 +232,9 @@ class WeightStore:
         with self._lock:
             self._cache.clear()
             self._cached = 0
+        if self.device is not None:
+            self.device.close()
+            self.device = None
         try:
             self._view.release()
             self._map.close()

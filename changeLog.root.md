@@ -1,6 +1,17 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.73.0a1
+
+<details>
+<summary>0.73.0a1 — alpha 1: breaking changes and security</summary>
+
+- **Breaking:** `hnx chat` no longer downloads a model unless one is named with `-r HF_ID`. `-M PATH` (a folder, or a `.gguf` file) never downloads. With neither, it exits with an explanation instead of fetching `ray0rf1re/hyper-nix.1`.
+- **Security:** Strife's native kernel library (`~/.hypernix/strife/kernels/`) is written owner-only and not loaded if others can write it. It is compiled only when `hnx strife kernels build` is run.
+- Dependencies reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). No version changes. GPU offload uses PyTorch when it is installed; it is not a new requirement.
+
+</details>
+
 ## 0.73.0.dev2
 
 <details>

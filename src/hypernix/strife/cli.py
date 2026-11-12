@@ -47,10 +47,16 @@ def _load_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("-c", "--ctx", type=int, default=0, help="context length (default: the "
                    "model's, at most 4096)")
     p.add_argument("-t", "--threads", type=int, default=0, help="CPU threads")
+    p.add_argument("--kernels", choices=("auto", "off"), default="auto",
+                   help="native kernels: auto uses them when built (hnx strife kernels build), "
+                   "off computes with numpy")
     p.add_argument("--cache-mb", type=int, default=-1,
                    help="RAM for decoded weights (default: 60%% of free RAM)")
     p.add_argument("--gpu-layers", type=int, default=0,
-                   help="layers to put on the GPU (alpha 1: reported, runs on the CPU)")
+                   help="blocks whose matrices go on the GPU, through PyTorch (-1: as many "
+                   "as fit). What was placed, and why not more, is reported")
+    p.add_argument("--gpu-device", default=None, metavar="DEVICE",
+                   help="cuda:N (default: the first CUDA device)")
 
 
 def _sampling_args(p: argparse.ArgumentParser) -> None:
@@ -93,6 +99,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("model", nargs="?")
     p.add_argument("-c", "--ctx", type=int, default=0)
     p.add_argument("--gpu-layers", type=int, default=0)
+    p.add_argument("--gpu-device", default=None)
     _common(p)
     p = sub.add_parser("types", help="the tensor types Strife can read")
     _common(p)
@@ -112,7 +119,64 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--list", action="store_true", help="show the registered builds")
     p.add_argument("--remove", metavar="NAME", default=None, help="forget a build")
     _common(p)
+    sub.add_parser("benchmark", help="measure a local model: prefill, decode, first token, "
+                   "memory; beside llama.cpp when a build is found", add_help=False)
+    p = sub.add_parser("kernels", help="build and check the native kernels for this machine",
+                       description="Strife's native kernels: C code that decodes quantised "
+                       "weights and multiplies by them without decoding them whole. `build` "
+                       "compiles it for this CPU and checks every tensor type against the "
+                       "Python decoders; Strife then uses it for the types that passed.")
+    p.add_argument("action", choices=("build", "status", "verify", "remove"), nargs="?",
+                   default="status")
+    p.add_argument("--force", action="store_true", help="build again even if already built")
+    _common(p)
     return parser
+
+
+def cmd_kernels(args: argparse.Namespace) -> int:
+    from . import kernels
+
+    if args.action == "remove":
+        count = kernels.remove()
+        print(json.dumps({"removed": count}) if args.json else f"Removed {count} kernel build(s).")
+        return 0
+    if args.action == "verify":
+        report = kernels.verify()
+        if args.json:
+            print(json.dumps(report))
+        else:
+            for name, entry in report["types"].items():
+                print(f"  {name:<5} {'ok' if entry['ok'] else 'FAILED: ' + entry.get('error', '')}")
+            print("Kernels " + ("verified." if report["ok"] else "FAILED verification for some types; "
+                                "those types use numpy."))
+        return 0 if report["ok"] else 1
+    if args.action == "build":
+        print("Compiling and verifying the kernels...", file=sys.stderr)
+        built = kernels.build(force=args.force)
+        info = {**built.describe(), "verification": built.manifest.get("verification", {})}
+        if args.json:
+            print(json.dumps(info))
+        else:
+            failed = [n for n, e in info["verification"].items() if not e.get("ok")]
+            print(f"Built for this CPU ({info['simd']}, "
+                  f"{info['openmp_threads'] or 'no'} OpenMP threads) with {info['compiler']}.")
+            print(f"Verified: {', '.join(info['types'])}.")
+            if failed:
+                print(f"NOT verified (these use numpy): {', '.join(failed)}.")
+            print(f"  {info['path']}")
+        return 0
+    info = kernels.status()
+    if args.json:
+        print(json.dumps(info))
+    elif info["active"]:
+        print(f"Native kernels: built ({info['simd']}, {info['openmp_threads'] or 'no'} OpenMP "
+              f"threads), {len(info['types'])} types verified.")
+        print(f"  {', '.join(info['types'])}")
+        print(f"  {info['path']}")
+    else:
+        print(f"Native kernels: not in use: {info.get('reason', '')}")
+        print(f"  compiler: {info['compiler'] or 'none found'}")
+    return 0
 
 
 def cmd_build(args: argparse.Namespace) -> int:
@@ -174,7 +238,8 @@ def _engine(args: argparse.Namespace) -> Any:
 
     return Engine(resolve_model(args.model), n_ctx=args.ctx or None, threads=args.threads or None,
                   cache_bytes=None if args.cache_mb < 0 else args.cache_mb * 1024 * 1024,
-                  gpu_layers=args.gpu_layers)
+                  gpu_layers=args.gpu_layers, gpu_device=getattr(args, "gpu_device", None),
+                  kernels=None if getattr(args, "kernels", "auto") == "auto" else "off")
 
 
 def _sampling(args: argparse.Namespace) -> Any:
@@ -322,7 +387,13 @@ def cmd_diag(args: argparse.Namespace) -> int:
     from .placement import detect, plan
 
     hw = detect()
-    out: dict[str, Any] = {"hardware": hw, "backend": "cpu-numpy"}
+    from . import blasctl
+    from . import kernels as kernels_module
+
+    kern = kernels_module.status()
+    out: dict[str, Any] = {"hardware": hw, "kernels": kern,
+                           "backend": "cpu-native" if kern["active"] else "cpu-numpy",
+                           "blas_threads_controllable": blasctl.controllable()}
     try:
         import numpy as np
 
@@ -339,9 +410,25 @@ def cmd_diag(args: argparse.Namespace) -> int:
         report = inspect_model(resolve_model(args.model))
         out["model"] = {"runnable": report.runnable, "problems": report.problems}
         if report.runnable:
+            gpu_info: dict[str, Any] = {}
+            if args.gpu_layers:
+                # What a load would place, worked out without loading anything.
+                from . import gpu as gpu_module
+                from .inspect import read_gguf
+
+                choice = gpu_module.choose_device(args.gpu_device)
+                gpu_info = {"reasons": list(choice.reasons), "device": choice.device,
+                            "name": choice.name, "free_bytes": choice.free_bytes,
+                            "total_bytes": choice.total_bytes}
+                if choice.usable:
+                    gguf, _ = read_gguf(report.path)
+                    per_layer = gpu_module.layer_bytes(gguf, bytes_per_weight=2 if choice.half else 4)
+                    layers, need = gpu_module.layers_that_fit(per_layer, args.gpu_layers,
+                                                              choice.free_bytes)
+                    gpu_info.update(layers_used=layers, bytes=need)
             out["placement"] = plan(report, None, n_ctx=args.ctx or min(report.context_length or 4096,
                                                                     4096),
-                                    gpu_layers=args.gpu_layers, hardware=hw)
+                                    gpu_layers=args.gpu_layers, hardware=hw, gpu=gpu_info)
     if args.json:
         print(json.dumps(out, default=str))
         return 0
@@ -357,7 +444,15 @@ def cmd_diag(args: argparse.Namespace) -> int:
     else:
         print("  GPU       none found")
     blas = out.get("blas") or {}
-    print(f"  backend   cpu-numpy (BLAS: {blas.get('name') or 'unknown'})")
+    print(f"  backend   {out['backend']} (BLAS: {blas.get('name') or 'unknown'})")
+    if kern["active"]:
+        print(f"  kernels   native, {kern['simd']}, {kern['openmp_threads'] or 'no'} OpenMP threads; "
+              f"verified: {', '.join(kern['types'])}")
+        if not out["blas_threads_controllable"]:
+            print("  kernels   decode only: BLAS threads cannot be limited here "
+                  "(pip install threadpoolctl)")
+    else:
+        print(f"  kernels   not in use: {kern.get('reason', '')}")
     placement = out.get("placement")
     if placement:
         print(f"  placement {placement['cpu_layers']} of {placement['layers_total']} layers on "
@@ -416,10 +511,15 @@ def cmd_selftest(args: argparse.Namespace) -> int:
 def cli_main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     _apply_threads_early(argv)
+    if argv and argv[0] in ("benchmark", "bench"):
+        # Its own parser (the same one `benchmarks/strife_bench.py` runs).
+        from .bench import main as bench_main
+
+        return bench_main(argv[1:])
     args = _parser().parse_args(argv)
     handler = {"inspect": cmd_inspect, "run": cmd_run, "chat": cmd_chat, "diag": cmd_diag,
                "types": cmd_types, "selftest": cmd_selftest,
-               "build": cmd_build}[args.cmd]
+               "build": cmd_build, "kernels": cmd_kernels}[args.cmd]
     try:
         return handler(args)
     except Exception as exc:  # StrifeError is printed; anything else propagates

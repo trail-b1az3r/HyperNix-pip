@@ -70,7 +70,8 @@ class Engine:
     def __init__(self, model: str | Path, *, n_ctx: int | None = None,
                  cache_bytes: int | None = None, threads: int | None = None,
                  max_sessions: int = 8, max_concurrent: int = 1, max_queue: int = 16,
-                 gpu_layers: int = 0) -> None:
+                 gpu_layers: int = 0, kernels: str | bool | None = None,
+                 gpu_device: str | None = None) -> None:
         started = time.perf_counter()
         gguf, report = read_gguf(model)
         require_runnable(report)
@@ -78,7 +79,11 @@ class Engine:
         self.report: ModelReport = report
         self.path = Path(model)
         self.threads, self.threads_applied = _set_threads(threads)
-        self.weights = WeightStore(gguf, cache_bytes=cache_bytes)
+        self._holds_blas = False
+        native, native_matmul, self.kernels_note = self._pick_kernels(gguf, kernels)
+        self.weights = WeightStore(gguf, cache_bytes=cache_bytes, kernels=native,
+                                   native_matmul=native_matmul, threads=self.threads)
+        gpu = self._offload(gguf, int(gpu_layers or 0), gpu_device)
         self.model = Transformer(self.weights, report)
         self.tokenizer = Tokenizer(gguf.metadata)
         trained = report.context_length or 4096
@@ -88,7 +93,9 @@ class Engine:
         from .placement import plan
 
         self.placement = plan(report, self.model.plan, n_ctx=self.n_ctx, gpu_layers=gpu_layers,
-                              max_sessions=max_sessions)
+                              max_sessions=max_sessions,
+                              backend=("cpu-native" if native_matmul else "cpu-numpy")
+                              + ("+gpu" if gpu.get("layers_used") else ""), gpu=gpu)
         self.max_sessions = max(1, int(max_sessions))
         self._sessions: OrderedDict[str, _Session] = OrderedDict()
         self._sessions_lock = threading.Lock()
@@ -100,6 +107,73 @@ class Engine:
         self._queue_lock = threading.Lock()
         self._closed = False
         self.load_seconds = time.perf_counter() - started
+
+    # -- GPU ---------------------------------------------------------------
+
+    def _offload(self, gguf: Any, wanted: int, device: str | None) -> dict[str, Any]:
+        """Place the first *wanted* blocks on a GPU; say what happened either way."""
+        if not wanted:
+            return {}
+        from . import gpu as gpu_module
+
+        choice = gpu_module.choose_device(device)
+        info: dict[str, Any] = {"reasons": list(choice.reasons), "device": choice.device,
+                                "name": choice.name, "free_bytes": choice.free_bytes,
+                                "total_bytes": choice.total_bytes, "layers_used": 0, "bytes": 0}
+        if not choice.usable:
+            return info
+        per_layer = gpu_module.layer_bytes(gguf, bytes_per_weight=2 if choice.half else 4)
+        layers, need = gpu_module.layers_that_fit(per_layer, wanted, choice.free_bytes)
+        asked = len(per_layer) if wanted == gpu_module.ALL_LAYERS else min(wanted, len(per_layer))
+        if layers < asked:
+            info["reasons"].append(
+                f"{layers} of the {asked} layers asked for fit in the "
+                f"{choice.free_bytes / 2**30:.1f} GiB free on {choice.name} (after a "
+                f"{gpu_module.RESERVE_BYTES >> 20} MiB reserve); the rest run on the CPU")
+        if layers:
+            weights = gpu_module.DeviceWeights(choice.device, half=choice.half)
+            try:
+                info["bytes"] = self.weights.offload(weights, layers)
+            except StrifeError as exc:
+                weights.close()
+                self.weights.device = None
+                info["reasons"].append(f"{exc}; every layer runs on the CPU")
+                return info
+            info["layers_used"] = layers
+        del need
+        return info
+
+    # -- kernels -------------------------------------------------------------
+
+    def _pick_kernels(self, gguf: Any, wanted: str | bool | None) -> tuple[Any, bool, str]:
+        """``(kernels, use them for matmul, why)`` for this model.
+
+        The kernels decode whatever types they were verified on. They take
+        over the matmuls only when they can carry the model -- at least 90%
+        of its matrix bytes are in types they have -- and BLAS can be held
+        to one thread, because two thread pools on the same cores are slower
+        than either alone (see :mod:`.blasctl`).
+        """
+        if wanted is False or (isinstance(wanted, str) and wanted.lower() in ("off", "numpy", "no")):
+            return None, False, "turned off for this engine"
+        from . import blasctl
+        from . import kernels as kernels_module
+
+        native = kernels_module.load()
+        if native is None:
+            return None, False, kernels_module.status().get("reason", "not built")
+        matrix = [t for t in gguf.tensors if len(t.shape) > 1]
+        total = sum(t.nbytes for t in matrix) or 1
+        covered = sum(t.nbytes for t in matrix if native.has(t.ggml_type))
+        if covered / total < 0.9:
+            return native, False, (f"decode only: {100 * (1 - covered / total):.0f}% of the weights "
+                                   "are in types without a native kernel")
+        if not blasctl.controllable():
+            return native, False, ("decode only: BLAS threads cannot be limited here "
+                                   "(pip install threadpoolctl)")
+        _hold_blas()
+        self._holds_blas = True
+        return native, True, f"native matmul ({native.simd}, {self.threads} threads)"
 
     # -- sessions ------------------------------------------------------------
 
@@ -346,13 +420,19 @@ class Engine:
                 "n_ctx": self.n_ctx, "threads": self.threads,
                 "threads_applied": self.threads_applied, "sessions": sessions,
                 "max_sessions": self.max_sessions, "load_seconds": round(self.load_seconds, 3),
-                "weights": self.weights.stats(), "placement": self.placement}
+                "weights": self.weights.stats(), "placement": self.placement,
+                "kernels": {"active": self.weights.kernels is not None,
+                            "matmul": self.weights.native_matmul, "note": self.kernels_note,
+                            **(self.weights.kernels.describe() if self.weights.kernels else {})}}
 
     def close(self) -> None:
         self._closed = True
         with self._sessions_lock:
             self._sessions.clear()
         self.weights.close()
+        if self._holds_blas:
+            self._holds_blas = False
+            _release_blas()
 
     def __enter__(self) -> Engine:
         return self
@@ -375,6 +455,34 @@ def _held_back(text: str, stops: list[str]) -> int:
                 held = max(held, n)
                 break
     return held
+
+
+_blas_lock = threading.Lock()
+_blas_holders = 0
+_blas_before: int | None = None
+
+
+def _hold_blas() -> None:
+    """BLAS to one thread while any engine computes with the native kernels."""
+    global _blas_holders, _blas_before
+    from . import blasctl
+
+    with _blas_lock:
+        if _blas_holders == 0:
+            _blas_before = blasctl.get_threads()
+            blasctl.set_threads(1)
+        _blas_holders += 1
+
+
+def _release_blas() -> None:
+    """Give BLAS its threads back when the last such engine closes."""
+    global _blas_holders
+    from . import blasctl
+
+    with _blas_lock:
+        _blas_holders = max(0, _blas_holders - 1)
+        if _blas_holders == 0 and _blas_before:
+            blasctl.set_threads(_blas_before)
 
 
 def _set_threads(threads: int | None) -> tuple[int, bool]:

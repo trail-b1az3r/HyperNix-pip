@@ -414,6 +414,75 @@ class TestContinuations:
         assert result.continued == 1
 
 
+class TestSmallContexts:
+    """A 512-token model must still get through a 2,200-token prompt."""
+
+    BIG = "word " * 1760          # about 2,200 tokens
+
+    @staticmethod
+    def _run(messages, context):
+        calls = []
+
+        def instance(call_messages, max_tokens):
+            size = sum(estimate_tokens(Relay._content_text(m.get("content")))
+                       for m in call_messages) + max_tokens
+            calls.append((call_messages, size))
+            return Reply("kept notes", 10, 4)
+
+        result = Relay([instance], context_tokens=context).run_messages(messages)
+        return result, calls
+
+    @pytest.mark.parametrize("context", [2048, 1024, 512, 384])
+    @pytest.mark.parametrize("shape", ["latest", "system", "history"])
+    def test_every_call_fits_whatever_part_is_long(self, context, shape):
+        messages = {
+            "latest": [{"role": "user", "content": self.BIG + "What is the last word?"}],
+            "system": [{"role": "system", "content": self.BIG},
+                       {"role": "user", "content": "Hi"}],
+            "history": [{"role": "system", "content": "Be brief."},
+                        {"role": "user", "content": self.BIG},
+                        {"role": "assistant", "content": "ok"},
+                        {"role": "user", "content": "And now?"}],
+        }[shape]
+        result, calls = self._run(messages, context)
+        assert not result.plan.single
+        assert max(size for _m, size in calls) <= context
+        assert result.hops[-1].kind == "answer"
+
+    def test_a_long_latest_message_is_read_then_answered(self):
+        marker = "The secret number is 4417."
+        _result, calls = self._run(
+            [{"role": "user", "content": self.BIG + marker}], 512)
+        read_text = "\n".join(m[-1]["content"] for m, _s in calls[:-1])
+        assert marker in read_text                       # it was read, not dropped
+        assert "USER (latest message" in read_text
+        assert relay.LATEST_MESSAGE_QUESTION in calls[-1][0][-1]["content"]
+
+    def test_long_instructions_are_read_and_their_opening_is_kept(self):
+        system = "Always answer in French. " + self.BIG
+        _result, calls = self._run(
+            [{"role": "system", "content": system}, {"role": "user", "content": "Hi"}], 512)
+        assert all("Always answer in French." in m[0]["content"] for m, _s in calls)
+        assert any("INSTRUCTIONS (follow these)" in m[-1]["content"] for m, _s in calls[:-1])
+
+    def test_a_chat_that_fits_is_untouched(self):
+        messages = [{"role": "system", "content": "Be brief."},
+                    {"role": "user", "content": "Hi"}]
+        result, calls = self._run(messages, 512)
+        assert result.plan.single and calls[0][0] == messages
+
+    def test_images_stay_with_the_question(self):
+        image = {"type": "image_url", "image_url": {"url": "data:image/png;base64,x"}}
+        _result, calls = self._run(
+            [{"role": "user", "content": [{"type": "text", "text": self.BIG}, image]}], 512)
+        final = calls[-1][0][-1]["content"]
+        assert isinstance(final, list) and final[-1] == image
+
+    def test_a_context_too_small_for_anything_still_says_so(self):
+        with pytest.raises(ContextTooSmall):
+            self._run([{"role": "user", "content": self.BIG}], 200)
+
+
 class TestMap:
     def test_parts_are_digested_on_every_instance_then_answered(self):
         instances, calls = _fakes(3, 1024)

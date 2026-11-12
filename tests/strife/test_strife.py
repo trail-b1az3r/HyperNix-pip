@@ -427,8 +427,15 @@ class TestPlacement:
         assert p["gpu_layers_used"] == 0 and p["cpu_layers"] == report.n_layers
         assert any("no GPU" in r for r in p["fallback_reasons"])
         hw["gpus"] = [{"index": 0, "name": "GTX 1080", "vram_bytes": 8 << 30}]
-        p = plan(report, n_ctx=64, gpu_layers=10, hardware=hw)
-        assert any("not in Strife alpha 1" in r for r in p["fallback_reasons"])
+        # A card is there, but nothing was placed: the reason given is passed on.
+        why = "GTX 1080 has compute capability 6.1, which this PyTorch was not built for"
+        p = plan(report, n_ctx=64, gpu_layers=10, hardware=hw, gpu={"reasons": [why]})
+        assert p["gpu_layers_used"] == 0 and why in p["fallback_reasons"]
+        # And when layers were placed, the split is stated, never rounded up.
+        p = plan(report, n_ctx=64, gpu_layers=10, hardware=hw,
+                 gpu={"layers_used": 1, "bytes": 1234, "device": "cuda:0"})
+        assert p["gpu_layers_used"] == 1 and p["cpu_layers"] == report.n_layers - 1
+        assert p["peak_vram_bytes"] == 1234 and p["gpu_layers_requested"] == 10
 
     @pytest.mark.parametrize("chip,tier", [("Apple M5 Pro", "experimental"), ("Apple M2", "unsupported"),
                                            ("Intel(R) Core(TM) i9", "unsupported")])

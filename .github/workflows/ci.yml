@@ -382,6 +382,64 @@ jobs:
           objdump -d build-fp/libggml-hnx.a | grep -A10 "<hnx_dequantize_rows>:" | tee prologue.txt
           grep -Eq "mov[q]?[[:space:]]+%rsp,[[:space:]]*%rbp" prologue.txt
 
+  # Strife (HyperNix's own GGUF runtime) end to end on the two alpha
+  # targets: it generates with models it builds itself, its native kernels
+  # compile and verify on the runner, and the benchmark writes a record.
+  # Nothing is downloaded. On Windows the kernel build is reported but does
+  # not gate: it depends on the runner's MinGW, and Strife runs on numpy
+  # without it.
+  strife:
+    name: Strife smoke (${{ matrix.os }})
+    needs: [triage]
+    if: needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install (Strife needs numpy, not torch)
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip setuptools
+          python scripts/ci/requirements_without_torch.py dev > reqs.txt
+          pip install -r reqs.txt
+          pip install --no-deps -e .
+      - name: Selftest (generate with every architecture, on numpy)
+        shell: bash
+        run: python -m hypernix.strife.cli selftest
+      - name: Build and verify the native kernels
+        shell: bash
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          python -m hypernix.strife.cli kernels build
+          python -m hypernix.strife.cli kernels verify
+      - name: Diagnostics
+        shell: bash
+        run: |
+          python -m hypernix.strife.cli kernels status
+          python -m hypernix.strife.cli diag
+      - name: Benchmark a generated model (smoke, not a measurement)
+        shell: bash
+        run: |
+          python -c "from hypernix.strife.fixtures import make_model; make_model('smoke.gguf', arch='qwen2', quant='Q4_K', n_embd=256, n_ff=512, n_layers=2, context=1024)"
+          python -m hypernix.strife.cli benchmark smoke.gguf -p 64 -n 16 -r 2 --numpy --no-llama --out-dir strife-bench
+          cat strife-bench/strife-bench.md
+      - name: Strife tests
+        shell: bash
+        run: pytest -q tests/strife
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: strife-smoke-${{ matrix.os }}
+          path: strife-bench/
+          if-no-files-found: ignore
+
   # Startup, import, API, serialisation, native and profiling timings on
   # every supported Python, saved as an artifact. Informational: shared
   # runners are too noisy to gate on, so compare runs, not single numbers.

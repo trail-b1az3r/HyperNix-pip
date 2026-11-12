@@ -268,7 +268,7 @@ def _validate_expression(node: ast.expr) -> None:
         for value in node.elts:
             _validate_expression(value)
     elif isinstance(node, ast.Dict):
-        for key, value in zip(node.keys, node.values):
+        for key, value in zip(node.keys, node.values, strict=True):
             if key is not None:
                 _validate_expression(key)
             _validate_expression(value)
@@ -415,7 +415,7 @@ def _evaluate(node: ast.expr, env: dict[str, Any]) -> Any:
         return value
     if isinstance(node, ast.Compare):
         left = _evaluate(node.left, env)
-        for op, expression in zip(node.ops, node.comparators):
+        for op, expression in zip(node.ops, node.comparators, strict=True):
             right = _evaluate(expression, env)
             if not _CMPOPS[type(op)](left, right):
                 return False
@@ -428,7 +428,7 @@ def _evaluate(node: ast.expr, env: dict[str, Any]) -> Any:
     if isinstance(node, ast.Dict):
         return {
             _evaluate(key, env): _evaluate(value, env)
-            for key, value in zip(node.keys, node.values)
+            for key, value in zip(node.keys, node.values, strict=True)
         }
     if isinstance(node, ast.Subscript):
         return _evaluate(node.value, env)[_evaluate(node.slice, env)]
@@ -501,7 +501,7 @@ class HNXProgram:
             raise _fail(f"{hook} uses unsupported variadic parameters")
         if len(parameters) != len(args):
             raise _fail(f"{hook} expects {len(parameters)} argument(s), received {len(args)}")
-        env = {parameter.arg: value for parameter, value in zip(parameters, args)}
+        env = {parameter.arg: value for parameter, value in zip(parameters, args, strict=True)}
         env["data"] = dict(self.data)
         try:
             _execute(function.body, env)
