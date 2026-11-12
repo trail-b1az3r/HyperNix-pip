@@ -1,0 +1,4 @@
+exclude:
+  # The llama.cpp submodule contains literal Jinja/Liquid-style braces in
+  # upstream Markdown and model-card templates; it is source code, not site content.
+  - native/ggml-hnx/llama.cpp
