@@ -38,6 +38,8 @@ def parse_args():
     p.add_argument("--dataset", default=DATASET_ID)
     p.add_argument("--dataset-config", default=DATASET_CONFIG)
     p.add_argument("--split", default="train")
+    p.add_argument("--eos-token-id", type=int, default=None,
+                   help="Explicit document separator token ID; defaults to tokenizer EOS, or no separator if absent.")
     p.add_argument("--output", type=Path, default=Path("outputs/hypernix0xv3-distilled"))
     p.add_argument("--seq-len", type=int, default=512)
     p.add_argument("--batch-size", type=int, default=1)
@@ -194,6 +196,16 @@ def row_to_text(row: dict[str, Any]) -> str:
     return ""
 
 
+def resolve_eos_token_id(tokenizer, override: int | None = None, vocab_size: int = VOCAB) -> int | None:
+    """Return a verified document separator, or None when the tokenizer has no EOS."""
+    eos = override if override is not None else getattr(tokenizer, "eos_token_id", None)
+    if eos is None:
+        return None
+    if not isinstance(eos, int) or not 0 <= eos < vocab_size:
+        raise ValueError(f"EOS token ID {eos!r} is outside the model vocabulary (0..{vocab_size - 1}).")
+    return eos
+
+
 def make_blocks(args, tokenizer, validation: bool) -> Iterator[torch.Tensor]:
     try:
         from datasets import load_dataset
@@ -201,9 +213,7 @@ def make_blocks(args, tokenizer, validation: bool) -> Iterator[torch.Tensor]:
         raise RuntimeError("Install the datasets package.") from exc
     stream = load_dataset(args.dataset, args.dataset_config or None,
                           split=args.split, streaming=True)
-    eos = tokenizer.eos_token_id
-    if eos is None:
-        raise RuntimeError("Tokenizer has no EOS token.")
+    eos = resolve_eos_token_id(tokenizer, getattr(args, "eos_token_id", None))
     token_buffer: list[int] = []
     emitted = 0
     for index, row in enumerate(stream):
@@ -217,7 +227,8 @@ def make_blocks(args, tokenizer, validation: bool) -> Iterator[torch.Tensor]:
         if not ids:
             continue
         token_buffer.extend(ids)
-        token_buffer.append(eos)
+        if eos is not None:
+            token_buffer.append(eos)
         while len(token_buffer) >= args.seq_len + 1:
             block = token_buffer[:args.seq_len + 1]
             del token_buffer[:args.seq_len]
@@ -324,6 +335,11 @@ def main():
                 f"Tokenizer vocabulary mismatch: vocab_size={tokenizer.vocab_size}, "
                 f"len={len(tokenizer)}, expected {VOCAB}"
             )
+        eos_id = resolve_eos_token_id(tokenizer, args.eos_token_id)
+        if eos_id is None:
+            print("[data] tokenizer defines no EOS token; packing documents continuously without an invented separator")
+        else:
+            print(f"[data] using EOS token ID {eos_id} between documents")
         teacher = build_teacher(folder, device)
 
         from hypernix.models.hnx0xv3 import HyperNix0xV3Config, HyperNix0xV3Model
