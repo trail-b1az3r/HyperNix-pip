@@ -70,7 +70,8 @@ class Engine:
     def __init__(self, model: str | Path, *, n_ctx: int | None = None,
                  cache_bytes: int | None = None, threads: int | None = None,
                  max_sessions: int = 8, max_concurrent: int = 1, max_queue: int = 16,
-                 gpu_layers: int = 0, kernels: str | bool | None = None) -> None:
+                 gpu_layers: int = 0, kernels: str | bool | None = None,
+                 gpu_device: str | None = None) -> None:
         started = time.perf_counter()
         gguf, report = read_gguf(model)
         require_runnable(report)
@@ -82,6 +83,7 @@ class Engine:
         native, native_matmul, self.kernels_note = self._pick_kernels(gguf, kernels)
         self.weights = WeightStore(gguf, cache_bytes=cache_bytes, kernels=native,
                                    native_matmul=native_matmul, threads=self.threads)
+        gpu = self._offload(gguf, int(gpu_layers or 0), gpu_device)
         self.model = Transformer(self.weights, report)
         self.tokenizer = Tokenizer(gguf.metadata)
         trained = report.context_length or 4096
@@ -92,7 +94,8 @@ class Engine:
 
         self.placement = plan(report, self.model.plan, n_ctx=self.n_ctx, gpu_layers=gpu_layers,
                               max_sessions=max_sessions,
-                              backend="cpu-native" if native_matmul else "cpu-numpy")
+                              backend=("cpu-native" if native_matmul else "cpu-numpy")
+                              + ("+gpu" if gpu.get("layers_used") else ""), gpu=gpu)
         self.max_sessions = max(1, int(max_sessions))
         self._sessions: OrderedDict[str, _Session] = OrderedDict()
         self._sessions_lock = threading.Lock()
@@ -104,6 +107,41 @@ class Engine:
         self._queue_lock = threading.Lock()
         self._closed = False
         self.load_seconds = time.perf_counter() - started
+
+    # -- GPU ---------------------------------------------------------------
+
+    def _offload(self, gguf: Any, wanted: int, device: str | None) -> dict[str, Any]:
+        """Place the first *wanted* blocks on a GPU; say what happened either way."""
+        if not wanted:
+            return {}
+        from . import gpu as gpu_module
+
+        choice = gpu_module.choose_device(device)
+        info: dict[str, Any] = {"reasons": list(choice.reasons), "device": choice.device,
+                                "name": choice.name, "free_bytes": choice.free_bytes,
+                                "total_bytes": choice.total_bytes, "layers_used": 0, "bytes": 0}
+        if not choice.usable:
+            return info
+        per_layer = gpu_module.layer_bytes(gguf, bytes_per_weight=2 if choice.half else 4)
+        layers, need = gpu_module.layers_that_fit(per_layer, wanted, choice.free_bytes)
+        asked = len(per_layer) if wanted == gpu_module.ALL_LAYERS else min(wanted, len(per_layer))
+        if layers < asked:
+            info["reasons"].append(
+                f"{layers} of the {asked} layers asked for fit in the "
+                f"{choice.free_bytes / 2**30:.1f} GiB free on {choice.name} (after a "
+                f"{gpu_module.RESERVE_BYTES >> 20} MiB reserve); the rest run on the CPU")
+        if layers:
+            weights = gpu_module.DeviceWeights(choice.device, half=choice.half)
+            try:
+                info["bytes"] = self.weights.offload(weights, layers)
+            except StrifeError as exc:
+                weights.close()
+                self.weights.device = None
+                info["reasons"].append(f"{exc}; every layer runs on the CPU")
+                return info
+            info["layers_used"] = layers
+        del need
+        return info
 
     # -- kernels -------------------------------------------------------------
 

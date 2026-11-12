@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 266752,
-  "code_files": 899,
+  "total_lines": 267618,
+  "code_files": 902,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -117,7 +117,7 @@
     },
     {
       "path": "src/hypernix/runtime/relay.py",
-      "lines": 974
+      "lines": 980
     },
     {
       "path": "src/hypernix/models/old_oven.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 261101,
-      "deletions": 19285,
-      "net": 241816,
-      "changes": 280386,
-      "commits": 319,
-      "files": 1777
+      "additions": 261386,
+      "deletions": 19307,
+      "net": 242079,
+      "changes": 280693,
+      "commits": 321,
+      "files": 1778
     },
     {
       "author": "Ray0ffire",
@@ -172,12 +172,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 4254,
-      "deletions": 1371,
+      "additions": 4255,
+      "deletions": 1372,
       "net": 2883,
-      "changes": 5625,
-      "commits": 97,
-      "files": 46
+      "changes": 5627,
+      "commits": 99,
+      "files": 47
     },
     {
       "author": "github-actions[bot]",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "44b43caad37b6de98915e765a787372b69eb90cb",
+  "commit": "8a6e074e63289fde967a63e3f1836becf4c5cdab",
   "generated_at": null
 }

@@ -205,7 +205,11 @@ def _flag_sets() -> list[list[str]]:
     """Most capable first; :func:`build` takes the first set that compiles."""
     base = ["-O3", "-fPIC", "-shared", "-fvisibility=hidden"]
     native = ["-march=native"]
-    return [base + native + ["-fopenmp"], base + native, base + ["-fopenmp"], base]
+    sets = [base + native + ["-fopenmp"], base + native, base + ["-fopenmp"], base]
+    if sys.platform == "win32":
+        # MinGW: link its runtimes in, so the DLL needs nothing Python cannot find.
+        sets = [flags + ["-static"] for flags in sets] + sets
+    return sets
 
 
 def _key(cc: str) -> str:
@@ -315,10 +319,23 @@ def build(*, force: bool = False, compiler: str | None = None,
         except (OSError, subprocess.SubprocessError) as exc:
             errors.append(f"{' '.join(attempt)}: {exc}")
             continue
-        if done.returncode == 0 and scratch.is_file():
-            used = attempt
-            break
-        errors.append(f"{' '.join(attempt)}: {done.stderr.strip()[-300:]}")
+        if done.returncode != 0 or not scratch.is_file():
+            errors.append(f"{' '.join(attempt)}: {done.stderr.strip()[-300:]}")
+            continue
+        # It must also load: a library that needs an OpenMP runtime the
+        # process cannot find (MinGW on Windows, for one) compiles and then
+        # fails here, and the next, plainer set of flags is tried.
+        # (Checked in another process, so this one never holds the scratch
+        # file open: Windows will not replace a library that is loaded.)
+        probe = subprocess.run(
+            [sys.executable, "-c", "import ctypes, sys; ctypes.CDLL(sys.argv[1])", str(scratch)],
+            capture_output=True, text=True, timeout=60, check=False)
+        if probe.returncode != 0:
+            errors.append(f"{' '.join(attempt)}: built, but would not load: "
+                          f"{probe.stderr.strip()[-200:]}")
+            continue
+        used = attempt
+        break
     if not used:
         raise StrifeError("strife.kernels.compile_failed",
                           f"{cc} could not compile the kernels:\n" + "\n".join(errors[-2:]),

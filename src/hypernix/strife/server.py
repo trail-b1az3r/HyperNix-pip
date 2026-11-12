@@ -289,6 +289,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--threads", type=int, default=0)
     parser.add_argument("--cache-mb", type=int, default=-1)
     parser.add_argument("--sessions", type=int, default=8, help="conversations kept warm")
+    parser.add_argument("--gpu-layers", type=int, default=0,
+                        help="blocks to put on the GPU through PyTorch (-1: as many as fit)")
+    parser.add_argument("--gpu-device", default=None, help="cuda:N")
     parser.add_argument("--kernels", choices=("auto", "off"), default="auto",
                         help="native kernels: used when built, or off")
     args = parser.parse_args(argv)
@@ -301,7 +304,8 @@ def main(argv: list[str] | None = None) -> int:
         engine = Engine(args.model, n_ctx=args.ctx or None, threads=args.threads or None,
                         cache_bytes=None if args.cache_mb < 0 else args.cache_mb * 1024 * 1024,
                         max_sessions=args.sessions,
-                        kernels=None if args.kernels == "auto" else "off")
+                        kernels=None if args.kernels == "auto" else "off",
+                        gpu_layers=args.gpu_layers, gpu_device=args.gpu_device)
     except StrifeError as exc:
         print(f"strife: {exc} [{exc.code}]", flush=True)
         if exc.remedy:

@@ -35,13 +35,12 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## 0.73.0.dev2 — 2026-11-10
+## 0.73.0a1 — 2026-11-12
 
-Pre-alpha 2. Strife runs four new architectures and is a T1 runner, a
-user's own Strife build can serve, HyperLink's relay picks up answers the
-context cut off, and HyperNix0xV3 arrives behind `brew new -E`. The fixes
-from the `create` branch are merged in. A pre-alpha is for trying things
-out, not for a server other people depend on.
+Alpha 1: Strife, HyperNix's own GGUF runtime, with its native kernels, GPU
+offload through PyTorch, a benchmark that records what it measured, and
+CI smoke jobs on Linux and Windows. An alpha is for trying things out, not
+for a server other people depend on.
 
 ### Breaking Changes
 
@@ -51,6 +50,112 @@ out, not for a server other people depend on.
   downloads. With neither, chat exits and says so. It used to download
   `ray0rf1re/hyper-nix.1` by default, and to re-download into a `--model-dir`
   that was missing or incomplete.
+
+### Added
+
+๋࣭⭑ **Strife native kernels**: `hnx strife kernels build` compiles one C file
+  for your CPU (AVX-512, AVX2 or plain C, with OpenMP threads) and checks
+  every tensor type against the Python decoders before Strife uses it.
+  With them, a weight is multiplied while still quantised, so nothing is
+  decoded whole.
+  - Kernels for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 and Q2_K to
+    Q6_K. Models that are mostly HyperNix sub-bit or low-bit types keep the
+    numpy path.
+  - On LFM3 1.2B Q4_K_M on one 4-vCPU AVX-512 machine: decode 7.8 tok/s
+    against 6.2 with numpy, the first answer after load in 9 s against
+    41 s, and 1 MB of decoded weights in RAM against 6.6 GB. Warm prefill is
+    slower: 76 tok/s against 139.
+  - Nothing is compiled unless asked. `--kernels off` and
+    `HNX_STRIFE_KERNELS=off` keep numpy; `diag` and `status()` say which
+    path runs and why.
+
+✨ **Strife GPU offload**: `--gpu-layers N` (`-1`: as many as fit) puts the
+  weight matrices of the first N blocks on a CUDA device through PyTorch,
+  decoded once to half precision. The rest stay on the CPU.
+  - How many layers fit is decided from the card's free memory less a
+    768 MiB reserve. A model that does not fit is split, and `diag`,
+    `status()` and the benchmark say how: layers on each side, device
+    bytes, and the reason.
+  - A card the installed PyTorch was not built for is refused by name with
+    its compute capability. That includes Pascal (GTX 1080) on current
+    PyTorch wheels.
+  - `hnx strife diag MODEL --gpu-layers N` plans the split without loading.
+
+✨ **`hnx strife benchmark MODEL`** (also `benchmarks/strife_bench.py`):
+  - a cold run reported apart from the warm ones, then the median of the
+    repeats with its spread;
+  - prefill and decode tokens per second, time to the first token, and the
+    time between tokens as p50, p90, p99 and max;
+  - peak resident memory, decode-cache and device memory, and the placement;
+  - a quality check: greedy output from a fixed prompt must repeat exactly,
+    and with `--numpy` the native kernels and numpy must produce the same
+    tokens. A failed check fails the run;
+  - llama.cpp's `llama-bench` on the same file when a build is found, and a
+    stated skip when none is;
+  - `--target` reports a decode speed as met or unmet (exit 1);
+  - `--out-dir` writes a JSON record (file SHA-256, HyperNix version,
+    machine, every setting), a CSV and a Markdown report.
+
+  It never downloads a model.
+
+### Security
+
+🔒 The native kernel library is code Strife loads, so it and its folder are
+  written owner-only and not loaded if anyone else can write them.
+
+### Fixed
+
+𖢥 **The relay refused long prompts in a 512-token context.** Every hop
+  repeats the instructions and the latest message, so when either was long
+  nothing else fit, and a 2,200-token prompt that worked at 1,024 tokens was
+  refused at 512. A long latest message is now read in parts like the rest of
+  the conversation and then answered. Long instructions are read too, with
+  their opening kept on every hop. It works down to 384 tokens.
+
+🐛 `hnx strife run --help` crashed on a bare `%` in a help string. Every
+  subcommand's help is now tested.
+
+### Tests
+
+🧪 `tests/strife/test_strife_kernels.py` (77 tests): the kernels built three
+  ways (this CPU's widest path, AVX2, plain C), each type's decode and
+  multiply against the Python decoders, the engine's tokens with and
+  without them on every architecture, permissions, and the BLAS hand-back.
+
+🧪 `tests/strife/test_strife_gpu.py` (22 tests): the device path on PyTorch's
+  CPU device gives the same tokens as the CPU path on every architecture;
+  the split for a card too small; a simulated GTX 1080 refused by name.
+  `tests/strife/test_strife_bench.py` covers the record, the CSV, the report
+  and a failing quality check. `tests/runtime/test_relay.py` covers contexts
+  of 2,048, 1,024, 512 and 384 tokens.
+
+🧪 CI: a `strife` job on Linux and Windows runs the selftest, builds and
+  verifies the kernels, benchmarks a generated model and runs the Strife
+  tests. On Windows the kernel build is reported but does not gate. The
+  `strife-benchmark` workflow runs the benchmark on a self-hosted runner,
+  on request.
+
+### Known Issues
+
+❗ With the native kernels, Strife's prefill of a long prompt is slower than
+  numpy's once numpy has decoded the whole model (76 against 139 tok/s in
+  the measurement above). `--kernels off` picks numpy.
+
+❗ Strife's GPU offload has not been run on a real GPU by its author: the
+  machine it was written on has none. The same code runs on PyTorch's CPU
+  device in the tests. The spec's speed targets (8 tok/s for a 27B Q4_K_M
+  model on a GTX 1080, and the others) are **unmeasured**, not met.
+
+❗ No llama.cpp comparison has been recorded: no llama.cpp build was
+  available where the benchmark was run.
+
+## 0.73.0.dev2 — 2026-11-10
+
+Pre-alpha 2. Strife runs four new architectures and is a T1 runner, a
+user's own Strife build can serve, HyperLink's relay picks up answers the
+context cut off, and HyperNix0xV3 arrives behind `brew new -E`. The fixes
+from the `create` branch are merged in. A pre-alpha is for trying things
+out, not for a server other people depend on.
 
 ### Added
 
@@ -96,28 +201,6 @@ out, not for a server other people depend on.
   history, which the relay condenses if it no longer fits, and the model
   resumes from its last words. Streamed answers continue in the same stream.
 
-๋࣭⭑ **Strife native kernels**: `hnx strife kernels build` compiles one C file
-  for your CPU (AVX-512, AVX2 or plain C, with OpenMP threads) and checks
-  every tensor type against the Python decoders before Strife uses it.
-  With them, a weight is multiplied while still quantised, so nothing is
-  decoded whole.
-  - Kernels for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 and Q2_K to
-    Q6_K. Models that are mostly HyperNix sub-bit or low-bit types keep the
-    numpy path.
-  - On LFM3 1.2B Q4_K_M on one 4-vCPU AVX-512 machine: decode 7.8 tok/s
-    against 6.2 with numpy, the first answer after load in 9 s against
-    41 s, and 1 MB of decoded weights in RAM against 6.6 GB. Warm prefill is
-    slower: 76 tok/s against 139.
-  - Nothing is compiled unless asked. `--kernels off` and
-    `HNX_STRIFE_KERNELS=off` keep numpy; `diag` and `status()` say which
-    path runs and why.
-
-✨ **`benchmarks/strife_bench.py`**: prefill and decode tokens per second on
-  one GGUF, the median of fresh-session runs, beside llama.cpp's
-  `llama-bench` on the same file when a build is found. `--target` reports
-  a decode speed as met or unmet (exit 1), and `--json` writes a record
-  naming the file by SHA-256.
-
 ๋࣭⭑ **HyperNix0xV3** (experimental): `brew new --preset NAME -E`. Its Tidepool
   attention reads a local window plus summaries of every earlier chunk in
   one softmax. Its Keel state is a set of memory slots each token reads and
@@ -137,9 +220,6 @@ out, not for a server other people depend on.
   template spells it (`.__class__`, `|attr('__class__')`, `['__' ~ 'class__']`),
   not only as a literal.
 
-🔒 The native kernel library is code Strife loads, so it and its folder are
-  written owner-only and not loaded if anyone else can write them.
-
 🔒 The Strife build registry names programs to run, so it is written
   owner-only and refused if anyone else can write it.
 
@@ -147,13 +227,6 @@ out, not for a server other people depend on.
 
 🐛 A refusal from the runner named LM Studio ("LM Studio returned HTTP ...").
   It now names the HyperNix runner.
-
-𖢥 **The relay refused long prompts in a 512-token context.** Every hop
-  repeats the instructions and the latest message, so when either was long
-  nothing else fit, and a 2,200-token prompt that worked at 1,024 tokens was
-  refused at 512. A long latest message is now read in parts like the rest of
-  the conversation and then answered. Long instructions are read too, with
-  their opening kept on every hop. It works down to 384 tokens.
 
 🐛 `get_origin` no longer fails on an app without a T1 config.
 
@@ -167,16 +240,7 @@ out, not for a server other people depend on.
   covers user builds, `tests/models/test_hnx0xv3.py` covers V3, and
   `tests/runtime/test_relay.py` covers continuations.
 
-🧪 `tests/strife/test_strife_kernels.py` (77 tests): the kernels built three
-  ways (this CPU's widest path, AVX2, plain C), each type's decode and
-  multiply against the Python decoders, the engine's tokens with and
-  without them on every architecture, permissions, and the BLAS hand-back.
-
 ### Known Issues
-
-❗ With the native kernels, Strife's prefill of a long prompt is slower than
-  numpy's once numpy has decoded the whole model (76 against 139 tok/s in
-  the measurement above). `--kernels off` picks numpy.
 
 ❗ HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers.
   `brew export --format gguf` refuses it with that reason.

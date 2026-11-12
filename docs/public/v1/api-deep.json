@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "44b43caad37b6de98915e765a787372b69eb90cb",
+  "commit": "8a6e074e63289fde967a63e3f1836becf4c5cdab",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17450,6 +17450,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "ad0512d8",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "hnx chat never downloads on its own; relay works in a 512-token context",
+          "api_changes": []
+        },
+        {
           "sha": "bd1a7587",
           "date": "2026-11-11",
           "author": "Rayla",
@@ -17515,13 +17522,6 @@
               "text": "def _download_latest(ns: argparse.Namespace) -> int:"
             }
           ]
-        },
-        {
-          "sha": "fd848f59",
-          "date": "2026-10-22",
-          "author": "Claude",
-          "subject": "hnx list-all, hnx-t1 setup (installer b1), hnx-t1 upgrade -S env|venv|all",
-          "api_changes": []
         }
       ]
     },
@@ -25671,6 +25671,13 @@
       ],
       "changes": [
         {
+          "sha": "ad0512d8",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "hnx chat never downloads on its own; relay works in a 512-token context",
+          "api_changes": []
+        },
+        {
           "sha": "802be03d",
           "date": "2026-10-28",
           "author": "Claude",
@@ -25740,13 +25747,6 @@
               "text": "# shape the config class on the other side reads."
             }
           ]
-        },
-        {
-          "sha": "6b7f6932",
-          "date": "2026-09-22",
-          "author": "Claude",
-          "subject": "0.72.6 pt2: gather, Vera, neo_oven presets, hub 1.x, T1 v1.1",
-          "api_changes": []
         }
       ]
     },
@@ -38940,7 +38940,7 @@
     {
       "module": "hypernix.runtime.relay",
       "source": "src/hypernix/runtime/relay.py",
-      "line_count": 974,
+      "line_count": 980,
       "summary": "Read prompts longer than a model's context, with small-context instances in series.",
       "api": [
         {
@@ -39116,7 +39116,7 @@
             {
               "name": "stream_messages",
               "signature": "def stream_messagesself, messages: Sequence[dict[str, Any]], *, stream_call: Callable[[list[dict[str, Any]], int, int], Any], on_chunk: Callable[[dict[str, Any]], None], cancelled: Callable[[], bool]=lambda: False -> RelayResult",
-              "line": 652,
+              "line": 646,
               "doc": "Run chat through Relay and stream the final answer hop as it arrives."
             }
           ]
@@ -39128,6 +39128,30 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "ad0512d8",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "hnx chat never downloads on its own; relay works in a 512-token context",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _plan_chat(self, system_prompt: str, question: str, question_content: Any,"
+            },
+            {
+              "kind": "added",
+              "text": "def planned(system: str, asked: str, text: str) -> RelayPlan:"
+            },
+            {
+              "kind": "added",
+              "text": "def _question_budget(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _fit_question(self, system_prompt: str, question: str, question_content: Any,"
+            }
+          ]
+        },
         {
           "sha": "7ea12404",
           "date": "2026-11-10",
@@ -39238,13 +39262,6 @@
           "date": "2026-11-06",
           "author": "Rayla",
           "subject": "fix: keep prior assistant tool calls in relayed chat context",
-          "api_changes": []
-        },
-        {
-          "sha": "2ace8c08",
-          "date": "2026-11-06",
-          "author": "Rayla",
-          "subject": "fix: budget vision attachments in relay chat planning",
           "api_changes": []
         }
       ]
@@ -43490,6 +43507,53 @@
       ]
     },
     {
+      "module": "hypernix.strife.bench",
+      "source": "src/hypernix/strife/bench.py",
+      "line_count": 434,
+      "summary": "strife.bench \u2014 Strife's benchmark: one GGUF, measured, next to llama.cpp.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "bench_strife",
+          "signature": "def bench_strifepath: Path, *, prompt_tokens: int, gen_tokens: int, repeat: int, ctx: int, threads: int, seed: int, kernels: str | None=None, warmup: int=0, gpu_layers: int=0, gpu_device: str | None=None, temperature: float=0.8 -> dict[str, Any]",
+          "line": 123,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "bench_llama",
+          "signature": "def bench_llamapath: Path, *, prompt_tokens: int, gen_tokens: int, repeat: int, threads: int, gpu_layers: int=0 -> dict[str, Any]",
+          "line": 221,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "write_csv",
+          "signature": "def write_csvrecord: dict[str, Any], path: Path -> None",
+          "line": 273,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "render_report",
+          "signature": "def render_reportrecord: dict[str, Any] -> str",
+          "line": 283,
+          "doc": "The record as Markdown, for a person."
+        },
+        {
+          "kind": "function",
+          "name": "main",
+          "signature": "def mainargv: list[str] | None=None -> int",
+          "line": 341,
+          "doc": ""
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
       "module": "hypernix.strife.blasctl",
       "source": "src/hypernix/strife/blasctl.py",
       "line_count": 88,
@@ -43714,70 +43778,70 @@
     {
       "module": "hypernix.strife.cli",
       "source": "src/hypernix/strife/cli.py",
-      "line_count": 441,
+      "line_count": 466,
       "summary": "``hnx strife`` \u2014 inspect, run, chat with and diagnose GGUF models on Strife.",
       "api": [
         {
           "kind": "function",
           "name": "cmd_kernels",
           "signature": "def cmd_kernelsargs: argparse.Namespace -> int",
-          "line": 130,
+          "line": 136,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_build",
           "signature": "def cmd_buildargs: argparse.Namespace -> int",
-          "line": 176,
+          "line": 182,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_inspect",
           "signature": "def cmd_inspectargs: argparse.Namespace -> int",
-          "line": 250,
+          "line": 256,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_run",
           "signature": "def cmd_runargs: argparse.Namespace -> int",
-          "line": 291,
+          "line": 297,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_chat",
           "signature": "def cmd_chatargs: argparse.Namespace -> int",
-          "line": 329,
+          "line": 335,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_diag",
           "signature": "def cmd_diagargs: argparse.Namespace -> int",
-          "line": 380,
+          "line": 386,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_types",
           "signature": "def cmd_typesargs: argparse.Namespace -> int",
-          "line": 447,
+          "line": 469,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_selftest",
           "signature": "def cmd_selftestargs: argparse.Namespace -> int",
-          "line": 459,
+          "line": 481,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 489,
+          "line": 511,
           "doc": ""
         }
       ],
@@ -43785,6 +43849,20 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "31449031",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Merge pull request #200 from trail-b1az3r/claude/issue-template-training-guild",
+          "api_changes": []
+        },
+        {
+          "sha": "a244c099",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Fix Strife argparse percentage help formatting",
+          "api_changes": []
+        },
         {
           "sha": "93d34cdb",
           "date": "2026-11-11",
@@ -43902,7 +43980,7 @@
     {
       "module": "hypernix.strife.engine",
       "source": "src/hypernix/strife/engine.py",
-      "line_count": 411,
+      "line_count": 446,
       "summary": "strife.engine \u2014 load once, serve requests: sessions, streaming, stops, limits.",
       "api": [
         {
@@ -43923,49 +44001,49 @@
             {
               "name": "new_session",
               "signature": "def new_sessionself -> str",
-              "line": 142,
+              "line": 180,
               "doc": ""
             },
             {
               "name": "session_for",
               "signature": "def session_forself, ids: list[int] -> str",
-              "line": 150,
+              "line": 188,
               "doc": "The session whose state shares the longest prefix with *ids*, or a new one when none shares a useful part (fewer than 16 tokens)."
             },
             {
               "name": "close_session",
               "signature": "def close_sessionself, sid: str -> bool",
-              "line": 172,
+              "line": 210,
               "doc": ""
             },
             {
               "name": "prompt_tokens",
               "signature": "def prompt_tokensself, prompt: str | None=None, messages: list[dict[str, Any]] | None=None, template_vars: dict[str, Any] | None=None -> list[int]",
-              "line": 189,
+              "line": 227,
               "doc": ""
             },
             {
               "name": "generate",
               "signature": "def generateself, prompt: str | None=None, **kwargs: Any -> GenerationResult",
-              "line": 202,
+              "line": 240,
               "doc": ":meth:`stream`, collected."
             },
             {
               "name": "stream",
               "signature": "def streamself, prompt: str | None=None, *, messages: list[dict[str, str]] | None=None, session: str | None=None, max_tokens: int=256, stop: list[str] | None=None, sampling: SamplerConfig | None=None, timeout: float | None=None, cancel: threading.Event | None=None, template_vars: dict[str, Any] | None=None, prompt_ids: list[int] | None=None -> Iterator[dict[str, Any]]",
-              "line": 211,
+              "line": 249,
               "doc": ""
             },
             {
               "name": "status",
               "signature": "def statusself -> dict[str, Any]",
-              "line": 378,
+              "line": 416,
               "doc": ""
             },
             {
               "name": "close",
               "signature": "def closeself -> None",
-              "line": 390,
+              "line": 428,
               "doc": ""
             }
           ]
@@ -44300,6 +44378,114 @@
       ]
     },
     {
+      "module": "hypernix.strife.gpu",
+      "source": "src/hypernix/strife/gpu.py",
+      "line_count": 169,
+      "summary": "strife.gpu \u2014 whole layers on a GPU, through PyTorch.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "layer_of",
+          "signature": "def layer_ofname: str -> int | None",
+          "line": 46,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "layer_bytes",
+          "signature": "def layer_bytesgguf: Any, *, bytes_per_weight: int=2 -> dict[int, int]",
+          "line": 51,
+          "doc": "Device memory each block's matrices need once decoded (half precision by default)."
+        },
+        {
+          "kind": "function",
+          "name": "layers_that_fit",
+          "signature": "def layers_that_fitper_layer: dict[int, int], wanted: int, free_bytes: int, reserve: int=RESERVE_BYTES -> tuple[int, int]",
+          "line": 65,
+          "doc": "``(layers, bytes)``: the first layers, in order, that fit in what is free."
+        },
+        {
+          "kind": "class",
+          "name": "DeviceChoice",
+          "signature": "class DeviceChoice",
+          "line": 80,
+          "doc": "",
+          "methods": [
+            {
+              "name": "usable",
+              "signature": "def usableself -> bool",
+              "line": 89,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "choose_device",
+          "signature": "def choose_devicewanted: str | None=None -> DeviceChoice",
+          "line": 93,
+          "doc": "The device ``gpu_layers`` would use, or why there is none."
+        },
+        {
+          "kind": "class",
+          "name": "DeviceWeights",
+          "signature": "class DeviceWeights",
+          "line": 146,
+          "doc": "The matrices of the offloaded layers, on the device.",
+          "methods": [
+            {
+              "name": "has",
+              "signature": "def hasself, name: str -> bool",
+              "line": 159,
+              "doc": ""
+            },
+            {
+              "name": "put",
+              "signature": "def putself, name: str, array: np.ndarray -> None",
+              "line": 162,
+              "doc": "Move a decoded ``(rows, cols)`` float32 weight to the device."
+            },
+            {
+              "name": "matmul",
+              "signature": "def matmulself, x: np.ndarray, name: str, rows: tuple[int, int] | None=None -> np.ndarray",
+              "line": 174,
+              "doc": "``x @ W.T`` on the device; the result comes back as float32."
+            },
+            {
+              "name": "peak_bytes",
+              "signature": "def peak_bytesself -> int",
+              "line": 187,
+              "doc": ""
+            },
+            {
+              "name": "stats",
+              "signature": "def statsself -> dict[str, Any]",
+              "line": 192,
+              "doc": ""
+            },
+            {
+              "name": "close",
+              "signature": "def closeself -> None",
+              "line": 197,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "StrifeError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        }
+      ],
+      "changes": []
+    },
+    {
       "module": "hypernix.strife.inspect",
       "source": "src/hypernix/strife/inspect.py",
       "line_count": 228,
@@ -44471,7 +44657,7 @@
     {
       "module": "hypernix.strife.kernels",
       "source": "src/hypernix/strife/kernels.py",
-      "line_count": 445,
+      "line_count": 462,
       "summary": "strife.kernels \u2014 Strife's native kernels: built here, verified, then used.",
       "api": [
         {
@@ -44525,42 +44711,42 @@
           "kind": "function",
           "name": "build",
           "signature": "def build*, force: bool=False, compiler: str | None=None, flags: list[str] | None=None -> Kernels",
-          "line": 278,
+          "line": 282,
           "doc": "Compile, verify and record the kernels for this machine."
         },
         {
           "kind": "function",
           "name": "verify",
           "signature": "def verify -> dict[str, Any]",
-          "line": 420,
+          "line": 437,
           "doc": "Check the built library again, and update what it may be used for."
         },
         {
           "kind": "function",
           "name": "reset",
           "signature": "def reset -> None",
-          "line": 447,
+          "line": 464,
           "doc": "Forget the loaded library (after a build, a removal, or in tests)."
         },
         {
           "kind": "function",
           "name": "load",
           "signature": "def load -> Kernels | None",
-          "line": 454,
+          "line": 471,
           "doc": "The verified kernels for this machine, or ``None`` (numpy is used)."
         },
         {
           "kind": "function",
           "name": "status",
           "signature": "def status -> dict[str, Any]",
-          "line": 490,
+          "line": 507,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "remove",
           "signature": "def remove -> int",
-          "line": 501,
+          "line": 518,
           "doc": "Delete every built kernel library. Returns how many builds were removed."
         }
       ],
@@ -45014,7 +45200,7 @@
     {
       "module": "hypernix.strife.placement",
       "source": "src/hypernix/strife/placement.py",
-      "line_count": 115,
+      "line_count": 118,
       "summary": "strife.placement \u2014 what this machine has, and where the model will run.",
       "api": [
         {
@@ -45034,7 +45220,7 @@
         {
           "kind": "function",
           "name": "plan",
-          "signature": "def planreport: ModelReport, model_plan: Any=None, *, n_ctx: int, gpu_layers: int=0, max_sessions: int=1, hardware: dict[str, Any] | None=None, backend: str='cpu-numpy' -> dict[str, Any]",
+          "signature": "def planreport: ModelReport, model_plan: Any=None, *, n_ctx: int, gpu_layers: int=0, max_sessions: int=1, hardware: dict[str, Any] | None=None, backend: str='cpu-numpy', gpu: dict[str, Any] | None=None -> dict[str, Any]",
           "line": 96,
           "doc": "Where everything goes. *model_plan* is the :class:`~.archs.Plan` (read from ``report.path`` when not given)."
         }
@@ -45295,7 +45481,7 @@
     {
       "module": "hypernix.strife.server",
       "source": "src/hypernix/strife/server.py",
-      "line_count": 281,
+      "line_count": 285,
       "summary": "Serve a GGUF on Strife over the OpenAI API, as llama-server does.",
       "api": [
         {
@@ -46015,7 +46201,7 @@
     {
       "module": "hypernix.strife.weights",
       "source": "src/hypernix/strife/weights.py",
-      "line_count": 186,
+      "line_count": 208,
       "summary": "strife.weights \u2014 the model file, memory-mapped, decoded on demand.",
       "api": [
         {
@@ -46035,67 +46221,73 @@
             {
               "name": "tensor",
               "signature": "def tensorself, name: str -> GGUFTensor",
-              "line": 81,
+              "line": 83,
               "doc": ""
             },
             {
               "name": "has",
               "signature": "def hasself, name: str -> bool",
-              "line": 88,
+              "line": 90,
               "doc": ""
             },
             {
               "name": "raw",
               "signature": "def rawself, t: GGUFTensor -> memoryview",
-              "line": 91,
+              "line": 93,
               "doc": ""
             },
             {
               "name": "shape2d",
               "signature": "def shape2dself, t: GGUFTensor -> tuple[int, int]",
-              "line": 95,
+              "line": 97,
               "doc": "``(rows, row_length)``: GGUF's ``ne[0]`` is the row length."
+            },
+            {
+              "name": "offload",
+              "signature": "def offloadself, device: Any, layers: int -> int",
+              "line": 118,
+              "doc": "Put the matrices of blocks ``0 .. layers-1`` on *device*. Returns the bytes placed."
             },
             {
               "name": "get",
               "signature": "def getself, name: str -> np.ndarray",
-              "line": 119,
+              "line": 138,
               "doc": "The whole tensor as float32, shaped ``(rows, row_length)`` (1-D for vectors)."
             },
             {
               "name": "cacheable",
               "signature": "def cacheableself, name: str -> bool",
-              "line": 144,
+              "line": 163,
               "doc": ""
             },
             {
               "name": "rows",
               "signature": "def rowsself, name: str, ids: np.ndarray -> np.ndarray",
-              "line": 147,
+              "line": 166,
               "doc": "Decoded rows *ids* of a 2-D tensor, decoding only those rows."
             },
             {
               "name": "matmul",
               "signature": "def matmulself, x: np.ndarray, name: str, rows: tuple[int, int] | None=None -> np.ndarray",
-              "line": 163,
+              "line": 182,
               "doc": "``x @ W.T`` for weight *name* stored ``(out, in)``: ``x`` is ``(n, in)``."
             },
             {
               "name": "stats",
               "signature": "def statsself -> dict[str, Any]",
-              "line": 196,
+              "line": 217,
               "doc": ""
             },
             {
               "name": "describe",
               "signature": "def describeself, name: str -> dict[str, Any]",
-              "line": 204,
+              "line": 226,
               "doc": ""
             },
             {
               "name": "close",
               "signature": "def closeself -> None",
-              "line": 209,
+              "line": 231,
               "doc": ""
             }
           ]

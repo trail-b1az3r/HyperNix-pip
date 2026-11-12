@@ -9,9 +9,9 @@ placement up to "on the GPU":
 * how many layers run where, and *why* (a request the hardware or this
   build cannot honour is reported as a fallback reason, not ignored).
 
-**This alpha computes on the CPU.** GPU offload is the next step of
-Strife; until it lands, ``gpu_layers`` above 0 is accepted and answered
-with ``gpu_layers_used: 0`` and the reason. Platform scope is stated by
+``gpu_layers`` puts whole blocks' matrices on a GPU through PyTorch
+(:mod:`.gpu`); a request the machine cannot honour is answered with what
+was placed (possibly 0) and the reason. Platform scope is stated by
 :func:`platform_support`: Linux x86_64 and Windows are the alpha's
 targets; macOS is experimental on Apple M5 or newer only.
 """
@@ -95,7 +95,7 @@ def detect() -> dict[str, Any]:
 
 def plan(report: ModelReport, model_plan: Any = None, *, n_ctx: int, gpu_layers: int = 0,
          max_sessions: int = 1, hardware: dict[str, Any] | None = None,
-         backend: str = "cpu-numpy") -> dict[str, Any]:
+         backend: str = "cpu-numpy", gpu: dict[str, Any] | None = None) -> dict[str, Any]:
     """Where everything goes. *model_plan* is the :class:`~.archs.Plan`
     (read from ``report.path`` when not given)."""
     hw = hardware or detect()
@@ -110,12 +110,12 @@ def plan(report: ModelReport, model_plan: Any = None, *, n_ctx: int, gpu_layers:
         model_plan = build_plan(gguf.metadata, shapes_of(gguf))
     state = state_bytes(model_plan, n_ctx)
     reasons: list[str] = []
-    if gpu_layers:
-        if not hw["gpus"]:
-            reasons.append("no GPU was found, so every layer runs on the CPU")
-        else:
-            reasons.append("GPU execution is not in Strife alpha 1 yet; every layer runs on the "
-                           "CPU (the llama.cpp runner offloads today)")
+    gpu = gpu or {}
+    used = int(gpu.get("layers_used", 0))
+    reasons.extend(gpu.get("reasons", []))
+    if gpu_layers and not used and not reasons:
+        reasons.append("no GPU was found, so every layer runs on the CPU" if not hw["gpus"]
+                       else "no layer was placed on a GPU")
     avail = int(hw["ram"].get("available_bytes") or 0)
     if avail and report.weight_bytes > avail:
         reasons.append(f"the weights ({report.weight_bytes / 2**30:.1f} GiB) are larger than "
@@ -125,13 +125,16 @@ def plan(report: ModelReport, model_plan: Any = None, *, n_ctx: int, gpu_layers:
     return {
         "backend": backend,
         "layers_total": model_plan.n_layers, "gpu_layers_requested": int(gpu_layers),
-        "gpu_layers_used": 0, "cpu_layers": model_plan.n_layers,
+        "gpu_layers_used": used, "cpu_layers": model_plan.n_layers - used,
+        "gpu_device": gpu.get("device", ""), "gpu_name": gpu.get("name", ""),
+        "gpu_bytes": int(gpu.get("bytes", 0)), "gpu_free_bytes": int(gpu.get("free_bytes", 0)),
+        "gpu_total_bytes": int(gpu.get("total_bytes", 0)),
         "weights_mapped_bytes": report.weight_bytes,
         "kv_cache_bytes_per_session": state["kv_cache"],
         "recurrent_state_bytes_per_session": state["conv_state"] + state["recurrent_state"]
         + state["checkpoints_max"],
         "state_bytes_per_session": per_session,
         "kv_cache_bytes_max": per_session * max(1, max_sessions),
-        "peak_vram_bytes": 0,
+        "peak_vram_bytes": int(gpu.get("bytes", 0)),
         "fallback_reasons": reasons, "hardware": hw,
     }

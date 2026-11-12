@@ -75,6 +75,8 @@ class WeightStore:
         self.native_matmul = bool(native_matmul and kernels is not None)
         self.threads = max(0, int(threads))
         self.native_matmuls = self.native_decodes = 0
+        #: Matrices of the layers offloaded to a GPU (:mod:`.gpu`), or ``None``.
+        self.device: Any = None
 
     # -- raw access --------------------------------------------------------
 
@@ -112,6 +114,23 @@ class WeightStore:
             self.native_decodes += 1
             return self.kernels.decode(raw, ggml_type, elements, self.threads)
         return decode(raw, ggml_type)
+
+    def offload(self, device: Any, layers: int) -> int:
+        """Put the matrices of blocks ``0 .. layers-1`` on *device*. Returns the bytes placed.
+
+        Each is decoded (natively when it can be), moved, and dropped from
+        host memory; the map still holds its quantised form.
+        """
+        from .gpu import layer_of
+
+        self.device = device
+        for t in self.gguf.tensors:
+            index = layer_of(t.name)
+            if index is None or index >= layers or len(t.shape) < 2:
+                continue
+            rows, cols = self.shape2d(t)
+            device.put(t.name, self._decode(self.raw(t), t.ggml_type, rows * cols).reshape(rows, cols))
+        return int(device.bytes)
 
     def _native(self, t: GGUFTensor) -> bool:
         return self.native_matmul and self.kernels.has(t.ggml_type)
@@ -171,6 +190,8 @@ class WeightStore:
         first, last = rows if rows is not None else (0, n_rows)
         if not 0 <= first < last <= n_rows:
             raise StrifeError("strife.runtime.bad_rows", f"rows {first}:{last} of {name}")
+        if self.device is not None and x.ndim == 2 and self.device.has(name):
+            return self.device.matmul(x, name, rows)
         per_row = cols // type_block_size(t.ggml_type) * type_size_bytes(t.ggml_type)
         if self._native(t) and x.ndim == 2:
             # The weight stays quantised: nothing is decoded whole or cached.
@@ -199,7 +220,8 @@ class WeightStore:
                 "cache_hits": self.hits, "cache_misses": self.misses,
                 "tensors_cached": len(self._cache),
                 "native_matmul": self.native_matmul, "native_matmuls": self.native_matmuls,
-                "native_decodes": self.native_decodes}
+                "native_decodes": self.native_decodes,
+                "device": self.device.stats() if self.device is not None else None}
 
     def describe(self, name: str) -> dict[str, Any]:
         t = self.tensor(name)
@@ -210,6 +232,9 @@ class WeightStore:
         with self._lock:
             self._cache.clear()
             self._cached = 0
+        if self.device is not None:
+            self.device.close()
+            self.device = None
         try:
             self._view.release()
             self._map.close()

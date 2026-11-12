@@ -4,14 +4,18 @@ Strife is HyperNix's own GGUF inference runtime. It reads a `.gguf`
 itself (header, tokenizer, weights) and runs the transformer itself.
 There is no llama.cpp process, no T1 key and no network.
 
-> **Status: alpha 1, CPU only, in progress.** Strife loads and generates
-> with real GGUF files of the architectures below, matches a
-> `transformers` reference to within 1e-4 in tests, and does everything
-> the engine section describes. It does **not** yet run on a GPU. Its
-> native CPU kernels are built on your machine with `hnx strife kernels
-> build`; until you run that, it computes with numpy. For speed today, use
-> the llama.cpp runner (`hnx-t1 runner start`). The performance targets
-> below are goals; none are met yet, and nothing here claims otherwise.
+> **Status: alpha 1.** Strife loads and generates with real GGUF files of
+> the architectures below, matches a `transformers` reference to within
+> 1e-4 in tests, and does everything the engine section describes.
+> - Its native CPU kernels are built on your machine with `hnx strife
+>   kernels build`. Until you run that, it computes with numpy.
+> - `--gpu-layers` puts whole blocks on a CUDA device through PyTorch. That
+>   path is tested on PyTorch's CPU device only: **it has not been run on a
+>   real GPU by its author**.
+> - The performance targets below are goals. **None has been measured**, so
+>   none is claimed. `hnx strife benchmark` on your hardware is the
+>   evidence. For speed today, the llama.cpp runner (`hnx-t1 runner start`)
+>   is the safer choice.
 
 ## Commands
 
@@ -22,6 +26,7 @@ hnx strife run model.gguf -p "Once upon a time" -n 64
 hnx strife run model.gguf -p "Hi" --chat --system "Be brief"   # through the chat template
 hnx strife chat model.gguf               # a conversation; one session, prefix reused each turn
 hnx strife diag model.gguf --gpu-layers 20   # hardware, backend, placement, fallback reasons
+hnx strife benchmark model.gguf --out-dir results/   # measure it: JSON, CSV and a report
 hnx strife types                         # every tensor type Strife reads
 hnx strife selftest                      # build tiny llama/qwen2/qwen3 models and run them
 hnx strife kernels build                 # compile the native kernels for this CPU and verify them
@@ -38,7 +43,8 @@ a stable code (`strife.<area>.<reason>`) and a remedy.
 | `-t`, `--threads` | CPU threads for BLAS. Applied before numpy loads; `diag` and `status()` report whether it took. |
 | `--cache-mb` | RAM for decoded weights. Default: 60% of free RAM. Weights beyond it are decoded a slab at a time on each use, so RAM stays bounded and speed drops. |
 | `--kernels` | `auto` (default) uses the native kernels when they are built; `off` computes with numpy. |
-| `--gpu-layers` | Accepted and reported. Alpha 1 runs every layer on the CPU and says why. |
+| `--gpu-layers` | Blocks whose weight matrices go on the GPU, through PyTorch. `-1` is as many as fit. What was placed, and why not more, is reported. See [GPU offload](#gpu-offload). |
+| `--gpu-device` | `cuda:N`. Default: the first CUDA device. |
 | `-n`, `--temp`, `--top-k`, `--top-p`, `--min-p`, `--repeat-penalty`, `--seed` | Sampling. `--temp 0` is greedy. A seed makes sampling reproducible. |
 | `--stop` | A stop string, repeatable. The text is cut before it. |
 | `--timeout` | Seconds before the request stops with `timeout`. |
@@ -110,6 +116,33 @@ faster than the kernels, once the 6.6 GB of decoding has been paid for. The
 kernels win on decode speed, on memory and on the time to the first answer.
 The llama.cpp comparison has not been run: there is no llama.cpp build on
 that machine.
+
+## GPU offload
+
+`--gpu-layers N` puts the weight matrices of the first N blocks on a CUDA
+device through PyTorch. Each is decoded once to half precision and its
+multiplies run there. Attention arithmetic, norms and the KV cache stay in
+host memory, so this is partial offload of the heavy tensors, not of the
+whole computation.
+
+```bash
+hnx strife diag model.gguf --gpu-layers -1      # plan the split; loads nothing
+hnx strife run model.gguf -p "Hi" --gpu-layers 12
+```
+
+- **It needs PyTorch with CUDA.** Without one, the answer is
+  `gpu_layers_used: 0` and the reason.
+- **Free memory decides.** Layers are placed in order while they fit in the
+  card's free memory less a 768 MiB reserve. A model that does not fit is
+  split, and the placement states each side: layers on the GPU, layers on
+  the CPU, device bytes, and why.
+- **A card PyTorch was not built for is refused by name.** A GTX 1080 has
+  compute capability 6.1, and current PyTorch wheels do not include its
+  kernels. Strife says so and runs on the CPU. A PyTorch build that includes
+  the card would be used.
+- **Not run on real hardware by its author.** The device path is tested on
+  PyTorch's CPU device, where it gives the same tokens as the CPU path on
+  every architecture. No speed on any GPU has been measured.
 
 ## Your own build as a T1 runner
 
@@ -206,7 +239,7 @@ Q4_K_M and Q3_K_M are mixes of these types, so a file in either runs.
 |---|---|
 | CPU (numpy + the BLAS numpy ships with) | alpha 1: what Strife runs on until the kernels are built |
 | CPU native quantized kernels (AVX-512, AVX2, plain C; threads through OpenMP) | alpha 1, after `hnx strife kernels build`: the llama.cpp block types and the float types. The weights are decoded a tile at a time and multiplied in float32; llama.cpp's integer dot products are not implemented |
-| NVIDIA CUDA, Pascal (GTX 1080) through Blackwell (RTX 5080), partial layer offload | next step; `--gpu-layers` is reported, not used |
+| NVIDIA CUDA through PyTorch, partial layer offload (`--gpu-layers`) | alpha 1, tested on PyTorch's CPU device only; not run on a real GPU. Which cards work depends on the installed PyTorch: Pascal (GTX 1080) is not in current wheels and is refused by name |
 | AMD | only where the repository's backend can be exercised and tested |
 
 | Platform | Tier |
@@ -235,16 +268,32 @@ decodes at well under one token per second.
 Measure it with the benchmark:
 
 ```bash
-python benchmarks/strife_bench.py model.gguf -p 512 -n 128 -r 3 --json record.json
-python benchmarks/strife_bench.py model.gguf --target 8   # exits 1 when unmet
+hnx strife benchmark model.gguf -p 512 -n 128 -r 5 --out-dir results/
+hnx strife benchmark model.gguf --target 8          # exits 1 when unmet
+hnx strife benchmark model.gguf --numpy             # also without the native kernels
+hnx strife benchmark model.gguf --gpu-layers -1
 ```
 
-It reports prefill and decode tokens per second, each the median of the
-repeats in fresh sessions. It runs llama.cpp's `llama-bench` on the same
-file with the same lengths, on the CPU (`-ngl 0`, the placement Strife
-alpha 1 uses), when a llama.cpp build is found. The JSON record names the
-file by SHA-256 and includes the machine, Strife's placement and its
-weight-cache figures. Compare records from one machine only.
+`python benchmarks/strife_bench.py` is the same program. It takes a model
+that is already on the machine and never downloads one.
+
+| Measured | How |
+|---|---|
+| Cold run | The first run, reported on its own and kept out of the medians. |
+| Prefill and decode tok/s | The median of `-r` runs in fresh sessions, with the spread. `--warmup` runs are discarded first. |
+| First token | Seconds from the request to the first generated token. |
+| Token latency | The time between tokens: p50, p90, p99 and max. |
+| Memory | Peak resident memory, the decode cache, mapped bytes, and device memory when layers are offloaded. |
+| Quality | Greedy output from a fixed prompt must repeat exactly. With `--numpy`, the native kernels and numpy must give the same tokens. A failed check fails the run (exit 3). |
+| llama.cpp | `llama-bench` on the same file with the same lengths, threads and GPU layers, when a build is found. Otherwise the row says it was skipped and why. |
+
+`--out-dir` writes `strife-bench.json` (the file's SHA-256, the HyperNix
+version, the machine, every setting and result), `strife-bench.csv` (one
+row per runtime) and `strife-bench.md` (a report). Compare records from one
+machine only.
+
+The `strife-benchmark` workflow runs this on a self-hosted runner with the
+hardware and the model, on request, and uploads the record.
 
 ## How it is built
 
@@ -266,14 +315,12 @@ The implementation plan, layer by layer, and where each lives:
 | Fixtures | `strife/fixtures.py` | tiny real GGUFs of every architecture and type, with their weights in Hugging Face layout |
 
 Next steps, in order:
-1. Native kernels for the HyperNix sub-bit and low-bit types, ARM NEON
+1. Run the benchmark on the target cards and record the results against
+   the targets above, with the llama.cpp runner beside them.
+2. Native kernels for the HyperNix sub-bit and low-bit types, ARM NEON
    paths, and integer dot products for the K-quants.
-2. CUDA offload of whole layers, checked against device capability
-   (Pascal has no tensor cores and no bf16).
-3. The benchmark command and its JSON/CSV/report output, compared with
-   the llama.cpp runner.
-4. An OpenAI-compatible local endpoint, tested against its contract.
-5. Linux and Windows CI smoke jobs.
+3. GPU offload without PyTorch in the path, and the KV cache and attention
+   on the device.
 
 ## Checked on a real model
 
@@ -325,4 +372,6 @@ downloaded:
 | `strife.model.truncated` | The file is shorter than its tensor table says. Download it again. |
 | `strife.runtime.context_full` | The prompt and output don't fit `--ctx`. Raise it or shorten the prompt. |
 | `strife.engine.busy` | Every slot is busy and the queue is full. Retry, or raise `max_queue`. |
-| Very slow decode | Expected in alpha 1 on large models. Check `diag`: if the weights exceed `--cache-mb`, they are decoded on every use. |
+| Very slow decode | Run `hnx strife kernels build`. Without the kernels, check `diag`: if the weights exceed `--cache-mb`, they are decoded on every use. |
+| `--gpu-layers` placed nothing | `diag MODEL --gpu-layers N` gives the reason: no PyTorch, no CUDA device, a card this PyTorch was not built for, or not enough free memory. |
+| `strife.kernels.no_compiler` | Install gcc or clang, or set `CC`. Strife runs on numpy without the kernels. |
