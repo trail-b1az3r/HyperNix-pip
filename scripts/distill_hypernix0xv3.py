@@ -73,8 +73,8 @@ def require_cuda() -> torch.device:
     free, _ = torch.cuda.mem_get_info(device)
     print(f"[gpu] {props.name}; {props.total_memory / 2**30:.2f} GiB total; "
           f"{free / 2**30:.2f} GiB free")
-    if props.major < 7:
-        raise RuntimeError(f"Unsupported CUDA compute capability {props.major}.{props.minor}; need >= 7.0.")
+    if (props.major, props.minor) < (6, 1):
+        raise RuntimeError(f"Unsupported CUDA compute capability {props.major}.{props.minor}; need >= 6.1.")
     return device
 
 
