@@ -4,7 +4,9 @@ import torch
 
 from hypernix.training.brewer import BrewerConfig, BrewerModel
 from hypernix.models.hnx0xv3 import HyperNix0xV3Config, HyperNix0xV3Model
-from scripts.distill_hypernix0xv3 import distillation_loss, transfer_v2_to_v3
+from scripts.distill_hypernix0xv3 import (
+    distillation_loss, resolve_eos_token_id, transfer_v2_to_v3,
+)
 
 
 def _models():
@@ -47,3 +49,29 @@ def test_distillation_loss_backpropagates_into_v3_only_layers():
     loss.backward()
     grad = student.blocks[0].keel.gate.weight.grad
     assert grad is not None and torch.isfinite(grad).all()
+
+
+class _TokenizerWithoutEOS:
+    eos_token_id = None
+
+
+class _TokenizerWithEOS:
+    eos_token_id = 2
+
+
+def test_resolve_eos_token_id_allows_tokenizer_without_eos():
+    assert resolve_eos_token_id(_TokenizerWithoutEOS(), vocab_size=64) is None
+
+
+def test_resolve_eos_token_id_uses_tokenizer_eos():
+    assert resolve_eos_token_id(_TokenizerWithEOS(), vocab_size=64) == 2
+
+
+def test_resolve_eos_token_id_accepts_explicit_override():
+    assert resolve_eos_token_id(_TokenizerWithoutEOS(), override=3, vocab_size=64) == 3
+
+
+def test_resolve_eos_token_id_rejects_out_of_range_override():
+    import pytest
+    with pytest.raises(ValueError, match="outside the model vocabulary"):
+        resolve_eos_token_id(_TokenizerWithoutEOS(), override=64, vocab_size=64)
