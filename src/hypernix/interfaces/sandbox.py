@@ -455,7 +455,12 @@ def cli_main(argv: list[str] | None = None) -> int:
                 resource.setrlimit(getattr(resource, which), (value * scale, value * scale))
 
     try:
-        proc = subprocess.Popen(  # noqa: S603 - an argv list, never a shell
+        # This is the sandbox's intentional command-execution boundary: the
+        # caller explicitly supplies argv, it is passed as an argument list
+        # (never through a shell), and restrictive settings are enforced by
+        # the OS launcher above. Semgrep cannot distinguish this CLI contract
+        # from an application forwarding untrusted request data to a process.
+        proc = subprocess.Popen(  # noqa: S603 - argv only, no shell; nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args
             full, cwd=str(directory) if how != "linux" else "/",
             env=None if how == "linux" else _environment(settings),
             start_new_session=bool(settings.timeout),
