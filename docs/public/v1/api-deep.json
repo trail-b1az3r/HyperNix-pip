@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "8a6e074e63289fde967a63e3f1836becf4c5cdab",
+  "commit": "de2291144406bcff3757ffb9f643227416f4bb7c",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": []
+        },
         {
           "sha": "7ea12404",
           "date": "2026-11-10",
@@ -64,13 +71,6 @@
           "date": "2026-10-27",
           "author": "Claude",
           "subject": "Security: the scan's high alerts, vulnerable dependency floors; 0.72.8a5",
-          "api_changes": []
-        },
-        {
-          "sha": "1a60a8a5",
-          "date": "2026-10-22",
-          "author": "Claude",
-          "subject": "0.72.8a4: changelog, version, and the guides start with hnx-t1 setup",
           "api_changes": []
         }
       ]
@@ -43551,7 +43551,76 @@
       "errors": [],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _median(values: list[float]) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def _spread(values: list[float]) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def _percentile(values: list[float], q: float) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def _peak_rss_bytes() -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _one_run(engine: Any, ids: list[int], gen_tokens: int, sampling: Any) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def bench_strife(path: Path, *, prompt_tokens: int, gen_tokens: int, repeat: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def prompt() -> list[int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def sampling(i: int) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _llama_bench_binary() -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def bench_llama(path: Path, *, prompt_tokens: int, gen_tokens: int, repeat: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def _csv_row(row: dict[str, Any]) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def write_csv(record: dict[str, Any], path: Path) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def render_report(record: dict[str, Any]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def gib(n: int) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.strife.blasctl",
@@ -43850,6 +43919,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": []
+        },
+        {
           "sha": "31449031",
           "date": "2026-11-11",
           "author": "Rayla",
@@ -44055,6 +44131,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _offload(self, gguf: Any, wanted: int, device: str | None) -> dict[str, Any]:"
+            }
+          ]
+        },
         {
           "sha": "93d34cdb",
           "date": "2026-11-11",
@@ -44483,7 +44571,72 @@
           "requirement": "numpy>=1.26,<3"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def layer_of(name: str) -> int | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def layer_bytes(gguf: Any, *, bytes_per_weight: int = 2) -> dict[int, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def layers_that_fit(per_layer: dict[int, int], wanted: int, free_bytes: int,"
+            },
+            {
+              "kind": "added",
+              "text": "class DeviceChoice:"
+            },
+            {
+              "kind": "added",
+              "text": "def usable(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def choose_device(wanted: str | None = None) -> DeviceChoice:"
+            },
+            {
+              "kind": "added",
+              "text": "class DeviceWeights:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, device: str, *, half: bool = True) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def has(self, name: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def put(self, name: str, array: np.ndarray) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def matmul(self, x: np.ndarray, name: str, rows: tuple[int, int] | None = None) -> np.ndarray:"
+            },
+            {
+              "kind": "added",
+              "text": "def peak_bytes(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def stats(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def close(self) -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.strife.inspect",
@@ -44762,6 +44915,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": []
+        },
         {
           "sha": "93d34cdb",
           "date": "2026-11-11",
@@ -45230,6 +45390,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": []
+        },
+        {
           "sha": "93d34cdb",
           "date": "2026-11-11",
           "author": "Claude",
@@ -45505,6 +45672,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": []
+        },
         {
           "sha": "93d34cdb",
           "date": "2026-11-11",
@@ -46305,6 +46479,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "de229114",
+          "date": "2026-11-12",
+          "author": "Claude",
+          "subject": "0.73.0a1: Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def offload(self, device: Any, layers: int) -> int:"
+            }
+          ]
+        },
         {
           "sha": "93d34cdb",
           "date": "2026-11-11",
