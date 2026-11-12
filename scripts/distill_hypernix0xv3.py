@@ -239,8 +239,10 @@ def amp_context(device: torch.device, amp: str):
 
 
 def distillation_loss(student_logits, teacher_logits, labels, temperature: float, kd_weight: float):
-    student = student_logits[:, :-1].float()
-    teacher = teacher_logits[:, :-1].float()
+    # x contains seq_len inputs and labels contains the corresponding
+    # seq_len shifted targets; every output position has a target.
+    student = student_logits.float()
+    teacher = teacher_logits.float()
     log_student = F.log_softmax(student / temperature, dim=-1)
     teacher_prob = F.softmax(teacher / temperature, dim=-1)
     kd = F.kl_div(log_student, teacher_prob, reduction="none").sum(-1).mean()
