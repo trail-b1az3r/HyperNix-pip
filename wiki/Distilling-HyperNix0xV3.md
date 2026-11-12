@@ -17,6 +17,10 @@ slots/read/write/persist/gate parameters, are V3-specific. They keep the
 V3 initializer and are trained by the distillation objective. The script
 does not fabricate V2 equivalents for these new mechanisms.
 
+## Tokenizers without EOS
+
+Some tokenizers do not declare an EOS token. The trainer does not guess a special-token ID: it packs document token streams continuously in that case. If the correct separator ID is known from the model's tokenizer specification, pass it explicitly with `--eos-token-id ID`. The ID is range-checked against the 32k model vocabulary. When the tokenizer declares EOS, that ID is inserted between documents automatically.
+
 ## Objective
 
 For each next-token position, training combines temperature-scaled
