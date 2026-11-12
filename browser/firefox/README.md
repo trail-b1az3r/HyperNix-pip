@@ -46,7 +46,7 @@ can be clicked or typed into; the numbers are what `click` and
 `type_text` take, and they change every time the page is read.
 
 Search goes through DuckDuckGo by default (no key), or through your T1
-server's `/web/v1/search`.
+server's `/web/v2/I` (`/web/v1` was removed in HyperNix 0.73.0).
 
 ## Safety
 

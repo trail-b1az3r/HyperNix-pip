@@ -847,6 +847,9 @@ def train_model(
             logits.view(-1, config.vocab_size),
             y.view(-1),
         )
+        aux = getattr(model, "aux_loss", None)  # V3 mixture of experts: keep the experts balanced
+        if isinstance(aux, torch.Tensor) and aux.requires_grad:
+            loss = loss + 0.01 * aux
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
@@ -902,8 +905,8 @@ def _export_pt(
     bundle = {
         "config": config.to_dict(),
         "model_state_dict": model.state_dict(),
-        "arch": "hypernix0x-v2",
-        "version": 2,
+        "arch": _arch_name(config),
+        "version": 3 if _is_v3(config) else 2,
     }
     if char_vocab:
         bundle["char_vocab"] = list(char_vocab)
@@ -966,6 +969,36 @@ def _export_hnxg(model: BrewerModel, config: BrewerConfig, out_path: Path) -> No
 
 
 # ---------------------------------------------------------------------------
+# Architecture dispatch: V2 by default, V3 (hnx brew new -E) when asked
+# ---------------------------------------------------------------------------
+
+def _is_v3(config: object) -> bool:
+    return getattr(config, "arch", "") == "hypernix0x-v3"
+
+
+def _model_for(config: object) -> nn.Module:
+    """The model class a config describes: V2's :class:`BrewerModel`, or
+    :class:`~hypernix.models.hnx0xv3.HyperNix0xV3Model` for a V3 config."""
+    if _is_v3(config):
+        from ..models.hnx0xv3 import HyperNix0xV3Model
+
+        return HyperNix0xV3Model(config)  # type: ignore[arg-type]
+    return BrewerModel(config)  # type: ignore[arg-type]
+
+
+def load_config(path: str | Path) -> object:
+    """A ``config.json`` as the config class its ``arch`` names."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    from ..models.hnx0xv3 import HyperNix0xV3Config, is_v3_config
+
+    return HyperNix0xV3Config.from_dict(data) if is_v3_config(data) else BrewerConfig.from_dict(data)
+
+
+def _arch_name(config: object) -> str:
+    return "hypernix0x-v3" if _is_v3(config) else "hypernix0x-v2"
+
+
+# ---------------------------------------------------------------------------
 # Brewer — high-level API
 # ---------------------------------------------------------------------------
 
@@ -1012,7 +1045,7 @@ class Brewer:
             if key not in KNOWN_MODELS:
                 KNOWN_MODELS[key] = ModelInfo(
                     repo_id=f"local/brewer/{self.name}",
-                    arch="hypernix0x-v2",
+                    arch=_arch_name(self.config),
                     notes=f"Locally brewed model '{self.name}'.",
                     family="brewer",
                 )
@@ -1027,12 +1060,12 @@ class Brewer:
         The model is also stored as ``self.model`` for subsequent calls to
         :meth:`train` and :meth:`export`.
         """
-        self._model = BrewerModel(self.config)
+        self._model = _model_for(self.config)  # type: ignore[assignment]
         self._model = self._model.to(torch.device(device))
         BREWER_REGISTRY[self.name]["built"] = True
         params = self._model.num_params()
         print(
-            f"[brewer] Built '{self.name}' — "
+            f"[brewer] Built '{self.name}' ({_arch_name(self.config)}) — "
             f"{params:,} params ({params / 1e6:.1f} M)  "
             f"n_layers={self.config.n_layers}  "
             f"d_model={self.config.d_model}  "
@@ -1110,6 +1143,11 @@ class Brewer:
             out_path = self.save_dir / f"{self.name}.{ext}"
         out = Path(out_path)
 
+        if fmt_lower in ("gguf", "hnxg") and _is_v3(self.config):
+            raise ValueError(
+                "HyperNix0xV3 has no GGUF form yet: llama.cpp does not know its Tidepool and "
+                "Keel layers. Keep the model folder (brew train saves it) -- the HyperNix "
+                "runner serves it as it is -- or export --format pt.")
         if fmt_lower == "gguf":
             from ..models.brewer_gguf import export_gguf
 
@@ -1168,8 +1206,8 @@ class Brewer:
         from ..models.brewer_gguf import CHAR_VOCAB_FILE, read_char_vocab
 
         folder = Path(directory)
-        cfg = BrewerConfig.load(folder / "config.json")
-        brewer = cls(cfg, name=name or cfg.name, save_dir=folder)
+        cfg = load_config(folder / "config.json")
+        brewer = cls(cfg, name=name or cfg.name, save_dir=folder)  # type: ignore[arg-type]
         brewer.build()
         weights = folder / "model.safetensors"
         if weights.is_file():
@@ -1203,8 +1241,11 @@ class Brewer:
         """Restore a :class:`Brewer` (with built model) from a ``.pt`` checkpoint."""
         from ..security.safeload import load_checkpoint
         ckpt = load_checkpoint(ckpt_path)
-        cfg = BrewerConfig.from_dict(ckpt["config"])
-        brewer = cls(cfg, name=name or cfg.name)
+        from ..models.hnx0xv3 import HyperNix0xV3Config, is_v3_config
+
+        cfg = (HyperNix0xV3Config.from_dict(ckpt["config"]) if is_v3_config(ckpt["config"])
+               else BrewerConfig.from_dict(ckpt["config"]))
+        brewer = cls(cfg, name=name or cfg.name)  # type: ignore[arg-type]
         brewer.build()
         brewer.model.load_state_dict(ckpt["model_state_dict"])
         if ckpt.get("char_vocab"):
@@ -1273,7 +1314,30 @@ def _open(args: argparse.Namespace) -> Brewer:
 
 
 def _cmd_new(args: argparse.Namespace) -> None:
+    if getattr(args, "experimental", False):
+        from ..models.hnx0xv3 import PRESETS, preset
+
+        if args.preset.lower() not in PRESETS:
+            print(f"[brewer] Unknown V3 preset {args.preset!r}. Available: {', '.join(PRESETS)}",
+                  file=sys.stderr)
+            sys.exit(1)
+        v3 = preset(args.preset)
+        if args.name:
+            v3.name = args.name
+        save_dir = Path(args.save_dir) / v3.name if args.save_dir else None
+        brewer = Brewer(v3, name=v3.name, save_dir=save_dir)  # type: ignore[arg-type]
+        brewer.build()
+        brewer.save_config()
+        e = v3.estimates()
+        print(f"[brewer] HyperNix0xV3 (experimental) '{v3.name}' created at {brewer.save_dir}")
+        print(f"[brewer]   window {v3.window}, chunk {v3.chunk}, {v3.n_slots} state slots; "
+              f"cache {e['cache_saving']}x smaller than full attention at {v3.max_seq_len:,} tokens; "
+              f"~{e['inference_vram_bytes'] / 2**30:.1f} GiB to run")
+        return
     preset_fn = _PRESET_MAP.get(args.preset.lower())
+    if preset_fn is None and args.preset.lower() == "xl":
+        print("[brewer] The xl preset is HyperNix0xV3 only: brew new --preset xl -E", file=sys.stderr)
+        sys.exit(1)
     if preset_fn is None:
         print(
             f"[brewer] Unknown preset {args.preset!r}. "
@@ -1311,6 +1375,7 @@ def _cmd_list(_args: argparse.Namespace) -> None:
         ggufs = sorted(p.name for p in folder.glob("*.gguf")) if folder.is_dir() else []
         print(
             f"  • {name!r:30s}  "
+            f"{cfg_info.get('arch', 'hypernix0x-v2')}  "
             f"layers={cfg_info.get('n_layers', '?')}  "
             f"d_model={cfg_info.get('d_model', '?')}  "
             f"trained={trained}"
@@ -1391,10 +1456,15 @@ def cli_main(argv: list[str] | None = None) -> None:
     p_new = sub.add_parser("new", help="Scaffold a new model from a preset.")
     p_new.add_argument(
         "--preset", required=True,
-        choices=list(_PRESET_MAP.keys()),
-        help="Architecture preset: cpu-nano | cpu-tiny | cpu-small | 33m | micro | small | medium | large",
+        choices=sorted({*_PRESET_MAP, "xl"}),
+        help="Size preset: cpu-nano | cpu-tiny | cpu-small | 33m | micro | small | medium | large "
+             "(xl: V3 only, with -E)",
     )
     p_new.add_argument("--name", default=None, help="Model name (overrides preset name).")
+    p_new.add_argument("-E", "--experimental", action="store_true",
+                       help="Build HyperNix0xV3 (Tidepool + Keel layers, experimental) instead "
+                            "of HyperNix0xV2. Presets: cpu-nano, cpu-tiny, cpu-small, 33m, micro, "
+                            "small, medium, large, xl.")
     p_new.add_argument("--save-dir", default=None, help="Root directory to save model files.")
 
     # ---- brew list --------------------------------------------------------

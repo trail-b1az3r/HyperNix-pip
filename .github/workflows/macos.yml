@@ -1,0 +1,100 @@
+# HyperLink for the Mac: a .dmg for Apple silicon and one for Intel (0.73.0).
+#
+# The Mac app is the iPhone app built with Mac Catalyst
+# (ios/scripts/make_macos_dmg.sh has the details). Callable three ways:
+#   * on a pull request that touches ios/   -- build both, artifacts only
+#   * workflow_dispatch                      -- the same, on demand
+#   * workflow_call                          -- from public-release.yml, so
+#                                               the DMGs ship with a release
+#
+# Ad hoc signed, not notarised: there is no Apple Developer identity in
+# CI. The first launch is Control-click > Open, which the release notes
+# say.
+name: macos
+
+# PAUSED until 0.73.2: no longer runs on pull requests, and the public
+# release does not call it. workflow_dispatch still builds on demand.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Marketing version to stamp (default: ios/scripts/app_version.py)"
+        type: string
+        default: ""
+  workflow_call:
+    inputs:
+      version:
+        description: "Marketing version to stamp (default: ios/scripts/app_version.py)"
+        type: string
+        default: ""
+
+concurrency:
+  group: macos-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    name: HyperLink.dmg (${{ matrix.label }})
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            label: apple-silicon
+          - arch: x86_64
+            label: intel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          latest="$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$latest" ]; then
+            echo "::error::No Xcode found on this runner"
+            exit 1
+          fi
+          sudo xcode-select -s "$latest/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i -E "macos|iphone" || true
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Work out the version to stamp
+        id: version
+        env:
+          SUPPLIED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          supplied="${SUPPLIED_VERSION:-}"
+          if [ -n "$supplied" ]; then
+            marketing="$supplied"
+          else
+            marketing="$(python3 ios/scripts/app_version.py)"
+          fi
+          echo "marketing=$marketing" >> "$GITHUB_OUTPUT"
+          echo "::notice::HyperLink for Mac $marketing (${{ matrix.label }}, build ${GITHUB_RUN_NUMBER})"
+
+      - name: Build and package the DMG
+        env:
+          ARCH: ${{ matrix.arch }}
+          VERSION: ${{ steps.version.outputs.marketing }}
+        run: |
+          set -euo pipefail
+          bash ios/scripts/make_macos_dmg.sh "$ARCH" "$VERSION" "$GITHUB_RUN_NUMBER" dist/macos
+          ls -lah dist/macos
+          cat dist/macos/SHA256SUMS.macos
+
+      - name: Upload the DMG
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hyperlink-macos-${{ matrix.label }}
+          path: dist/macos/
+          if-no-files-found: error
+          retention-days: 30

@@ -487,6 +487,7 @@ private struct LoadModelSheet: View {
         case "multilama-prismml": return "Multi-llama: PrismML"
         case "multilama-kobold": return "Multi-llama: KoboldCpp"
         case "multilama-nanbeige": return "Multi-llama: Nanbeige"
+        case "strife": return "Strife — HyperNix's own engine (CPU)"
         default: return backend
         }
     }

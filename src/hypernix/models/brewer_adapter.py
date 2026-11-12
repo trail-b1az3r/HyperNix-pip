@@ -141,7 +141,8 @@ def _adapter_class() -> type:
             # Carried so NeoOven and anything reading a loaded model can
             # ask what it is without importing brewer.
             self.config = getattr(model, "cfg", None)
-            self.arch = ARCH_NAME
+            self.arch = ("hyperNix0x-v3" if type(model).__name__ == "HyperNix0xV3Model"
+                         else ARCH_NAME)
 
         # -- the convention NeoOven expects ------------------------------
 
@@ -166,6 +167,10 @@ def _adapter_class() -> type:
             out: dict[str, Any] = {"logits": logits}
             if labels is not None:
                 out["loss"] = self.loss(logits, labels)
+                aux = getattr(self.inner, "aux_loss", None)
+                if aux is not None and getattr(aux, "requires_grad", False):
+                    # V3's MoE presets: the router's balance loss, as brewer trains it.
+                    out["loss"] = out["loss"] + 0.01 * aux
             return out
 
         @staticmethod
@@ -216,7 +221,7 @@ def wrap(model: Any) -> Any:
         return None
     if getattr(model, "arch", None) == ARCH_NAME:
         return model
-    if type(model).__name__ != "BrewerModel":
+    if type(model).__name__ not in ("BrewerModel", "HyperNix0xV3Model"):
         return model
     return _adapter_class()(model)
 
@@ -278,6 +283,44 @@ def is_brewer_checkpoint(path: str | Path) -> bool:
         return False
 
 
+def _load_v3(folder: Path, *, device: str | None) -> tuple[Any, Any] | None:
+    """A HyperNix0xV3 folder (``brew new -E``), or ``None`` for anything else.
+
+    Only ``config.json`` and ``model.safetensors`` are read: tensors, never a
+    pickle.
+    """
+    config_path = folder / "config.json"
+    if not (folder.is_dir() and config_path.is_file()):
+        return None
+    from .hnx0xv3 import HyperNix0xV3Config, HyperNix0xV3Model, is_v3_config
+
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or not is_v3_config(data):
+        return None
+    config = HyperNix0xV3Config.from_dict(data)
+    model = HyperNix0xV3Model(config)
+    weights = folder / "model.safetensors"
+    if weights.is_file():
+        from safetensors.torch import load_file
+
+        state = load_file(str(weights), device="cpu")
+        missing, unexpected = model.load_state_dict(state, strict=False)
+        if unexpected or [k for k in missing if not _is_tied_head(k, config)]:
+            raise ValueError(f"The model in {folder} does not match its config: "
+                             f"missing {missing[:5]}, unexpected {unexpected[:5]}")
+        model.tie_weights()
+    else:
+        logger.warning("brewer_adapter: %s has a config but no weights; the model is "
+                       "randomly initialised.", folder)
+    adapted = wrap(model)
+    if device:
+        adapted = adapted.to(device)
+    return adapted, config
+
+
 def _is_tied_head(key: str, config: Any) -> bool:
     """A missing key that is only the output head sharing the embedding."""
     return bool(getattr(config, "tie_embeddings", False)) and "head" in key and key.endswith("weight")
@@ -296,6 +339,9 @@ def load(path: str | Path, *, device: str | None = None) -> tuple[Any, Any]:
 
     _torch()  # a clear error when torch is missing, before anything else
     candidate = Path(path)
+    v3 = _load_v3(candidate, device=device)
+    if v3 is not None:
+        return v3
 
     weight_names = ("model.safetensors", "model.pt", "pytorch_model.bin", "weights.pt")
     if (candidate.is_dir() and (candidate / "config.json").is_file()

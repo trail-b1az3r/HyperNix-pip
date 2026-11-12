@@ -343,7 +343,7 @@ def detect_browsers(*, path_lookup=None, app_exists=None,
                     platform: str | None = None) -> dict[str, list[str]]:
     """Which browser families are installed, and what was found.
 
-    Used for `s1: auto` and reported by `/web/v1/config` so the choice
+    Used for `s1: auto` and reported by `/web/v2/config` so the choice
     can be made from what is actually there rather than from a list of
     what might be. *path_lookup* and *app_exists* stand in for the PATH
     and for the macOS ``/Applications`` bundles.

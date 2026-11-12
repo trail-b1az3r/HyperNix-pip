@@ -144,7 +144,7 @@ class TestTheMenuMatchesTheDispatcher:
     #: `tvtop` is not one: `hypernix tvtop` is the classic dashboard and
     #: `cctvtop` another, so it has its own row.
     KNOWN_ALIASES = {
-        "camouflage", "protect", "fuse-box", "fiz", "fllq",
+        "camouflage", "protect", "fuse-box", "fiz", "fllq", "sb",
     }
 
     def test_everything_dispatchable_is_discoverable(self, menu):

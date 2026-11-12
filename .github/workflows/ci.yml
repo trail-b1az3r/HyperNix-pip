@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, create]
   pull_request:
   workflow_dispatch:
 
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   # An autofix commit says, in its trailers, exactly which tests its change
   # can affect. When one is present there is nothing to learn from re-running
-  # the 16-way matrix over a scaled sleep constant, so the matrix is skipped
+  # the 12-job OS/Python matrix over a scaled sleep constant, so the matrix is skipped
   # and `autofix-verify` runs that named set instead. Only autofix-F writes
   # these trailers: it edits the bodies of the tests it names and nothing
   # else. autofix-B and autofix-E touch src/, so their commits carry no
@@ -51,6 +51,8 @@ jobs:
 
   lint:
     name: ruff lint
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,6 +68,8 @@ jobs:
   # hyperNix-pip supports.
   typecheck:
     name: mypy (py${{ matrix.python-version }})
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -80,39 +84,35 @@ jobs:
       - run: pip install "mypy>=1.11"
       - run: mypy --python-version ${{ matrix.python-version }}
 
-  test:
-    name: test (py${{ matrix.python-version }} on ${{ matrix.os }})
+  # Cross-platform tests are deliberately staged by operating system.
+  # Every Python job on macOS finishes before Linux starts; Linux then
+  # finishes before Windows starts. always() lets the next OS run after a
+  # failed matrix job too, so one platform's failure cannot hide another's.
+  test-macos:
+    name: test (py${{ matrix.python-version }} on macOS)
     needs: triage
     if: needs.triage.outputs.narrow != 'true'
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest]
-        # hyperNix-pip requires Python 3.12 or newer and supports 3.12-3.15.
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        # Python 3.13 remains supported in pyproject.toml; CI no longer
+        # spends a test slot on it.
+        python-version: ["3.12", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
           cache: pip
-
-      # PyTorch publishes no CPython 3.15 wheels yet (torch 2.14.1 stops at
-      # cp314). On 3.15 everything else is installed and the package itself
-      # with --no-deps; the tests that need torch skip and say so. Remove
-      # this branch when torch ships cp315 wheels.
       - name: Install torch (CPU wheels)
         if: matrix.python-version != '3.15'
         run: |
           python -m pip install --upgrade pip
           pip install --index-url https://download.pytorch.org/whl/cpu torch
-
       - name: Install rich (required by tvtop / cli)
         run: pip install "rich>=13"
-
       - name: Editable install + dev extras
         shell: bash
         run: |
@@ -124,23 +124,17 @@ jobs:
           else
             pip install -e ".[dev,security,t1api]"
           fi
-
       - name: pytest
         run: pytest -q
-
       - name: CLI smoke tests
         run: |
           hypernix --help
           python -m hypernix --help
           hypernix doctor || true
-
-      # cctvtop is a compiled C-extension (.so) — only available on Linux/macOS
-      - name: CLI smoke test — tvtop (Linux/macOS only)
-        if: runner.os != 'Windows'
+      - name: CLI smoke test — tvtop
         run: tvtop --help
-
       - name: New module import checks (v0.70.0)
-        if: matrix.python-version != '3.15'   # these modules import torch
+        if: matrix.python-version != '3.15'
         run: |
           python -c "from hypernix.pressure_cooker_v3 import PressureCookerV3, PressureCookerV3Plus, PressureCookerV2Plus; print('pressure_cooker_v3 OK')"
           python -c "from hypernix.compute_framework import ComputeFramework, ComputeArch; print('compute_framework OK')"
@@ -149,30 +143,217 @@ jobs:
           python -c "from hypernix.tvtop import TVTop, Frame, LogTail, cli_main; print('tvtop OK')"
           python -c "from hypernix.ethanol import Ethanol, overclock; print('ethanol OK')"
           python -c "from hypernix.ups import UPS, ThreatStatus; print('ups OK')"
-
       - name: New module import checks (v0.71.0)
         run: |
           python -c "from hypernix.keymaster import Keymaster, T1KeyGenerator, KeyType, KeyScope, KeyMeta; print('keymaster OK')"
           python -c "from hypernix.gatekeeper import Gatekeeper, Quota, QuotaViolation; print('gatekeeper OK')"
           python -c "from hypernix.gkey_cli import main; print('gkey_cli OK')"
           gkey --help
-
       - name: setup.py compatibility
-        # Running setup.py directly needs setuptools installed; builds get
-        # it in isolation, and on 3.12+ only torch's dependencies happened
-        # to bring it -- so the 3.15 job, which has no torch, had none.
         run: |
           python -m pip install "setuptools>=77"
           python setup.py --name
           python setup.py --version
+
+  test-linux:
+    name: test (py${{ matrix.python-version }} on ${{ matrix.os }})
+    needs: [triage, test-macos, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.test-macos.result != 'skipped' && needs.integration-ios.result != 'skipped'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04]
+        python-version: ["3.12", "3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+          cache: pip
+      - name: Install torch (CPU wheels)
+        if: matrix.python-version != '3.15'
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+      - name: Install rich (required by tvtop / cli)
+        run: pip install "rich>=13"
+      - name: Editable install + dev extras
+        shell: bash
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then
+            python -m pip install --upgrade pip
+            python scripts/ci/requirements_without_torch.py dev security t1api > reqs.txt
+            pip install -r reqs.txt
+            pip install --no-deps -e .
+          else
+            pip install -e ".[dev,security,t1api]"
+          fi
+      - name: pytest
+        run: pytest -q
+      - name: CLI smoke tests
+        run: |
+          hypernix --help
+          python -m hypernix --help
+          hypernix doctor || true
+      - name: CLI smoke test — tvtop
+        run: tvtop --help
+      - name: New module import checks (v0.70.0)
+        if: matrix.python-version != '3.15'
+        run: |
+          python -c "from hypernix.pressure_cooker_v3 import PressureCookerV3, PressureCookerV3Plus, PressureCookerV2Plus; print('pressure_cooker_v3 OK')"
+          python -c "from hypernix.compute_framework import ComputeFramework, ComputeArch; print('compute_framework OK')"
+          python -c "from hypernix.abbicus import Abbicus, AbbicusConfig; print('abbicus OK')"
+          python -c "from hypernix.tv import TVTop, Frame, LogTail, sparkline; print('tv OK')"
+          python -c "from hypernix.tvtop import TVTop, Frame, LogTail, cli_main; print('tvtop OK')"
+          python -c "from hypernix.ethanol import Ethanol, overclock; print('ethanol OK')"
+          python -c "from hypernix.ups import UPS, ThreatStatus; print('ups OK')"
+      - name: New module import checks (v0.71.0)
+        run: |
+          python -c "from hypernix.keymaster import Keymaster, T1KeyGenerator, KeyType, KeyScope, KeyMeta; print('keymaster OK')"
+          python -c "from hypernix.gatekeeper import Gatekeeper, Quota, QuotaViolation; print('gatekeeper OK')"
+          python -c "from hypernix.gkey_cli import main; print('gkey_cli OK')"
+          gkey --help
+      - name: setup.py compatibility
+        run: |
+          python -m pip install "setuptools>=77"
+          python setup.py --name
+          python setup.py --version
+
+  test-windows:
+    name: test (py${{ matrix.python-version }} on Windows)
+    needs: [triage, linux-complete]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.linux-complete.result != 'skipped'
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+          cache: pip
+      - name: Install torch (CPU wheels)
+        if: matrix.python-version != '3.15'
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+      - name: Install rich (required by tvtop / cli)
+        run: pip install "rich>=13"
+      - name: Editable install + dev extras
+        shell: bash
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then
+            python -m pip install --upgrade pip
+            python scripts/ci/requirements_without_torch.py dev security t1api > reqs.txt
+            pip install -r reqs.txt
+            pip install --no-deps -e .
+          else
+            pip install -e ".[dev,security,t1api]"
+          fi
+      - name: pytest
+        run: pytest -q
+      - name: CLI smoke tests
+        run: |
+          hypernix --help
+          python -m hypernix --help
+          hypernix doctor || true
+      - name: New module import checks (v0.70.0)
+        if: matrix.python-version != '3.15'
+        run: |
+          python -c "from hypernix.pressure_cooker_v3 import PressureCookerV3, PressureCookerV3Plus, PressureCookerV2Plus; print('pressure_cooker_v3 OK')"
+          python -c "from hypernix.compute_framework import ComputeFramework, ComputeArch; print('compute_framework OK')"
+          python -c "from hypernix.abbicus import Abbicus, AbbicusConfig; print('abbicus OK')"
+          python -c "from hypernix.tv import TVTop, Frame, LogTail, sparkline; print('tv OK')"
+          python -c "from hypernix.tvtop import TVTop, Frame, LogTail, cli_main; print('tvtop OK')"
+          python -c "from hypernix.ethanol import Ethanol, overclock; print('ethanol OK')"
+          python -c "from hypernix.ups import UPS, ThreatStatus; print('ups OK')"
+      - name: New module import checks (v0.71.0)
+        run: |
+          python -c "from hypernix.keymaster import Keymaster, T1KeyGenerator, KeyType, KeyScope, KeyMeta; print('keymaster OK')"
+          python -c "from hypernix.gatekeeper import Gatekeeper, Quota, QuotaViolation; print('gatekeeper OK')"
+          python -c "from hypernix.gkey_cli import main; print('gkey_cli OK')"
+          gkey --help
+      - name: setup.py compatibility
+        run: |
+          python -m pip install "setuptools>=77"
+          python setup.py --name
+          python setup.py --version
+
+  # Every Linux-hosted check is held until macOS (including iOS simulator)
+  # has finished. This barrier waits for every Linux job and fails only
+  # after all of them have completed; Windows still runs after a failure.
+  linux-complete:
+    name: Linux stage (all Linux checks)
+    needs: [triage, test-linux, lint, typecheck, python315, benchmarks, native, llamacpp, cuda, build-check, hyped-pro, tvtop-max, firefox-extension]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report all Linux-stage results
+        env:
+          PYTHON_MATRIX: ${{ needs.test-linux.result }}
+          LINT: ${{ needs.lint.result }}
+          TYPECHECK: ${{ needs.typecheck.result }}
+          PYTHON315: ${{ needs.python315.result }}
+          BENCHMARKS: ${{ needs.benchmarks.result }}
+          NATIVE: ${{ needs.native.result }}
+          LLAMACPP: ${{ needs.llamacpp.result }}
+          CUDA: ${{ needs.cuda.result }}
+          BUILD: ${{ needs.build-check.result }}
+          HYPED_PRO: ${{ needs.hyped-pro.result }}
+          TVTOP_MAX: ${{ needs.tvtop-max.result }}
+          FIREFOX: ${{ needs.firefox-extension.result }}
+        run: |
+          echo "Linux OS matrix: $PYTHON_MATRIX"
+          echo "Lint: $LINT"
+          echo "Typecheck: $TYPECHECK"
+          echo "Python 3.15 features: $PYTHON315"
+          echo "Benchmarks: $BENCHMARKS"
+          echo "Native: $NATIVE"
+          echo "llama.cpp: $LLAMACPP"
+          echo "CUDA: $CUDA"
+          echo "Build: $BUILD"
+          echo "hyped-pro: $HYPED_PRO"
+          echo "tvtop-max: $TVTOP_MAX"
+          echo "Firefox extension: $FIREFOX"
+          failed=0
+          for result in "$PYTHON_MATRIX" "$LINT" "$TYPECHECK" "$PYTHON315" "$BENCHMARKS" "$NATIVE" "$LLAMACPP" "$CUDA" "$BUILD" "$HYPED_PRO" "$TVTOP_MAX" "$FIREFOX"; do
+            [ "$result" = "success" ] || failed=1
+          done
+          exit "$failed"
+
+  # This aggregator is the one dependency for the later live-integration jobs.
+  # It fails only after every OS stage has finished, if any stage failed.
+  test-complete:
+    name: cross-platform tests (all OS stages)
+    needs: [triage, test-macos, integration-ios, linux-complete, test-windows]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report each OS result
+        env:
+          MACOS_RESULT: ${{ needs.test-macos.result }}
+          IOS_RESULT: ${{ needs.integration-ios.result }}
+          LINUX_RESULT: ${{ needs.linux-complete.result }}
+          WINDOWS_RESULT: ${{ needs.test-windows.result }}
+        run: |
+          echo "macOS Python matrix: $MACOS_RESULT"
+          echo "macOS iOS integration: $IOS_RESULT"
+          echo "Linux stage: $LINUX_RESULT"
+          echo "Windows stage: $WINDOWS_RESULT"
+          test "$MACOS_RESULT" = "success" && test "$IOS_RESULT" = "success" && test "$LINUX_RESULT" = "success" && test "$WINDOWS_RESULT" = "success"
 
   # The four Python 3.15 features hyperNix-pip uses (PEP 798, 799, 810,
   # 831), verbosely, on 3.15 itself; the same suite also runs inside every
   # `test` job, where on 3.12-3.14 it checks the compatibility boundary.
   python315:
     name: Python 3.15 features (PEP 798/799/810/831)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -201,18 +382,76 @@ jobs:
           objdump -d build-fp/libggml-hnx.a | grep -A10 "<hnx_dequantize_rows>:" | tee prologue.txt
           grep -Eq "mov[q]?[[:space:]]+%rsp,[[:space:]]*%rbp" prologue.txt
 
+  # Strife (HyperNix's own GGUF runtime) end to end on the two alpha
+  # targets: it generates with models it builds itself, its native kernels
+  # compile and verify on the runner, and the benchmark writes a record.
+  # Nothing is downloaded. On Windows the kernel build is reported but does
+  # not gate: it depends on the runner's MinGW, and Strife runs on numpy
+  # without it.
+  strife:
+    name: Strife smoke (${{ matrix.os }})
+    needs: [triage]
+    if: needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install (Strife needs numpy, not torch)
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip setuptools
+          python scripts/ci/requirements_without_torch.py dev > reqs.txt
+          pip install -r reqs.txt
+          pip install --no-deps -e .
+      - name: Selftest (generate with every architecture, on numpy)
+        shell: bash
+        run: python -m hypernix.strife.cli selftest
+      - name: Build and verify the native kernels
+        shell: bash
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          python -m hypernix.strife.cli kernels build
+          python -m hypernix.strife.cli kernels verify
+      - name: Diagnostics
+        shell: bash
+        run: |
+          python -m hypernix.strife.cli kernels status
+          python -m hypernix.strife.cli diag
+      - name: Benchmark a generated model (smoke, not a measurement)
+        shell: bash
+        run: |
+          python -c "from hypernix.strife.fixtures import make_model; make_model('smoke.gguf', arch='qwen2', quant='Q4_K', n_embd=256, n_ff=512, n_layers=2, context=1024)"
+          python -m hypernix.strife.cli benchmark smoke.gguf -p 64 -n 16 -r 2 --numpy --no-llama --out-dir strife-bench
+          cat strife-bench/strife-bench.md
+      - name: Strife tests
+        shell: bash
+        run: pytest -q tests/strife
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: strife-smoke-${{ matrix.os }}
+          path: strife-bench/
+          if-no-files-found: ignore
+
   # Startup, import, API, serialisation, native and profiling timings on
   # every supported Python, saved as an artifact. Informational: shared
   # runners are too noisy to gate on, so compare runs, not single numbers.
   benchmarks:
     name: benchmarks (py${{ matrix.python-version }})
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.12", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -259,7 +498,7 @@ jobs:
 
   integration-api:
     name: integration — live API + fake model
-    needs: test
+    needs: test-complete
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -328,7 +567,8 @@ jobs:
 
   integration-ios:
     name: integration — iPhone simulator + live API
-    needs: test
+    needs: [triage, test-macos]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.test-macos.result != 'skipped'
     runs-on: macos-latest
     timeout-minutes: 40
     env:
@@ -430,8 +670,8 @@ jobs:
   # that is about to stop working.
   native:
     name: native (ggml-hnx + studio core)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -517,8 +757,8 @@ jobs:
   # instead of eight.
   llamacpp:
     name: patcher against real llama.cpp
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -618,8 +858,8 @@ jobs:
   # pass, which only nvcc can say.
   cuda:
     name: cuda kernels
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -653,8 +893,8 @@ jobs:
 
   build-check:
     name: build sdist + wheel (smoke)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -698,8 +938,8 @@ jobs:
   # the Python launcher and the packaging in `test`, on every platform.
   hyped-pro:
     name: hyped-pro (bun test + tsc)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -717,8 +957,8 @@ jobs:
   # launcher, bridge and the script reading behind it.
   tvtop-max:
     name: tvtop-max (bun test + tsc)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -737,8 +977,8 @@ jobs:
   # content script in a real page.
   firefox-extension:
     name: firefox extension (bun test)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     defaults:
       run:

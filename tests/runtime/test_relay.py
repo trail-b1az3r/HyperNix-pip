@@ -145,6 +145,344 @@ class TestChain:
         assert len(result.notes) <= result.plan.notes_tokens * relay.CHARS_PER_TOKEN
 
 
+class TestChatMessages:
+    def test_a_short_chat_is_sent_unchanged_and_keeps_its_envelope(self):
+        messages = [
+            {"role": "system", "content": "Answer accurately."},
+            {"role": "user", "content": [
+                {"type": "text", "text": "What is in this picture?"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+            ]},
+            {"role": "assistant", "content": "I see a tree."},
+            {"role": "user", "content": "What color are its leaves?"},
+        ]
+        envelope = {
+            "model": "small",
+            "choices": [{"message": {"role": "assistant", "content": "Green."},
+                         "finish_reason": "stop"}],
+        }
+        sent = []
+
+        def answer(call_messages, max_tokens):
+            sent.append(call_messages)
+            return Reply("Green.", 23, 2, envelope)
+
+        result = Relay([answer], context_tokens=4096).run_messages(messages)
+        assert sent == [messages]
+        assert result.plan.single
+        assert result.envelope is envelope
+        assert result.answer == "Green."
+
+    def test_a_long_chat_keeps_instructions_roles_and_latest_image(self):
+        messages = [
+            {"role": "system", "content": "Use the conversation as context. Be precise."},
+            {"role": "user", "content": "Earlier user detail. " + "alpha " * 500},
+            {"role": "assistant", "content": "Earlier assistant response. " + "beta " * 500},
+            {"role": "user", "content": [
+                {"type": "text", "text": "Describe this image in light of our earlier discussion."},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,latest"}},
+            ]},
+        ]
+        calls = []
+
+        def instance(call_messages, max_tokens):
+            calls.append(call_messages)
+            system = call_messages[0]["content"]
+            if system.endswith(relay.READ_PROMPT):
+                return Reply("Earlier context preserved.", 40, 8)
+            raw = {
+                "model": "small",
+                "choices": [{"message": {"role": "assistant", "content": "It is green."},
+                             "finish_reason": "stop"}],
+            }
+            return Reply("It is green.", 45, 4, raw)
+
+        result = Relay(
+            [instance], context_tokens=768, notes_tokens=40, answer_tokens=48
+        ).run_messages(messages)
+
+        assert not result.plan.single
+        assert [hop.kind for hop in result.hops] == ["read"] * len(result.plan.chunks) + ["answer"]
+        read_calls = calls[:-1]
+        assert all(call[0]["content"].startswith("[system]\nUse the conversation") for call in read_calls)
+        assert all(call[0]["content"].endswith(relay.READ_PROMPT) for call in read_calls)
+        # Roles survive chunking: each turn is labelled in whichever part it lands.
+        read_input = "\n".join(call[-1]["content"] for call in read_calls)
+        assert "USER:\nEarlier user detail." in read_input
+        assert "ASSISTANT:\nEarlier assistant response." in read_input
+        final_content = calls[-1][-1]["content"]
+        assert isinstance(final_content, list)
+        assert final_content[-1] == messages[-1]["content"][-1]
+        assert result.envelope["choices"][0]["message"]["content"] == "It is green."
+
+    def test_system_only_messages_are_rejected(self):
+        with pytest.raises(ValueError, match="user or conversation"):
+            Relay([lambda messages, max_tokens: Reply("ok")],
+                  context_tokens=1024).run_messages([
+                {"role": "system", "content": "instructions only"}
+            ])
+
+
+class TestStreamingChatMessages:
+    def test_short_chat_forwards_chunks_and_keeps_the_final_envelope(self):
+        messages = [
+            {"role": "system", "content": "Be concise."},
+            {"role": "user", "content": "Say hello."},
+        ]
+        chunks = [
+            {"model": "small", "choices": [{"delta": {"content": "Hello "}}]},
+            {"model": "small", "choices": [{"delta": {"content": "there."},
+                                             "finish_reason": "stop"}]},
+        ]
+        received = []
+        sent = []
+
+        def stream_call(call_messages, max_tokens, slot):
+            sent.append((call_messages, max_tokens, slot))
+            return iter(chunks)
+
+        result = Relay([lambda _messages, _tokens: Reply("unused")],
+                       context_tokens=4096).stream_messages(
+            messages, stream_call=stream_call, on_chunk=received.append,
+        )
+        assert received == chunks
+        assert sent[0][0] == messages
+        assert result.plan.single
+        assert result.answer == "Hello there."
+        assert result.envelope["choices"][0]["message"]["content"] == "Hello there."
+        assert result.hops[0].kind == "direct"
+
+    def test_stop_closes_the_upstream_stream_between_chunks(self):
+        cancelled = threading.Event()
+        closed = threading.Event()
+        received = []
+        produced = []
+
+        def upstream():
+            try:
+                for text in ("one", "two", "three", "four"):
+                    produced.append(text)
+                    yield {"choices": [{"delta": {"content": text}}]}
+            finally:
+                closed.set()
+
+        def stream_call(_messages, _tokens, _slot):
+            return upstream()
+
+        def forward(chunk):
+            received.append(chunk)
+            cancelled.set()
+
+        result = Relay([lambda _messages, _tokens: Reply("unused")],
+                       context_tokens=4096).stream_messages(
+            [{"role": "user", "content": "go"}],
+            stream_call=stream_call,
+            on_chunk=forward,
+            cancelled=cancelled.is_set,
+        )
+        assert result.cancelled
+        assert result.answer == "one"
+        assert len(received) == 1
+        assert len(produced) == 2  # one additional chunk can be yielded before the check
+        assert closed.is_set()
+
+    def test_long_chat_reads_old_context_then_streams_the_final_answer(self):
+        messages = [
+            {"role": "system", "content": "Keep the whole discussion in mind."},
+            {"role": "user", "content": "Old user note. " + "alpha " * 500},
+            {"role": "assistant", "content": "Old assistant reply. " + "beta " * 500},
+            {"role": "user", "content": "Use the earlier details to answer."},
+        ]
+        reads = []
+        streamed = []
+
+        def instance(call_messages, _tokens):
+            reads.append(call_messages)
+            return Reply("Preserved context.", 32, 4)
+
+        def stream_call(call_messages, _tokens, _slot):
+            streamed.append(call_messages)
+            yield {"model": "small", "choices": [{"delta": {"content": "Final "}}]}
+            yield {"model": "small", "choices": [{"delta": {"content": "answer."},
+                                                  "finish_reason": "stop"}]}
+
+        result = Relay([instance], context_tokens=1024,
+                       notes_tokens=40, answer_tokens=48).stream_messages(
+            messages, stream_call=stream_call, on_chunk=lambda _chunk: None,
+        )
+        assert not result.plan.single
+        assert reads
+        assert len(streamed) == 1
+        assert streamed[0][0]["content"].endswith(relay.ANSWER_PROMPT)
+        assert result.answer == "Final answer."
+        assert [hop.kind for hop in result.hops][-1] == "answer"
+
+
+class TestContinuations:
+    """An answer the context cut off (finish reason "length") is picked up."""
+
+    @staticmethod
+    def _env(text, finish, tool_calls=None):
+        message = {"role": "assistant", "content": text}
+        if tool_calls:
+            message["tool_calls"] = tool_calls
+        return {"model": "m", "choices": [{"message": message, "finish_reason": finish}]}
+
+    def test_a_cut_answer_is_continued_and_joined(self):
+        calls = []
+        replies = [("The first half", "length"), ("and the second.", "stop")]
+
+        def instance(call_messages, _tokens):
+            calls.append(call_messages)
+            text, finish = replies[len(calls) - 1]
+            return Reply(text, 10, 5, self._env(text, finish))
+
+        result = Relay([instance], context_tokens=4096, continuations=2).run_messages(
+            [{"role": "user", "content": "Tell me everything."}])
+        assert result.answer == "The first half and the second."
+        assert result.continued == 1
+        assert result.finish_reason == "stop"
+        assert result.envelope["choices"][0]["message"]["content"] == result.answer
+        follow = calls[1]
+        assert follow[-2] == {"role": "assistant", "content": "The first half"}
+        assert "The first half" in follow[-1]["content"]  # where to resume
+        assert [h.index for h in result.hops] == [0, 1]
+        assert result.to_dict()["continued"] == 1
+
+    def test_continuations_stop_at_the_limit_and_default_off(self):
+        def instance(_messages, _tokens):
+            return Reply("more", 1, 1, self._env("more", "length"))
+
+        capped = Relay([instance], context_tokens=4096, continuations=2).run_messages(
+            [{"role": "user", "content": "go"}])
+        assert capped.continued == 2 and capped.answer == "more more more"
+        assert capped.finish_reason == "length"
+        off = Relay([instance], context_tokens=4096).run_messages(
+            [{"role": "user", "content": "go"}])
+        assert off.continued == 0 and off.answer == "more"
+
+    def test_tool_calls_and_complete_answers_are_left_alone(self):
+        calls = []
+
+        def tool(_messages, _tokens):
+            calls.append(1)
+            return Reply("", 1, 1, self._env("", "length", tool_calls=[{"id": "x"}]))
+
+        Relay([tool], context_tokens=4096, continuations=3).run_messages(
+            [{"role": "user", "content": "go"}])
+        assert len(calls) == 1
+
+    def test_a_continuation_that_no_longer_fits_is_relayed(self):
+        """The cut answer is history now: past the context, the relay condenses it."""
+        long = "word " * 900
+        kinds = []
+
+        def instance(call_messages, _tokens):
+            system = call_messages[0]["content"] if call_messages[0]["role"] == "system" else ""
+            if system.endswith(relay.READ_PROMPT):
+                kinds.append("read")
+                return Reply("notes", 5, 2)
+            kinds.append("answer")
+            if len(kinds) == 1:
+                return Reply(long, 10, 900, self._env(long, "length"))
+            return Reply("End.", 10, 2, self._env("End.", "stop"))
+
+        result = Relay([instance], context_tokens=1024, notes_tokens=40,
+                       continuations=1).run_messages([{"role": "user", "content": "go"}])
+        assert "read" in kinds
+        assert result.answer.endswith("End.") and result.continued == 1
+
+    def test_streaming_continues_with_a_joining_space(self):
+        rounds = [
+            [{"choices": [{"delta": {"content": "Half"}}]},
+             {"choices": [{"delta": {"content": " way"}, "finish_reason": "length"}]}],
+            [{"choices": [{"delta": {"content": "there."}, "finish_reason": "stop"}]}],
+        ]
+        sent = []
+
+        def stream_call(call_messages, _tokens, _slot):
+            sent.append(call_messages)
+            return iter(rounds[len(sent) - 1])
+
+        received = []
+        result = Relay([lambda _m, _t: Reply("unused")], context_tokens=4096,
+                       continuations=1).stream_messages(
+            [{"role": "user", "content": "go"}], stream_call=stream_call,
+            on_chunk=received.append)
+        text = "".join(c["choices"][0]["delta"]["content"] for c in received)
+        assert text == "Half way there." == result.answer
+        assert result.continued == 1
+
+
+class TestSmallContexts:
+    """A 512-token model must still get through a 2,200-token prompt."""
+
+    BIG = "word " * 1760          # about 2,200 tokens
+
+    @staticmethod
+    def _run(messages, context):
+        calls = []
+
+        def instance(call_messages, max_tokens):
+            size = sum(estimate_tokens(Relay._content_text(m.get("content")))
+                       for m in call_messages) + max_tokens
+            calls.append((call_messages, size))
+            return Reply("kept notes", 10, 4)
+
+        result = Relay([instance], context_tokens=context).run_messages(messages)
+        return result, calls
+
+    @pytest.mark.parametrize("context", [2048, 1024, 512, 384])
+    @pytest.mark.parametrize("shape", ["latest", "system", "history"])
+    def test_every_call_fits_whatever_part_is_long(self, context, shape):
+        messages = {
+            "latest": [{"role": "user", "content": self.BIG + "What is the last word?"}],
+            "system": [{"role": "system", "content": self.BIG},
+                       {"role": "user", "content": "Hi"}],
+            "history": [{"role": "system", "content": "Be brief."},
+                        {"role": "user", "content": self.BIG},
+                        {"role": "assistant", "content": "ok"},
+                        {"role": "user", "content": "And now?"}],
+        }[shape]
+        result, calls = self._run(messages, context)
+        assert not result.plan.single
+        assert max(size for _m, size in calls) <= context
+        assert result.hops[-1].kind == "answer"
+
+    def test_a_long_latest_message_is_read_then_answered(self):
+        marker = "The secret number is 4417."
+        _result, calls = self._run(
+            [{"role": "user", "content": self.BIG + marker}], 512)
+        read_text = "\n".join(m[-1]["content"] for m, _s in calls[:-1])
+        assert marker in read_text                       # it was read, not dropped
+        assert "USER (latest message" in read_text
+        assert relay.LATEST_MESSAGE_QUESTION in calls[-1][0][-1]["content"]
+
+    def test_long_instructions_are_read_and_their_opening_is_kept(self):
+        system = "Always answer in French. " + self.BIG
+        _result, calls = self._run(
+            [{"role": "system", "content": system}, {"role": "user", "content": "Hi"}], 512)
+        assert all("Always answer in French." in m[0]["content"] for m, _s in calls)
+        assert any("INSTRUCTIONS (follow these)" in m[-1]["content"] for m, _s in calls[:-1])
+
+    def test_a_chat_that_fits_is_untouched(self):
+        messages = [{"role": "system", "content": "Be brief."},
+                    {"role": "user", "content": "Hi"}]
+        result, calls = self._run(messages, 512)
+        assert result.plan.single and calls[0][0] == messages
+
+    def test_images_stay_with_the_question(self):
+        image = {"type": "image_url", "image_url": {"url": "data:image/png;base64,x"}}
+        _result, calls = self._run(
+            [{"role": "user", "content": [{"type": "text", "text": self.BIG}, image]}], 512)
+        final = calls[-1][0][-1]["content"]
+        assert isinstance(final, list) and final[-1] == image
+
+    def test_a_context_too_small_for_anything_still_says_so(self):
+        with pytest.raises(ContextTooSmall):
+            self._run([{"role": "user", "content": self.BIG}], 200)
+
+
 class TestMap:
     def test_parts_are_digested_on_every_instance_then_answered(self):
         instances, calls = _fakes(3, 1024)

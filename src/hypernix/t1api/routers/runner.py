@@ -204,8 +204,29 @@ def runner_status(
         model=current.to_dict() if current else {},
         base_url=runner.base_url,
         backends=list(BACKENDS),
+        strife_builds=_strife_builds(),
         request_id=request_id,
     )
+
+
+def _strife_builds() -> list[dict]:
+    """The user's registered Strife builds, plus the built-in one.
+
+    A registry that cannot be trusted or read is reported as such rather
+    than failing the status call.
+    """
+    from ...strife import builds
+    from ...strife.errors import StrifeError
+
+    out = [{"name": builds.BUILTIN, "version": "", "default": False, "selftest_ok": True}]
+    try:
+        found = builds.list_builds()
+        chosen = builds.default_build()
+    except StrifeError as exc:
+        return [*out, {"name": "", "error": str(exc), "code": exc.code}]
+    out[0]["default"] = chosen is None
+    return out + [{**b.public(), "default": chosen is not None and b.name == chosen.name}
+                  for b in found]
 
 
 @router.post("/plan", response_model=RunnerPlanResponse)
@@ -259,6 +280,10 @@ def runner_load(
     llama.cpp servers on one machine each try to take the VRAM the other
     has and the failure lands on the one that was working.
     """
+    if payload.strife_build and payload.backend != "strife":
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR,
+                         "strife_build applies to backend \"strife\" only.",
+                         details={"backend": payload.backend})
     path, facts = _resolve(payload.model_id, config, registry)
     try:
         current = runner.load(
@@ -270,6 +295,8 @@ def runner_load(
             total_layers=payload.total_layers or 0,
             mmproj=payload.mmproj,
             offload=Offload(cpu_moe=payload.cpu_moe, kv_on_cpu=payload.kv_on_cpu),
+            # Only when asked: runners other than the managed one need not know it.
+            **({"strife_build": payload.strife_build} if payload.strife_build else {}),
         )
     except ManagedError as exc:
         # 400 rather than 500: "there is no built llama.cpp" and "this
@@ -290,7 +317,7 @@ def runner_load(
               cpu_moe=payload.cpu_moe, kv_on_cpu=payload.kv_on_cpu)
     return RunnerStatusResponse(
         loaded=True, model=current.to_dict(), base_url=runner.base_url,
-        backends=list(BACKENDS), request_id=request_id,
+        backends=list(BACKENDS), strife_builds=_strife_builds(), request_id=request_id,
     )
 
 

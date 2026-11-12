@@ -14,10 +14,9 @@ addon to every oven in the process, including the one somebody else
 loaded for a different job, and the only symptom would be output that is
 subtly not what that job asked for.
 
-Order is by atomic number, lightest first, on the way in, and the
-reverse on the way out — so an element wraps the ones lighter than it
-the same way a function wraps the functions it calls, and "carbon
-tidies what magnesium produced" means the same thing every run.
+Dependencies are resolved by Hydrogen before activation. The dependency
+graph is topologically ordered (with atomic number as a stable tie-breaker),
+and dependencies are released in reverse activation order.
 
 An addon that raises is skipped for that call, logged, and counted — the
 generation still happens. An oven that stops answering because a
@@ -49,10 +48,13 @@ class Attachment:
     elements: list[Element]
     originals: dict[str, Any] = field(default_factory=dict)
     failures: dict[str, int] = field(default_factory=dict)
+    roots: list[Element] = field(default_factory=list)
+    started: list[Element] = field(default_factory=list)
+    registry: Registry | None = None
 
     @property
     def symbols(self) -> list[str]:
-        return [e.spec.symbol for e in self.elements]
+        return [e.spec.symbol for e in (self.roots or self.elements)]
 
     def _fail(self, element: Element, hook: str, exc: Exception) -> None:
         key = f"{element.spec.symbol}.{hook}"
@@ -98,67 +100,107 @@ def attach(
     *,
     registry: Registry | None = None,
 ) -> Attachment:
-    """Wrap *oven* so *elements* run around each generation.
-
-    Attaching again replaces the previous set rather than stacking a
-    second wrapper on the first — stacking is how an addon ends up
-    running twice per call with nothing on screen to say so.
-    """
+    """Wrap one oven with requested elements and their transitive dependencies."""
     registry = registry or default_registry()
     if attached(oven) is not None:
         detach(oven)
 
-    # Check every element before starting any. The framework asks on each
-    # element's behalf: one that did not declare `oven` does not get to
-    # touch one — and must be refused before it is activated, or asking
-    # for magnesium here would renice the machine and only then say no.
-    live: list[Element] = []
+    roots: list[str] = []
     for item in elements:
-        element = item if isinstance(item, Element) else registry.instance(item)
-        element.context.require("oven")
-        live.append(element)
-    live.sort(key=lambda e: e.spec.number)
+        if isinstance(item, Element):
+            try:
+                registry.lookup(item.spec.symbol)
+            except HyperNixError:
+                registry.register(type(item))
+                registry._live[item.spec.symbol] = item
+            symbol = item.spec.symbol
+        else:
+            symbol = registry.lookup(item).spec.symbol
+        if symbol not in roots:
+            roots.append(symbol)
+
+    order = registry.dependency_order(roots)
+    live = [registry.instance(symbol) for symbol in order]
+    root_set = set(roots)
+
+    for element in live:
+        unexpected = element.spec.permissions - {"oven"}
+        if element.spec.symbol not in root_set and unexpected:
+            raise HyperNixError(
+                codes.ELEMENT_PERMISSION,
+                f"{element.spec.symbol} dependency requests non-chat permissions "
+                f"{sorted(unexpected)}; refusing automatic chat activation",
+            )
+        has_hooks = any(
+            getattr(type(element), hook) is not getattr(Element, hook)
+            for hook in ("transform_prompt", "transform_messages", "transform_output")
+        )
+        if element.spec.symbol in root_set or has_hooks:
+            element.context.require("oven")
 
     started: list[Element] = []
     try:
-        for element in live:
-            if not element.active:
-                element.activate()
-                element.active = True
-                started.append(element)
+        for symbol in order:
+            before = {element.spec.symbol for element in registry.active()}
+            registry.activate(symbol)
+            after = {element.spec.symbol for element in registry.active()}
+            known_started = {element.spec.symbol for element in started}
+            started.extend(
+                registry.instance(item) for item in order
+                if item in after - before and item not in known_started
+            )
     except BaseException:
-        # All or nothing: an attach that fails part-way leaves nothing it
-        # started still running.
         for element in reversed(started):
             try:
-                element.deactivate()
-            finally:
-                element.active = False
+                registry.deactivate(element.spec.symbol)
+            except Exception as exc:  # noqa: BLE001 - preserve activation failure
+                logger.warning("natural_gas: rollback of %s failed: %s",
+                               element.spec.symbol, exc)
         raise
 
-    attachment = Attachment(elements=live)
-    for name in _WRAPPED:
-        original = getattr(oven, name, None)
-        if original is None:
-            continue
-        attachment.originals[name] = original
-        setattr(oven, name, _wrap(name, original, attachment))
-    oven.__dict__[_ATTR] = attachment
+    attachment = Attachment(
+        elements=live,
+        roots=[registry.instance(symbol) for symbol in roots],
+        started=started,
+        registry=registry,
+    )
+    try:
+        for name in _WRAPPED:
+            original = getattr(oven, name, None)
+            if original is None:
+                continue
+            attachment.originals[name] = original
+            setattr(oven, name, _wrap(name, original, attachment))
+        oven.__dict__[_ATTR] = attachment
+        registry.retain_attachment(
+            [element.spec.symbol for element in live],
+            [element.spec.symbol for element in started],
+        )
+    except BaseException:
+        oven.__dict__.pop(_ATTR, None)
+        for name in attachment.originals:
+            oven.__dict__.pop(name, None)
+        for element in reversed(started):
+            try:
+                registry.deactivate(element.spec.symbol)
+            except Exception:
+                pass
+        raise
     return attachment
 
 
 def detach(oven: Any) -> list[str]:
-    """Put the oven's own methods back. Returns what was removed."""
+    """Restore the oven's methods and release its element/dependency leases."""
     attachment = attached(oven)
     if attachment is None:
         return []
     for name in attachment.originals:
-        # Deleting the instance attribute, not assigning the saved bound
-        # method back: that would leave an instance attribute shadowing
-        # the class method, and a later patch to the class would never
-        # reach this oven.
         oven.__dict__.pop(name, None)
     oven.__dict__.pop(_ATTR, None)
+    if attachment.registry is not None:
+        attachment.registry.release_attachment(
+            element.spec.symbol for element in attachment.elements
+        )
     return attachment.symbols
 
 

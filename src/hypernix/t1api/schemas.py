@@ -176,6 +176,24 @@ class AdminRotateRequest(BaseModel):
     promote_to_admin: bool = False
 
 
+class AccessLevelRequest(BaseModel):
+    """Grant a key an access level (0.72.9): ``waiter serv -Pro KEY -L N``."""
+
+    #: The key to promote (or demote), as its holder has it: T1, T2, T2S or T2P.
+    key: str = Field(min_length=8)
+    access_level: int = Field(ge=1, le=9)
+
+
+class AccessLevelResponse(BaseModel):
+    key_id: str
+    access_level: int
+    previous_level: int | None
+    #: The key spelled at its new level. A T2 key carries its level in its
+    #: last character, so the holder needs this spelling to use the grant.
+    key: str
+    request_id: str
+
+
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
@@ -1609,6 +1627,9 @@ class RunnerLoadRequest(BaseModel):
     cpu_moe: int = 0
     #: The KV cache in system RAM rather than VRAM.
     kv_on_cpu: bool = False
+    #: Backend "strife": a Strife build registered on this machine with
+    #: ``hnx strife build`` (or "builtin"). A name only, never a path.
+    strife_build: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9._-]{0,47}$")
 
 
 class RunnerAutoRequest(BaseModel):
@@ -1624,6 +1645,9 @@ class RunnerStatusResponse(BaseModel):
     model: dict[str, Any] = Field(default_factory=dict)
     base_url: str = ""
     backends: list[str] = Field(default_factory=list)
+    #: Strife builds this machine's owner registered (``hnx strife build``),
+    #: each usable as ``strife_build`` with backend "strife".
+    strife_builds: list[dict[str, Any]] = Field(default_factory=list)
     #: Whether an unload actually stopped something. Unloading nothing is
     #: a success, and the caller may still want to know.
     was_running: bool = False

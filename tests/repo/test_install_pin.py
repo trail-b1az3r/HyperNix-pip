@@ -30,12 +30,17 @@ def test_pyproject_torch_pin_admits_1_13() -> None:
     assert ceiling >= (3,), f"torch ceiling {ceiling} dropped below 3"
 
 
-def test_setup_cfg_torch_pin_admits_1_13() -> None:
+def test_dependencies_are_declared_only_in_pyproject() -> None:
+    """0.73.0: one declaration, not two.
+
+    setup.cfg repeated install_requires and extras_require, and setuptools
+    threw that copy away on every build ("install_requires overwritten in
+    pyproject.toml"). An ignored copy can only drift -- it had: it pinned
+    rich==15.0.0 against pyproject's >14,<=15 and lacked three extras.
+    """
     text = _read("setup.cfg")
-    m = re.search(r"torch>=([0-9.]+),<([0-9.]+)", text)
-    assert m is not None, "torch pin missing from setup.cfg"
-    floor = tuple(int(p) for p in m.group(1).split("."))
-    assert floor <= (1, 13), f"setup.cfg torch floor {floor} > 1.13"
+    for section in ("install_requires =", "[options.extras_require]", "license ="):
+        assert section not in text, f"setup.cfg declares {section!r} again"
 
 
 def test_legacy_install_script_no_longer_uses_no_deps() -> None:

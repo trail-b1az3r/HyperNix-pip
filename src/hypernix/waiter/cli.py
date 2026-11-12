@@ -272,6 +272,10 @@ the next word; inside a group r means refresh. -Rf is a full refresh and
   -b  give bare strings to the options they look like
   -s  save   -L  local only   -G  dashboard   -g  prompt
   -B/-W/-a/-r  block / allow / remove / limit on the server (admin)
+
+    waiter serv -Pro <key> -K <admin key> -L <1-9>   grant a key an access level
+  With -Pro, -L takes the level (on its own it means local only). The answer
+  is the key spelled at its new level: give that to the key's holder.
 """
 
 
@@ -281,7 +285,12 @@ def _build_serv_parser() -> argparse.ArgumentParser:
     p.add_argument("-A", "--auto", action="store_true", help="Automatic configuration: validate + save in one step")
     p.add_argument("-E", "--encrypt", action="store_true", help="Seal the key as a v2.1 (T2C) key when the server supports it, and encrypt the config at rest")
     p.add_argument("-s", "--save", action="store_true", help="Save current server/local configuration to a .jsonl file")
-    p.add_argument("-L", "--local-only", action="store_true", help="Local/Tailscale/localhost-only mode")
+    p.add_argument("-L", "--local-only", action="store_true", help="Local/Tailscale/localhost-only mode (with -Pro, -L <level> is the level)")
+    # 0.72.9: -Pro KEY -K ADMIN_KEY -L LEVEL
+    p.add_argument("--promote", dest="promote", default=None, metavar="KEY",
+                   help="(-Pro) Grant KEY an access level on the server; needs an admin -K and -L <1-9>")
+    p.add_argument("--level", dest="level", type=int, choices=range(1, 10), default=None, metavar="1-9",
+                   help="With -Pro: the access level to grant (written -L <level>)")
     p.add_argument("-B", "--blacklist", action="append", default=[], metavar="IP_OR_CIDR", help="Blacklist an IP or CIDR range on the server (repeatable; admin key required)")
     p.add_argument("-W", "--whitelist", action="append", default=[], metavar="IP_OR_CIDR", help="Allowlist an IP or CIDR range on the server (repeatable; admin key required)")
     p.add_argument("-r", "--force-limit", action="append", default=[], metavar="SUBJECT=LIMIT", help="Force a limit on a T1 key/server, e.g. key:abc123=60/60s (admin key required)")
@@ -499,6 +508,9 @@ def _cmd_serv(rest: list[str]) -> int:
         shown = _mask(text) if option == "--key" else text
         _info(f"-b: read {shown!r} as {option}")
     args = _build_serv_parser().parse_args(expanded.argv)
+
+    if args.promote or args.level is not None:
+        return _serv_promote(args)
 
     if not any(getattr(args, name) for name in _SERV_ACTIONS):
         _warn("No action flag given (-A/-s/-R/-Rf/-y/-g/-G/-u/-k/-c/-T/-Y/-S/-e). Nothing to do — see 'waiter serv --help'.")
@@ -1061,6 +1073,41 @@ def _cmd_route(rest: list[str]) -> int:
         _print_json(payload)
         return 0
     _ok(f"Routed to {payload['model_id']} ({payload['reason']})")
+    return 0
+
+
+def _serv_promote(args: argparse.Namespace) -> int:
+    """``waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL`` (0.72.9).
+
+    Grants KEY access level LEVEL on the server, authenticating with the
+    admin key (-K, else the saved one), and prints KEY spelled at its new
+    level -- the spelling its holder now has to use, because a T2 key
+    states its level in its last character and the server holds that to
+    the grant. Saves nothing: the admin key is used for this call only.
+    """
+    if not args.promote:
+        _err("-L <level> needs a key to promote: waiter serv -Pro <key> -K <admin key> -L <level>.")
+        return 2
+    if args.level is None:
+        _err("-Pro needs a level: waiter serv -Pro <key> -K <admin key> -L <1-9>.")
+        return 2
+    store = _load_store(args, encrypt=False)
+    cfg = _resolve_config(args, store=store)
+    if not cfg.server or not cfg.key:
+        _err("-Pro needs a server and an admin key: -I <server> -K <admin key> "
+             "(or a saved configuration).")
+        return 1
+    try:
+        reply = T1Client(base_url=_base_url(cfg), credential=cfg.key).admin_set_access_level(
+            args.promote, args.level)
+    except T1ClientError as exc:
+        _err_connection(exc, "Promotion failed")
+        return 1
+    previous = reply.get("previous_level")
+    was = f" (was {previous})" if previous is not None else " (no level was recorded)"
+    _ok(f"Key {_mask(reply.get('key_id'))} is now access level {reply.get('access_level')}{was}.")
+    print("Its holder uses this spelling from now on (the level is its last character):")
+    print(f"  {reply.get('key')}")
     return 0
 
 

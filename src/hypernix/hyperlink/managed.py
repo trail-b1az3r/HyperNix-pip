@@ -78,7 +78,10 @@ __all__ = [
 #: types only a fork knows -- see :mod:`hypernix.quant.forktypes`.
 MULTILAMA_FORKS = ("ik", "prismml", "kobold", "nanbeige")
 BACKENDS = ("auto", "cuda", "vulkan", "cpu", "hnx-cuda", "hnx-cpu", "multilama",
-            *(f"multilama-{fork}" for fork in MULTILAMA_FORKS))
+            *(f"multilama-{fork}" for fork in MULTILAMA_FORKS),
+            # 0.73.0: Strife, HyperNix's own GGUF runtime (hypernix.strife):
+            # no llama.cpp at all. CPU in alpha 1.
+            "strife")
 
 #: Leave this much VRAM alone. The display server wants some, the CUDA
 #: context itself wants some, and fragmentation takes more than the
@@ -339,6 +342,18 @@ def plan_placement(
         raise ManagedError(
             f"Unknown backend {backend!r}. Available: {', '.join(BACKENDS)}"
         )
+    if backend == "strife":
+        ram_available, _ram_total, swap_used = _free_memory()
+        if ram_free is not None:
+            ram_available = ram_free
+        reason = "Strife (HyperNix's own runtime): every layer on the CPU, weights memory-mapped"
+        if gpu_layers:
+            reason += "; Strife alpha 1 has no GPU offload yet"
+        if ram_available and file_bytes > ram_available:
+            reason += "; the file is larger than free RAM and will be read from disk as needed"
+        return Placement(gpu_layers=0, total_layers=total_layers, backend="cpu",
+                         ram_bytes=file_bytes, swap_used_bytes=swap_used, reason=reason,
+                         explicit=True)
 
     ram_available, _ram_total, swap_used = _free_memory()
     if ram_free is not None:
@@ -510,14 +525,27 @@ class ManagedRunner:
         request to a socket nobody is listening on.
         """
         with self._lock:
-            if self._process is not None and self._process.poll() is not None:
-                logger.warning(
-                    "managed: the server for %s exited with %s",
-                    self._current.model_id if self._current else "?",
-                    self._process.returncode,
-                )
-                self._process = None
-                self._current = None
+            process = self._process
+            if process is not None:
+                returncode = process.poll()
+                if returncode is not None:
+                    model_id = self._current.model_id if self._current else "?"
+                    output_tail = getattr(process, "output_tail", None)
+                    try:
+                        output = output_tail.text(wait=0.25).strip() if output_tail else ""
+                    except Exception:  # noqa: BLE001 - diagnostics must not break status reads
+                        output = ""
+                    if output:
+                        logger.warning(
+                            "managed: the server for %s exited with %s\nLast output:\n%s",
+                            model_id, returncode, output[-2000:],
+                        )
+                    else:
+                        logger.warning(
+                            "managed: the server for %s exited with %s", model_id, returncode,
+                        )
+                    self._process = None
+                    self._current = None
             return self._current
 
     @property
@@ -538,8 +566,13 @@ class ManagedRunner:
         timeout: float = DEFAULT_START_TIMEOUT,
         mmproj: str | None = None,
         offload: Offload | None = None,
+        strife_build: str | None = None,
     ) -> ManagedModel:
         """Start serving *path*, replacing whatever was running.
+
+        *strife_build* (backend ``strife`` only) names a Strife build the
+        user registered with ``hnx strife build``; ``None`` uses the default
+        build, ``"builtin"`` the Strife in this package.
 
         *offload* keeps parts of the model in system RAM
         (:class:`hypernix.hyperlink.offload.Offload`): a mixture-of-experts
@@ -573,6 +606,10 @@ class ManagedRunner:
             model_path = converted
         if not model_path.is_file():
             raise ManagedError(f"No such model: {model_path}")
+        if backend == "strife":
+            return self._load_strife(model_path, model_id=model_id, timeout=timeout,
+                                     context_length=context_length, gpu_layers=gpu_layers,
+                                     build_name=strife_build)
 
         from ..quant.gguf import GGUFError, GGUFFile
         from ..quant.runtime_bridge import BridgeError, find_build, find_mmproj, serve_argv
@@ -719,6 +756,68 @@ class ManagedRunner:
                 f"the {fork} server {'exited (code ' + str(code) + ')' if code is not None else 'did not start'} "
                 f"while loading {record.model_id}.\nLast output:\n{output[-2000:]}"
             )
+        return record
+
+    def _load_strife(self, path: Path, *, model_id: str, timeout: float,
+                     context_length: int = 0, gpu_layers: int | None = None,
+                     build_name: str | None = None) -> ManagedModel:
+        """Serve a GGUF on Strife (:mod:`hypernix.strife.server`).
+
+        The same contract as every other load: what was running is
+        unloaded first, the process is watched until it answers
+        ``/health``, and its last output is in the error if it does not.
+        The model is checked before anything starts, so a model Strife
+        cannot run is refused with Strife's reason rather than a crash.
+        """
+        from ..strife import builds as strife_builds
+        from ..strife.errors import StrifeError
+        from ..strife.inspect import inspect_model
+
+        try:
+            build = (strife_builds.default_build() if build_name is None
+                     else strife_builds.get_build(build_name))
+        except StrifeError as exc:
+            raise ManagedError(f"{exc} {exc.remedy}".strip()) from exc
+        report = inspect_model(path)
+        if not report.runnable:
+            first = report.problems[0]
+            raise ManagedError(f"Strife cannot run {path.name}: {first['message']} "
+                               f"[{first['code']}]. {first['remedy']}".strip())
+        layers = report.n_layers
+        context = int(context_length or min(report.context_length or 4096, 8192))
+        wanted_gpu = int(gpu_layers or 0)
+        reason = "Strife (HyperNix's own runtime), every layer on the CPU"
+        if build is not None:
+            reason += f"; your build {build.name!r} ({build.version or 'unknown version'})"
+        if wanted_gpu:
+            reason += f"; {wanted_gpu} GPU layers asked for, which Strife alpha 1 does not do yet"
+        placement = Placement(gpu_layers=0, total_layers=layers, backend="cpu",
+                              ram_bytes=report.weight_bytes, explicit=True, reason=reason)
+        self.unload()
+        alias = model_id or path.stem.lower()
+        argv = [*strife_builds.launch_argv(build), "--model", str(path),
+                "--host", self.host, "--port", str(self.port), "--alias", alias,
+                "--ctx", str(context)]
+        logger.info("managed: starting %s", " ".join(argv))
+        try:
+            process = _start_server(argv, env=strife_builds.launch_env(build))
+        except OSError as exc:
+            raise ManagedError(f"Could not start Strife: {exc}") from exc
+        record = ManagedModel(
+            model_id=alias, path=str(path), port=self.port, placement=placement,
+            started_at=time.time(), context_length=context, pid=process.pid,
+            base_url=self.base_url,
+        )
+        with self._lock:
+            self._process = process
+            self._current = record
+        if not self._wait_until_ready(process, timeout):
+            code = process.poll()
+            output = self._drain(process)
+            self.unload()
+            what = (f"Strife exited (code {code}) while loading {alias}"
+                    if code is not None else f"{alias} did not start on Strife within {timeout:.0f}s")
+            raise ManagedError(f"{what}.\nLast output:\n{output[-2000:]}")
         return record
 
     def _load_brewed(self, folder: Path, *, model_id: str, backend: str,
@@ -1063,6 +1162,18 @@ def brewed_gguf_for(folder: Path) -> Path | None:
 
     mode = os.environ.get(BREWED_BACKEND_ENV, "auto").strip().lower() or "auto"
     if mode == "torch":
+        return None
+    try:
+        import json as _json
+
+        arch = str(_json.loads((folder / "config.json").read_text(encoding="utf-8")).get("arch") or "")
+    except (OSError, ValueError, AttributeError):
+        arch = ""
+    if arch.lower() == "hypernix0x-v3":
+        # No GGUF form exists for V3 (brew new -E): PyTorch serves it.
+        if mode == "llama":
+            raise ManagedError(f"{BREWED_BACKEND_ENV}=llama, but {folder.name} is HyperNix0xV3, "
+                               "which llama.cpp cannot run; unset it to serve the model in PyTorch.")
         return None
     try:
         from ..quant.runtime_bridge import BridgeError, find_build

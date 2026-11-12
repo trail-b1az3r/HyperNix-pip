@@ -1,6 +1,40 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.73.0a1
+
+<details>
+<summary>0.73.0a1 — alpha 1: breaking changes and security</summary>
+
+- **Breaking:** `hnx chat` no longer downloads a model unless one is named with `-r HF_ID`. `-M PATH` (a folder, or a `.gguf` file) never downloads. With neither, it exits with an explanation instead of fetching `ray0rf1re/hyper-nix.1`.
+- **Security:** Strife's native kernel library (`~/.hypernix/strife/kernels/`) is written owner-only and not loaded if others can write it. It is compiled only when `hnx strife kernels build` is run.
+- Dependencies reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). No version changes. GPU offload uses PyTorch when it is installed; it is not a new requirement.
+
+</details>
+
+## 0.73.0.dev2
+
+<details>
+<summary>0.73.0.dev2 — pre-alpha 2: security</summary>
+
+- **Security:** Strife chat templates refuse underscore attributes however they are spelled.
+- **Security:** the Strife build registry (`~/.hypernix/strife/builds.json`) is written owner-only and refused if others can write it. The T1 API selects builds by registered name only.
+
+</details>
+
+## 0.73.0.dev1
+
+<details>
+<summary>0.73.0.dev1 — pre-alpha 1: breaking changes and security</summary>
+
+- **Breaking:** T1 `/web/v1` is removed and answers 410 with its `/web/v2` successor. The T1 API is now generation 1.2 (v1.2.26.11.0.0), and 1.1 clients are told to upgrade.
+- **Security:** ATC is the outermost layer of the T1 API. It jails addresses that probe, guess keys or map the API, limits bodies and in-flight requests, and offers `hypernix-atc/1` end-to-end encryption (`/atc/handshake`, `/atc/tunnel`).
+- **Security:** a T2 key's stated access level is held to the level it was granted.
+- `hnx sandbox` confines a command to one directory: no web, no writes outside it, hidden home folder.
+- Dependencies reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). No version changes; `setup.cfg` no longer repeats the dependency list.
+
+</details>
+
 ## 0.72.8.post2
 
 <details>

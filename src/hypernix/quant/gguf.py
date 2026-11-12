@@ -290,7 +290,29 @@ def tensor_nbytes_unchecked(ggml_type: int, shape: tuple[int, ...]) -> int:
 # Reading
 # ---------------------------------------------------------------------------
 
+def _remaining(stream: BinaryIO) -> int | None:
+    """Bytes left in *stream*, when it is a file that can say."""
+    import os
+
+    try:
+        return os.fstat(stream.fileno()).st_size - stream.tell()
+    except (AttributeError, OSError, ValueError):
+        try:
+            here = stream.tell()
+            end = stream.seek(0, 2)
+            stream.seek(here)
+            return end - here
+        except (AttributeError, OSError, ValueError):
+            return None
+
+
 def _read_exact(stream: BinaryIO, count: int) -> bytes:
+    # A length read from the file is checked against the file before it
+    # is passed to read(): read(n) can allocate n bytes up front, so a
+    # 30-byte file claiming a 16 GB array would otherwise cost 16 GB.
+    left = _remaining(stream)
+    if left is not None and count > left:
+        raise GGUFError(f"Truncated file: wanted {count} bytes, only {left} left.")
     data = stream.read(count)
     if len(data) != count:
         raise GGUFError(f"Truncated file: wanted {count} bytes, got {len(data)}.")
@@ -357,7 +379,7 @@ def _read_array(stream: BinaryIO, item_type: int, count: int) -> list[Any]:
             length = unpack("<Q", head)[0]
             if length > (1 << 30):
                 raise GGUFError(f"Implausible string length {length}; file is probably not GGUF.")
-            data = read(length)
+            data = read(length) if length < 4096 else _read_exact(stream, length)
             if len(data) != length:
                 raise GGUFError("Truncated GGUF: a string array ends early.")
             append(data.decode("utf-8", errors="replace"))

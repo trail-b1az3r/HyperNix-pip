@@ -686,7 +686,7 @@ jobs:
           import glob, json, os, sys
           fail_on = os.environ.get("FAIL_ON", "error")
           rank = {"none": 0, "note": 1, "warning": 2, "error": 3}
-          rows, worst, total = [], 0, 0
+          rows, worst, total, suppressed_total = [], 0, 0, 0
           top = []
           for f in sorted(glob.glob("sarif/*.sarif")):
               try:
@@ -696,8 +696,15 @@ jobs:
               for run in data.get("runs", []):
                   tool = run.get("tool", {}).get("driver", {}).get("name", os.path.basename(f))
                   rules = {r.get("id"): r for r in run.get("tool", {}).get("driver", {}).get("rules", [])}
-                  c = {"error": 0, "warning": 0, "note": 0}
+                  c = {"error": 0, "warning": 0, "note": 0, "suppressed": 0}
                   for r in run.get("results", []):
+                      # Semgrep keeps reviewed nosemgrep findings in SARIF with
+                      # suppressions.kind=inSource. They are visible for audit,
+                      # but must not fail the active-finding gate.
+                      if any(item.get("kind") == "inSource" for item in r.get("suppressions", [])):
+                          c["suppressed"] += 1
+                          suppressed_total += 1
+                          continue
                       lv = r.get("level") or rules.get(r.get("ruleId"), {}).get("defaultConfiguration", {}).get("level", "warning")
                       lv = lv if lv in c else "note"
                       c[lv] += 1
@@ -705,9 +712,14 @@ jobs:
                       if lv == "error" and len(top) < 25:
                           loc = (r.get("locations") or [{}])[0].get("physicalLocation", {})
                           top.append(f"| {tool} | `{r.get('ruleId')}` | `{loc.get('artifactLocation', {}).get('uri', '?')}:{loc.get('region', {}).get('startLine', '?')}` | {r.get('message', {}).get('text', '')[:140].replace('|', '/')} |")
-                  rows.append(f"| {tool} | {c['error']} | {c['warning']} | {c['note']} |")
-          out = ["# 🔐 HyperNix Security Scan", "", "| Engine | Error | Warning | Note |", "|---|---:|---:|---:|", *rows, "",
-                 f"CodeQL results are in **Security → Code scanning**. Total findings (non-CodeQL): **{total}**.", ""]
+                  rows.append(f"| {tool} | {c['error']} | {c['warning']} | {c['note']} | {c['suppressed']} |")
+          out = [
+              "# 🔐 HyperNix Security Scan", "",
+              "| Engine | Error | Warning | Note | In-source suppressed |",
+              "|---|---:|---:|---:|---:|", *rows, "",
+              f"CodeQL results are in **Security → Code scanning**. Active findings (non-CodeQL): **{total}**.",
+              f"Reviewed in-source suppressions retained in SARIF: **{suppressed_total}**.", "",
+          ]
           if top:
               out += ["## Top errors", "", "| Engine | Rule | Location | Message |", "|---|---|---|---|", *top, ""]
           open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("\n".join(out) + "\n")

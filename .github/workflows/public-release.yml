@@ -199,7 +199,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python 3.12
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
           cache: pip
@@ -468,6 +468,9 @@ jobs:
             echo ""
             echo "No IPA attached means the app build did not run this time; the"
             echo "Python package is unaffected."
+            echo ""
+            # The Mac DMGs are paused until 0.73.2 (see hyperlink-dmg);
+            # their paragraph comes back with them.
           } > CHANGELOG_FRAGMENT.md
           echo "--- fragment ---"
           cat CHANGELOG_FRAGMENT.md
@@ -696,7 +699,7 @@ jobs:
       T1_ENVIRONMENT: development
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
           cache: pip
@@ -762,7 +765,7 @@ jobs:
       T1_ENVIRONMENT: development
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
 
@@ -884,9 +887,30 @@ jobs:
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
 
+  # HyperLink for the Mac (0.73.0): an Apple-silicon and an Intel .dmg,
+  # built with Mac Catalyst. Like the IPA, a bonus attachment: a missing
+  # DMG never holds the release.
+  #
+  # PAUSED until 0.73.2: the leading `false` keeps the job (and the
+  # attach steps below, which only run when it succeeded) wired but off.
+  # Delete `false &&` to turn it back on.
+  hyperlink-dmg:
+    name: HyperLink DMG
+    needs: [cut]
+    if: >-
+      false &&
+      always() &&
+      needs.cut.result == 'success' &&
+      !inputs.dry_run &&
+      !inputs.skip_hyperlink &&
+      needs.cut.outputs.tag != 'nightly'
+    uses: ./.github/workflows/macos.yml
+    with:
+      version: ""
+
   github-release:
     name: GitHub Release
-    needs: [plan, cut, integration-api, integration-ios, hyperlink-ipa]
+    needs: [plan, cut, integration-api, integration-ios, hyperlink-ipa, hyperlink-dmg]
     if: >-
       always() &&
       needs.cut.result == 'success' &&
@@ -915,10 +939,29 @@ jobs:
           path: dist/ios
         continue-on-error: true
 
+      - name: Download the HyperLink DMGs
+        if: needs.hyperlink-dmg.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: hyperlink-macos-*
+          path: dist/macos
+          merge-multiple: true
+        continue-on-error: true
+
+      # Each architecture's job wrote its own SHA256SUMS.macos; merging the
+      # artifacts keeps only one, so the sums are worked out again here.
+      - name: Checksum the DMGs
+        run: |
+          set -euo pipefail
+          if ls dist/macos/*.dmg >/dev/null 2>&1; then
+            (cd dist/macos && rm -f SHA256SUMS.macos && sha256sum ./*.dmg | sed 's# \./# #' > SHA256SUMS.macos)
+          fi
+
       - name: Show artifacts
         run: |
           ls -lah dist/
           ls -lah dist/ios/ 2>/dev/null || echo "(no iOS artifact this run)"
+          ls -lah dist/macos/ 2>/dev/null || echo "(no macOS artifact this run)"
 
       # The nightly release is replaced rather than added to: its files
       # have a new version in their names every night, and updating it
@@ -946,6 +989,8 @@ jobs:
             dist/SHA256SUMS
             dist/ios/*.ipa
             dist/ios/SHA256SUMS.ios
+            dist/macos/*.dmg
+            dist/macos/SHA256SUMS.macos
 
   # ---------------------------------------------------------------------------
   # Publish stable tags to real PyPI via Trusted Publishing (OIDC).

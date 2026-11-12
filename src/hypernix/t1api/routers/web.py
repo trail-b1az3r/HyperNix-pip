@@ -1,18 +1,21 @@
-"""``/web/v1`` — keyless web search for HyperLink and hyperchat.
+"""``/web/v2`` — keyless web search for HyperLink and hyperchat.
 
-Three endpoints, in the shapes the request asked for:
+* ``GET /web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=keep`` — search
+* ``POST /web/v2/summarize`` — summarise a page, or a search's results
+* ``GET /web/v2/config/<directives>`` — read and change the three
+  search settings
+* ``GET|POST /web/v2/ai/config`` — the admin web settings, for a model
 
-* ``GET /web/v1/I?=query&q?=maxdepth`` — search
-* ``POST /web/v1/summarize`` — summarise a page, or a search's results
-* ``GET /web/v1/config/<directives>`` — read and change the three
-  settings
+``/web/v1`` is gone (HyperNix 0.73.0): deprecated since T1
+v1.1.26.10.1.0, its routes now live here, and a request to the old path
+is answered ``410 Gone`` naming its replacement rather than a bare 404.
 
 Everything about the grammar lives in :mod:`hypernix.t1api.websearch`,
 which has no FastAPI in it. This module is the HTTP part and the two
 things that can only be got wrong here.
 
 The first is that the documented forms are not URLs in the ordinary
-sense. ``/web/v1/I?=query`` puts the search text in a *nameless* query
+sense. ``/web/v2/I?=query`` puts the search text in a *nameless* query
 parameter, and ``config/s1?=k|s2?:=x`` puts settings after a ``?``,
 which makes everything from there on the query string rather than the
 path. So both are read from ``request.url.query`` as raw text rather
@@ -51,7 +54,17 @@ from ..errors import T1APIError, T1ErrorCode
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/web/v1", tags=["web"])
+router = APIRouter(prefix="/web/v2", tags=["web"])
+
+#: What answers /web/v1 now: nothing but directions (0.73.0).
+router_v1_gone = APIRouter(prefix="/web/v1", tags=["web"], include_in_schema=False)
+
+#: Where each /web/v1 route went.
+V1_SUCCESSORS = {
+    "I": "/web/v2/I", "i": "/web/v2/I", "search": "/web/v2/I",
+    "summarize": "/web/v2/summarize", "summarise": "/web/v2/summarize",
+    "config": "/web/v2/config", "ai/config": "/web/v2/ai/config",
+}
 
 #: Longest page body accepted for summarising. Past this the summary is
 #: not better and the request is somebody's disk.
@@ -82,54 +95,6 @@ def _grammar_error(exc: ws.GrammarError, raw: str) -> T1APIError:
         http_status=400,
         details={"received": ws.redact(raw)[:200]},
     )
-
-
-@router.get("/I")
-@router.get("/i")
-@router.get("/search")
-async def web_search(
-    request: Request,
-    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
-    config: T1APIConfig = Depends(get_config),
-    meter=Depends(get_usage_meter),
-    request_id: str = Depends(get_request_id),
-):
-    """``/web/v1/I?=query&q?=maxdepth`` — or ``?q=cats&depth=2``.
-
-    Three paths for one endpoint: ``I`` is the documented name, ``i``
-    because nobody can tell a capital I from a lowercase l in a URL,
-    and ``search`` because that is what people type.
-    """
-    raw = request.url.query
-    query, depth = ws.parse_search_query(raw)
-    if not query:
-        raise T1APIError(
-            T1ErrorCode.VALIDATION_ERROR,
-            "no search text. Use `/web/v1/I?=your+query&q?=2` or the "
-            "ordinary `/web/v1/search?q=your+query&depth=2`.",
-            http_status=400,
-        )
-
-    settings = _settings(request)
-    outcome = ws.search(query, depth=depth, settings=settings)
-    logger.info("web: search %r depth=%d -> %d hit(s) [%s]",
-                query[:80], depth, len(outcome.hits), outcome.status)
-    deprecated = request.url.path.rstrip("/").endswith("/search")
-    if outcome.status == "ok":
-        # One search, billed to the caller (0.72.8). A search that found
-        # no engine or failed did no work worth a line on the bill.
-        meter.record_quietly(key_id=principal.owner, feature="web_search",
-                             endpoint="/web/v1/search", unit="web_search", units=1)
-    body = outcome.to_dict()
-    body["request_id"] = request_id
-    if deprecated:
-        # T1 v1.1.26.10.1.0: /web/v2/I replaces it. Answered as before
-        # until HyperNix 0.73.0.
-        body["deprecated"] = ("/web/v1/search is deprecated and goes in HyperNix 0.73.0; "
-                              "use /web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=false")
-        return JSONResponse(body, headers={"Deprecation": "true", "Sunset": "hypernix 0.73.0",
-                                           "Link": '</web/v2/I>; rel="successor-version"'})
-    return JSONResponse(body)
 
 
 @router.post("/summarize")
@@ -313,7 +278,7 @@ async def web_config_write(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     request_id: str = Depends(get_request_id),
 ):
-    """``/web/v1/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``
+    """``/web/v2/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``
 
     Everything from the first ``?`` onwards is the query string as far
     as HTTP is concerned, so the clause is rebuilt from the path
@@ -351,14 +316,12 @@ async def web_config_write(
     return JSONResponse(body)
 
 
-__all__ = ["router"]
-
-
 # ---------------------------------------------------------------------------
-# v2 (T1 v1.1.26.10.1.0)
+# Search (T1 v1.1.26.10.1.0)
 # ---------------------------------------------------------------------------
 
-router_v2 = APIRouter(prefix="/web/v2", tags=["web"])
+#: The same router: kept as a name so ``routers/__init__`` reads as before.
+router_v2 = router
 
 
 def _admin_settings(request: Request):
@@ -477,3 +440,26 @@ async def web_ai_config(
             raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc), http_status=400) from exc
     v2.save_settings(current, config_dir)
     return JSONResponse({"settings": current.to_dict(), "changed": sorted(payload), "request_id": request_id})
+
+
+@router_v1_gone.api_route("/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def web_v1_gone(rest: str, request_id: str = Depends(get_request_id)):
+    """``/web/v1`` was removed in HyperNix 0.73.0: 410, and where to go instead.
+
+    Unauthenticated on purpose -- it serves nothing, and a client being
+    told where the route went is worth more than a 401 that hides it.
+    """
+    successor = next((new for old, new in V1_SUCCESSORS.items()
+                      if rest.strip("/") == old or rest.startswith(old + "/")), "/web/v2")
+    if successor == "/web/v2/config" and rest.startswith("config/"):
+        successor = "/web/v2/" + rest
+    raise T1APIError(
+        T1ErrorCode.NOT_FOUND,
+        f"/web/v1 was removed in HyperNix 0.73.0. Use {successor} -- for a search, "
+        "/web/v2/I?=your+query&q?=1&mx?=10&sq?=1&&kpd?=false.",
+        http_status=410,
+        details={"removed": "/web/v1/" + rest, "successor": successor},
+    )
+
+
+__all__ = ["router", "router_v2", "router_v1_gone", "V1_SUCCESSORS"]

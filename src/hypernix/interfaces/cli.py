@@ -130,6 +130,10 @@ _SUBCOMMANDS = {
     "claude",
     # 0.72.8a4
     "list-all",
+    # 0.73.0
+    "sandbox",
+    "sb",
+    "strife",
 }
 
 
@@ -257,6 +261,8 @@ _MAIN_MENU: tuple[tuple[str, str], ...] = (
     ("wakeup", "wake-word detection: train a trigger phrase, then listen for it"),
     ("hyprslug-headers", "self-describing GGUF headers + the OpenAI-compatible sub-bit server"),
     ("extra", "more commands: neuron, pipeline, assistant, generate, wiki, prot, oven, ..."),
+    ("strife", "Strife: HyperNix's own GGUF runtime (inspect, run, chat, diag)"),
+    ("sandbox", "run a command shut in one directory: no web, no writes outside it (also: sb)"),
     ("list-all", "every command: hnx, hnx extra, hnx-t1, and every other HyperNix command"),
 )
 
@@ -280,7 +286,7 @@ _EXTRA_MENU: tuple[tuple[str, str], ...] = (
     ("scavenger", "search + size Hugging Face datasets under storage/quality budgets"),
 )
 
-_ALSO_ACCEPTED = "fllq (fetch-llama-quantize) · fiz (fizzle) · camouflage (camo) · protect (prot) · fuse-box (fusebox)"
+_ALSO_ACCEPTED = "fllq (fetch-llama-quantize) · fiz (fizzle) · camouflage (camo) · protect (prot) · fuse-box (fusebox) · sb (sandbox)"
 
 
 def _print_menu(title_text: str, rows: tuple[tuple[str, str], ...], footer: str) -> None:
@@ -1262,24 +1268,24 @@ _CACHE_BYTES_HELP = (
 
 
 def _run_chat(raw: list[str]) -> int:
-    """`hypernix chat` — chat REPL against any HyperNix-family model.
-
-    Accepts short names from :data:`hypernix.download.KNOWN_MODELS`
-    (``nano-nano``, ``nano-mini``, ``nano-nano-927``, ``hyper-nix``) or a
-    full HF repo id. ``--message`` runs a single turn and exits (useful
-    for scripting); without it, drops into an interactive REPL.
-    """
+    """Chat REPL with optional Hydrogen elements and 3H .hnx scripts."""
     from hypernix.models.neo_oven import preheat
 
     p = argparse.ArgumentParser(
         prog="hypernix chat",
-        description="Chat with any HyperNix-family model.",
+        description="Chat with a model that is on this machine (-M), or download one "
+                    "from Hugging Face by naming it (-r). Without -r, nothing is ever "
+                    "downloaded.",
     )
-    p.add_argument("--repo-id", default="ray0rf1re/hyper-nix.1",
-                   help="Short name or full HF repo id.")
+    p.add_argument("-r", "--repo-id", default=None, metavar="HF_ID",
+                   help="Download this Hugging Face model (a repo id such as "
+                        "org/name, or a short name) and chat with it. The only option "
+                        "that downloads.")
     p.add_argument("--revision", default=None)
-    p.add_argument("--model-dir", default=None,
-                   help="Reuse an existing local snapshot instead of downloading.")
+    p.add_argument("-M", "--model-dir", "--model", dest="model_dir", default=None,
+                   metavar="PATH",
+                   help="A model on this machine: a folder for an unquantised model, "
+                        "or a .gguf file. Never downloads.")
     p.add_argument("--token", default=None)
     p.add_argument("--device", default=None)
     p.add_argument("--dtype", default="float32",
@@ -1298,13 +1304,51 @@ def _run_chat(raw: list[str]) -> int:
                    default=0, help=_CACHE_BYTES_HELP)
     p.add_argument("--hnx-device", dest="hnx_device", default="auto",
                    help=_DEVICE_HELP)
+    p.add_argument(
+        "--elements", nargs="?", const="all", default=None, metavar="PATH",
+        help="Load all chat elements, or load elements from a .py/.hnx file or directory.",
+    )
+    p.add_argument(
+        "-G", "--element-group", dest="element_group", default=None, metavar="NAME",
+        help="Load only the named element group and its dependencies.",
+    )
+    p.add_argument(
+        "--experimental-elements", action="store_true",
+        help="Permit experimental-period elements selected by --elements.",
+    )
 
     ns = p.parse_args(raw)
 
+    # Chat never downloads on its own: a model comes from this machine (-M)
+    # or from an explicit request for a Hugging Face model (-r).
+    if not ns.model_dir and not ns.repo_id:
+        print("hypernix chat: no model given, and chat never downloads one on its own.\n"
+              "  -M PATH    a model on this machine: a folder (unquantised) or a .gguf file\n"
+              "  -r HF_ID   download a Hugging Face model by its id, e.g. -r org/name",
+              file=sys.stderr)
+        return 2
+    if ns.model_dir and not ns.repo_id and not os.path.exists(os.path.expanduser(ns.model_dir)):
+        print(f"hypernix chat: {ns.model_dir} does not exist. -M takes a model folder or a "
+              ".gguf file on this machine; to download a model, name it with -r HF_ID.",
+              file=sys.stderr)
+        return 2
+    if ns.model_dir:
+        ns.model_dir = os.path.expanduser(ns.model_dir)
+
+    element_registry = None
+    selected_elements: list[str] = []
+    if ns.elements is not None or ns.element_group:
+        from hypernix.elements.chat_elements import resolve_chat_elements
+        try:
+            element_registry, selected_elements = resolve_chat_elements(
+                ns.elements, ns.element_group,
+                allow_experimental=ns.experimental_elements,
+            )
+        except Exception as exc:  # noqa: BLE001 - fail before loading the model
+            print(f"hypernix chat: elements: {exc}", file=sys.stderr)
+            return 2
+
     # A .gguf given as --model-dir is a model, not a snapshot directory.
-    # Held open across the whole session rather than reloaded per turn: a
-    # GGUF load is seconds to minutes, and paying it on every message
-    # would make the REPL unusable.
     from hypernix.models.ggufrun import GGUFRunError, is_gguf, load_gguf
 
     gguf_model = None
@@ -1318,49 +1362,81 @@ def _run_chat(raw: list[str]) -> int:
             print(f"hypernix chat: {exc}", file=sys.stderr)
             return 1
         oven = None
+        target = gguf_model
     else:
-        oven = preheat(
-            repo_id=ns.repo_id, revision=ns.revision, local_dir=ns.model_dir,
-            token=ns.token, device=ns.device, dtype=ns.dtype, quiet=ns.quiet,
-        )
-
-    history: list[dict[str, str]] = []
-    if ns.system:
-        history.append({"role": "system", "content": ns.system})
-
-    def turn(user_msg: str) -> str:
-        history.append({"role": "user", "content": user_msg})
-        if gguf_model is not None:
-            reply = gguf_model.chat(
-                [m for m in history if m["role"] != "system"],
-                system=ns.system,
-                max_tokens=ns.max_new_tokens,
-                temperature=ns.temperature,
-            )
-        else:
-            reply = oven.chat(
-                list(history),
-                max_new_tokens=ns.max_new_tokens,
-                temperature=ns.temperature, top_k=ns.top_k, top_p=ns.top_p,
-                seed=ns.seed,
-            )
-        history.append({"role": "assistant", "content": reply})
-        return reply
-
-    if ns.message is not None:
-        _safe_print(turn(ns.message))
-        return 0
-
-    print("[hypernix chat] Ctrl-D or empty line to exit.", file=sys.stderr)
-    while True:
         try:
-            line = input("you> ")
-        except EOFError:
-            print(file=sys.stderr)
+            oven = preheat(
+                repo_id=ns.repo_id or "", revision=ns.revision, local_dir=ns.model_dir,
+                token=ns.token, device=ns.device, dtype=ns.dtype, quiet=ns.quiet,
+                # Only -r may reach the Hub.
+                allow_download=bool(ns.repo_id),
+            )
+        except FileNotFoundError as exc:
+            if ns.repo_id:
+                print(f"hypernix chat: could not get {ns.repo_id}: {exc}", file=sys.stderr)
+            else:
+                print(f"hypernix chat: {exc}. Nothing was downloaded; to download a model, "
+                      "name it with -r HF_ID.", file=sys.stderr)
+            return 1
+        target = oven
+
+    attachment = None
+    if selected_elements:
+        try:
+            from hypernix.elements.natural_gas import attach
+            attachment = attach(target, selected_elements, registry=element_registry)
+        except Exception as exc:  # noqa: BLE001 - report invalid selections clearly
+            print(f"hypernix chat: could not attach elements: {exc}", file=sys.stderr)
+            return 2
+        if not ns.quiet:
+            print("[hypernix chat] elements: " + ", ".join(attachment.symbols),
+                  file=sys.stderr)
+
+    def session() -> int:
+        history: list[dict[str, str]] = []
+        if ns.system:
+            history.append({"role": "system", "content": ns.system})
+
+        def turn(user_msg: str) -> str:
+            history.append({"role": "user", "content": user_msg})
+            if gguf_model is not None:
+                reply = gguf_model.chat(
+                    [m for m in history if m["role"] != "system"],
+                    system=ns.system,
+                    max_tokens=ns.max_new_tokens,
+                    temperature=ns.temperature,
+                )
+            else:
+                reply = oven.chat(
+                    list(history),
+                    max_new_tokens=ns.max_new_tokens,
+                    temperature=ns.temperature, top_k=ns.top_k, top_p=ns.top_p,
+                    seed=ns.seed,
+                )
+            history.append({"role": "assistant", "content": reply})
+            return reply
+
+        if ns.message is not None:
+            _safe_print(turn(ns.message))
             return 0
-        if not line.strip():
-            return 0
-        print(f"assistant> {turn(line)}")
+
+        print("[hypernix chat] Ctrl-D or empty line to exit.", file=sys.stderr)
+        while True:
+            try:
+                line = input("you> ")
+            except EOFError:
+                print(file=sys.stderr)
+                return 0
+            if not line.strip():
+                return 0
+            print(f"assistant> {turn(line)}")
+
+    try:
+        return session()
+    finally:
+        if attachment is not None:
+            from hypernix.elements.natural_gas import detach
+            detach(target)
 
 
 def _run_generate(raw: list[str]) -> int:
@@ -1448,7 +1524,7 @@ def main(argv: list[str] | None = None) -> int:
     # Python 3.15+ gets torch from the shim, not from pip's dependency
     # resolution (see hypernix.system.torch_shim): the first real command
     # that finds it missing installs it. --help never downloads PyTorch.
-    if raw[0] not in ("doctor", "list-all", "errors", "wiki", "path") and not (
+    if raw[0] not in ("doctor", "list-all", "errors", "wiki", "path", "sandbox", "sb") and not (
         {"-h", "--help"} & set(raw)
     ):
         from hypernix.system.torch_shim import auto as _torch_shim
@@ -1552,6 +1628,14 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
     if cmd == "extra":
         _print_extra()
         return 0
+    if cmd == "strife":
+        from hypernix.strife.cli import cli_main as _strife_main
+
+        return _strife_main(rest)
+    if cmd in ("sandbox", "sb"):
+        from hypernix.interfaces.sandbox import cli_main as _sandbox_main
+
+        return _sandbox_main(rest)
     if cmd == "list-all":
         from hypernix.interfaces.list_all import cli_main as _list_all_main
 

@@ -1,6 +1,7 @@
 // Fallback wiki page list, used only if the live GitHub directory listing fetch fails.
 
 export const WIKI_PAGES = [
+  '3H', 'Elements', 'HNX-Syntax',
   'Home', 'Abbicus', 'Alarms', 'Apron', 'Architectures', 'Bell', 'Blender',
   'CLI', 'CakePan', 'Camouflage', 'Changelog', 'CoffeeMaker', 'Convert',
   'Cookbook', 'Countertop', 'CuttingBoard', 'Dashboards', 'DeepFryer',

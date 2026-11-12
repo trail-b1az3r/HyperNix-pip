@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "HyperNix Browser Agent",
   "short_name": "HyperNix Agent",
-  "version": "0.72.8",
+  "version": "0.73.0",
   "description": "Let a model — on your HyperNix T1 API, on your own machine, or from OpenAI or Anthropic — search the web, read pages, click and type in Firefox, asking you before it acts.",
   "homepage_url": "https://github.com/trail-b1az3r/HyperNix-pip/tree/main/browser/firefox",
   "browser_specific_settings": {

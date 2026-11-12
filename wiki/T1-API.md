@@ -5,8 +5,11 @@ mountable into any Python server. The client requests an operation; the
 server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
-**Status: T1 v1.1.26.10.2.0** (long form `1.1.2026.10.2.0`) in
-`0.72.8.post2`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+**Status: T1 v1.2.26.11.0.0** (long form `1.2.2026.11.0.0`) in
+`0.73.0a1` (pre-alpha 1): the 1.2 generation. It is new because
+`/web/v1` was removed (it answers `410` with its `/web/v2` successor),
+and it adds [ATC](#atc-api-traffic-control), with end-to-end encryption.
+Before it came the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
 `0.72.5.post15`, plus [web search v2](#web-search-v2),
 [signed prompts](#signed-prompts-and-the-ping),
 [chats owned by an account or a key](#ownership),
@@ -48,6 +51,7 @@ could never derive one from `0.71.5rc2`. See
 - [Billing](#billing)
 - [Cost, estimates, and forecasts](#cost-estimates-and-forecasts)
 - [Audit log](#audit-log)
+- [ATC: API traffic control](#atc-api-traffic-control)
 - [Rate limiting](#rate-limiting)
 - [Network policy](#network-policy)
 - [TLS and mTLS](#tls-and-mtls)
@@ -622,6 +626,31 @@ consistent with how `Keymaster.rotate()` already treats rotation as
 "replace, don't mutate") and, if `promote_to_admin: true`, reissues it as
 `KeyType.ADMIN`.
 
+### Access levels and promotion (0.72.9)
+
+A T2 key states its access level (1-9) in its last character, `…-5`.
+That is the holder's claim. The grant is the key's record on the server
+(its `access_level` tag, written by `gkey create --level N`), and a
+presented level is held to it: rewriting `-1` as `-9` authenticates at
+level 1. A key with no recorded level keeps the level it states, as
+before.
+
+`POST /auth/t1/admin/access-level` (admin only) changes the grant:
+
+```json
+{"key": "T2_…-2", "access_level": 7}
+```
+
+It answers with `previous_level` and the key spelled at its new level
+(`"key": "T2_…-7"`), which is the spelling its holder uses from then on.
+A T1 key is given its T2 spelling; a T2C key is refused (its level is
+sealed on its device record). It is recorded as a `level_change` and can
+be undone. From the command line:
+
+```bash
+waiter serv -Pro "T2_…-2" -K "<admin key>" -L 7
+```
+
 ### Undoing an authentication change
 
 ```
@@ -1094,6 +1123,78 @@ request.
 waiter audit --category admin --limit 20
 waiter audit --outcome denied
 ```
+
+## ATC: API traffic control
+
+*New in 0.73.0 pre-alpha 1.* `hypernix.atc` is the outermost layer of
+the T1 API. Everything below runs before the request ID, the network
+policy, mTLS and the rate limiter, and it is on by default
+(`T1_ATC_ENABLED=0` takes it out).
+
+| Stage | What happens |
+|---|---|
+| Jail | A jailed address is answered `429` with `Retry-After` (`details.reason: atc_jailed`). |
+| Probes | `/.env`, `/.git/`, `/wp-admin`, `../`, `${jndi:` and similar are answered `404` without reaching the app. Three (`T1_ATC_PROBE_STRIKES`) mean jail. |
+| Guessing | More than `T1_ATC_AUTH_FAIL_LIMIT` (30) 401/403s or `T1_ATC_NOTFOUND_LIMIT` (120) 404s in `T1_ATC_WINDOW_SECONDS` (60) mean jail. |
+| Body size | A body over `T1_ATC_MAX_BODY_MB` (128) is answered `413`. |
+| In flight | Over `T1_ATC_MAX_INFLIGHT` (256) requests at once, or `T1_ATC_CLIENT_INFLIGHT` (32) from one address, gets `503` with `Retry-After: 1`. `/health` and `/status` always get through. |
+| Compression | A JSON or text reply of 1 KiB or more with a declared length is gzipped for a client that sends `Accept-Encoding: gzip`. Streams are never held back. |
+
+A jail starts at `T1_ATC_JAIL_SECONDS` (60) and doubles on each repeat,
+up to `T1_ATC_JAIL_MAX_SECONDS` (3600). This machine's own addresses are
+never jailed unless `T1_ATC_JAIL_LOOPBACK=1`, so a broken local script
+cannot lock its operator out. Loopback is also held only to the
+server-wide in-flight limit, because a local reverse proxy (cloudflared,
+`tailscale serve`) speaks for everyone. Behind one, set
+`T1_TRUSTED_PROXIES` so ATC sees the real addresses, or the jail and
+`T1_ATC_E2E_REQUIRED` cannot tell clients apart.
+
+### End-to-end encryption (`hypernix-atc/1`)
+
+TLS ends wherever it ends: at a reverse proxy, a tunnel, an inspection
+box. ATC seals the request and the reply themselves, so the key, the
+route, the prompt and the answer are readable only by the client and
+this server.
+
+1. `POST /atc/handshake` with `{"public_key": "<X25519, base64url>"}`. No
+   credential is needed. The answer holds the server's X25519 key, a
+   `session_id`, `expires_at`, and an RSA-PSS `signature` made with the
+   server's T2C identity key (`server_fingerprint`, the same one
+   `GET /auth/t2c/public-key` gives). Check it against the fingerprint
+   you pinned.
+2. Both sides derive one ChaCha20-Poly1305 key per direction with
+   HKDF-SHA256 (salt: the session ID).
+3. `POST /atc/tunnel` with `X-ATC-Session`, `X-ATC-Seq` (never reused, with
+   a replay window of 1024) and the sealed real request as the body. The
+   real request runs through every layer like any other.
+4. The reply is `200 application/vnd.hypernix.atc` holding sealed frames.
+   Frame 0 carries the real status and headers; the others carry the body
+   as it was produced, so streams still stream.
+
+From Python:
+
+```python
+from hypernix.atc.client import ATCTunnel
+
+tunnel = ATCTunnel("https://t1.example.com", pin="<server fingerprint>")
+status, headers, body = tunnel.request(
+    "GET", "/hyperlink/sessions", headers={"Authorization": "Bearer T2_..."})
+```
+
+`T1_ATC_E2E_REQUIRED=1` refuses every request from another machine
+that did not come through the tunnel (`403`, `details.reason:
+e2e_required`). The exceptions are `/atc/handshake`, `/health`,
+`/status`, `/server/info` and `/auth/t2c/public-key`. Encryption needs
+`cryptography` (`hypernix[security]`). Without it, the handshake
+answers `501`.
+
+### Admin routes
+
+| Route | |
+|---|---|
+| `GET /atc/status` | Settings, sessions, the jail, in-flight counts, per-route requests, status classes, bytes and p50/p95 latency |
+| `POST /atc/jail` `{"client": "203.0.113.9", "reason": "..."}` | Jail an address by hand |
+| `POST /atc/release` `{"client": "203.0.113.9"}` | Let it go (`404` if it was not jailed) |
 
 ## Rate limiting
 
@@ -1631,6 +1732,14 @@ one purpose is minting and revoking its own T1 keys (`/accounts/keys`),
 whose material is shown once; a keyless caller never gets administrator
 rights in any mode.
 
+What those keys may do is `T1_ACCOUNTS_DEFAULT_PERMISSIONS`:
+comma-separated scopes, `read,write` when unset. `read` makes every
+account read-only; `read,write,plugin` adds plugins. `admin` is never
+given to an account's key whatever the variable says (mint admin keys with
+`gkey`), an unknown name is left out with a warning in the log, and a
+value that leaves nothing usable falls back to `read,write`. It applies to
+keys minted from then on; existing keys keep their scopes.
+
 ## MCP
 
 The server's models, runner, hardware and version, described over the
@@ -1736,7 +1845,7 @@ and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
 `T1_PUBLIC_COUNTER=0`:
 
 ```json
-{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8.post2"}
+{"id": "<32 hex>", "t1_version": "1.2.26.11.0.0", "version": "0.73.0a1"}
 ```
 
 `id` is a SHA-256 of a random value the server made once and keeps in
@@ -1834,6 +1943,13 @@ context, between 32 and 512 tokens (0.72.8rc1); a fixed 512 made a
 model the runner loads is registered if the registry has no entry for
 it (local, free, sized from the loaded context), so `/inference/chat`
 and the relay can ask it; an operator's entry is left as it is.
+
+HyperLink chats go through the same relay (0.73.0.dev2). A chat that fits
+is sent unchanged; a longer one is condensed role by role. An answer the
+context cuts off (finish reason `length`) is continued in a fresh call:
+the cut answer joins the history (condensed if it no longer fits), and the
+model resumes from its last words, in the same stream when streaming.
+`T1_RELAY_CONTINUATIONS` (default 2, 0 to turn it off) is how many times.
 
 Every gate of `/inference/chat` applies, sized by the largest single
 call. Each hop is metered as it finishes, under the `relay` feature, so
@@ -2060,6 +2176,7 @@ All responses include `request_id`. Errors use the envelope shown in
 | POST | `/auth/token` | none (key in body) | exchange a key for a scoped token |
 | POST | `/auth/t1/rotate` | bearer | rotate the caller's own key |
 | POST | `/auth/t1/admin/rotate` | bearer, admin | rotate/promote another key |
+| POST | `/auth/t1/admin/access-level` | bearer, admin | grant a key an access level, 1-9 (`waiter serv -Pro`) |
 | GET | `/models` | none | list registry entries |
 | GET | `/models/{model_id}` | none | full entry detail |
 | GET | `/models/{model_id}/availability` | none | registry-level availability |
@@ -2208,10 +2325,11 @@ it — `s3` exists for people who have one and would rather use it. See
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/web/v1/I?=query&q?=depth` | bearer | search; `/web/v1/i` and `/web/v1/search?q=` are the same route |
-| POST | `/web/v1/summarize` | bearer | `text` or `url`; extractive with no model loaded |
-| GET | `/web/v1/config` | bearer | the three settings — **never** the API key |
-| GET | `/web/v1/config/s1?=k\|s2?:=…` | bearer, **admin** | change them; see the grammar below |
+| GET | `/web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=keep` | bearer | search; `/web/v2/i` is the same route ([v2](#web-search-v2)) |
+| POST | `/web/v2/summarize` | bearer | `text` or `url`; extractive with no model loaded |
+| GET | `/web/v2/config` | bearer | the three settings — **never** the API key |
+| GET | `/web/v2/config/s1?=k\|s2?:=…` | bearer, **admin** | change them; see the grammar below |
+| any | `/web/v1/…` | none | **removed in 0.73.0**: `410 Gone`, naming the `/web/v2` route that replaced it |
 | GET | `/code` | bearer | whether this server runs code, the installed languages, the permissions |
 | GET | `/code/create` | bearer | what can be created, and the body each takes |
 | POST | `/code/create` | bearer, **write** | run `code` once in a throwaway sandbox; needs `T1_CODE_SANDBOX` |
@@ -2260,9 +2378,9 @@ is a key with `write`, or a trusted origin on a server with
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up |
+| GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up; `strife_builds`, the Strife builds registered with `hnx strife build` (0.73.0.dev2) |
 | POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
-| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8); a HyperNix release named by id (or `latest`) is downloaded too, and a model the registry does not list is registered (see [the runner in 0.72.8](#the-runner-in-0728)) |
+| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8); a HyperNix release named by id (or `latest`) is downloaded too, and a model the registry does not list is registered (see [the runner in 0.72.8](#the-runner-in-0728)); with `"backend": "strife"`, `strife_build` names a registered Strife build (a name only; see [Strife](Strife.md#your-own-build-as-a-t1-runner)) |
 | POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
 | POST | `/runner/auto` | as `load` | load what this server usually runs: the last model loaded that is still here (`{"prefer": "most"}`: loaded most often), on the backend used most, with that model's last settings; `{"dry_run": true}` names it and loads nothing. With no history, the default model. `hypernix-t1 runner auto` |
 
@@ -2338,7 +2456,7 @@ needs the CSRF token `/accounts/me` returns.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/web/v1/summarise` | bearer | the same as `/web/v1/summarize` |
+| POST | `/web/v2/summarise` | bearer | the same as `/web/v2/summarize` |
 | GET | `/`, `/index.html`, `/web/app.js`, `/web/app.css`, `/web/icon.svg` | none, **this machine and the tailnet only** | [HyperLink on the web](#hyperlink-on-the-web-0726post1), on the API port since 0.72.6.post3; any other caller gets a 404 |
 
 ### Web search
@@ -2346,7 +2464,7 @@ needs the CSRF token `/accounts/me` returns.
 The config grammar, in one line:
 
 ```
-/web/v1/config/s1?=k|s2?:=duckduckgo|s3?:={key}?[brave]
+/web/v2/config/s1?=k|s2?:=duckduckgo|s3?:={key}?[brave]
 ```
 
 * `|` divides the directives.
@@ -2390,8 +2508,10 @@ to. No response ever contains it.
 
 ### Web search v2
 
-`/web/v1/search` still works until 0.73.0 and says so (`Deprecation`
-and `Sunset` headers, a `deprecated` field). Its successor:
+`/web/v1` was removed in HyperNix 0.73.0 (deprecated since T1
+v1.1.26.10.1.0). Every route it had is under `/web/v2` now — search,
+`summarize`, `config` and `ai/config` — and a request to the old path is
+answered `410 Gone` with `details.successor` naming the new one. Search:
 
 ```
 /web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true
@@ -2414,7 +2534,7 @@ NAME=VALUE` (`--json`, `--reset`):
 | `max_read_sites` | most sites `sq` may read (1–20) | 5 |
 | `ai_config` | who may let a model change settings: `off`, `partial`, `admin` | `partial` |
 
-`GET`/`POST /web/v1/ai/config` lets a model read them and, with partial
+`GET`/`POST /web/v2/ai/config` lets a model read them and, with partial
 admin, change the less risky three (`store_format`, `max_items`,
 `max_read_sites`); turning storage on needs a full admin. The model's
 `web_search` tool uses v2, and `web_settings` / `web_settings_set`
@@ -2945,6 +3065,7 @@ their row says otherwise.
 | `T1_ACCOUNTS_ORIGINS` | — | more origins the forms accept, comma-separated |
 | `T1_ACCOUNTS_REGISTRATION` | `closed` | `open`, `invite`, `first-user` or `closed` |
 | `T1_ACCOUNTS_INVITE_CODES` | — | comma-separated, for `invite` |
+| `T1_ACCOUNTS_DEFAULT_PERMISSIONS` | `read,write` | the scopes of keys an account mints: `read`, `write`, `plugin`, `service`; never `admin` |
 
 Read by the tools around the server rather than the server itself:
 

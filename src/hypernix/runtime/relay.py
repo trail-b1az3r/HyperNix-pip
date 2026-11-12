@@ -50,7 +50,7 @@ import re
 import threading
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 __all__ = [
@@ -100,6 +100,18 @@ DIGEST_PROMPT = (
     "help answer the question: facts, names, numbers, quotes worth keeping word for "
     "word. If nothing in it is relevant, say so in one line. Write only the notes."
 )
+#: The question, when the latest message is too long to repeat on every hop.
+LATEST_MESSAGE_QUESTION = (
+    "Answer the user's latest message, which is the last part of the conversation."
+)
+CONTINUE_PROMPT = (
+    "Your previous answer stopped because it ran out of room. Continue it exactly "
+    "where it stopped: do not repeat anything, do not start over, do not summarise. "
+    "It ended with:\n\n{tail}"
+)
+#: Tokens of the cut answer quoted back so the model can find its place.
+CONTINUE_TAIL_TOKENS = 120
+
 ANSWER_PROMPT = (
     "Answer the question from the notes below, which were taken while reading a "
     "document too long to show you whole. If the notes do not hold the answer, say "
@@ -120,11 +132,12 @@ class ContextTooSmall(ValueError):
 
 @dataclass(frozen=True)
 class Reply:
-    """One instance's answer, and what it cost."""
+    """One instance's answer, what it cost, and the original response envelope."""
 
     text: str
     input_tokens: int = 0
     output_tokens: int = 0
+    raw: dict[str, Any] | None = field(default=None, compare=False, repr=False)
 
 
 #: One copy of the model: ``(messages, max_tokens) -> Reply``.
@@ -152,7 +165,7 @@ def openai_instance(client: Any, model: str = "", *, temperature: float | None =
         if not input_tokens and not output_tokens:
             input_tokens = estimate_tokens("".join(str(m.get("content", "")) for m in messages))
             output_tokens = estimate_tokens(text)
-        return Reply(text, input_tokens, output_tokens)
+        return Reply(text, input_tokens, output_tokens, envelope)
 
     return complete
 
@@ -396,6 +409,12 @@ class RelayResult:
     plan: RelayPlan
     hops: list[Hop] = field(default_factory=list)
     notes: str = ""
+    #: Raw OpenAI envelope for the direct or final answer hop. It keeps
+    #: structured tool calls intact for chat-aware callers.
+    envelope: dict[str, Any] | None = None
+    cancelled: bool = False
+    #: Times an answer cut off by the context was picked up and continued.
+    continued: int = 0
 
     @property
     def input_tokens(self) -> int:
@@ -417,7 +436,22 @@ class RelayResult:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "requests": self.requests,
+            "continued": self.continued,
         }
+
+    @property
+    def finish_reason(self) -> str:
+        try:
+            return str((self.envelope or {})["choices"][0].get("finish_reason") or "")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return ""
+
+    @property
+    def has_tool_calls(self) -> bool:
+        try:
+            return bool((self.envelope or {})["choices"][0]["message"].get("tool_calls"))
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return False
 
 
 class Relay:
@@ -437,6 +471,7 @@ class Relay:
         notes_tokens: int | None = None,
         answer_tokens: int | None = None,
         on_hop: Callable[[Hop], None] | None = None,
+        continuations: int = 0,
     ) -> None:
         if not instances:
             raise ValueError("a relay needs at least one instance")
@@ -448,6 +483,9 @@ class Relay:
         self.notes_tokens = notes_tokens
         self.answer_tokens = answer_tokens
         self.on_hop = on_hop
+        #: How many times an answer cut short by the context (finish
+        #: reason ``length``) is continued in a fresh call. 0 keeps the cut.
+        self.continuations = max(0, int(continuations))
         self._lock = threading.Lock()
 
     def plan(self, document: str, question: str) -> RelayPlan:
@@ -471,23 +509,401 @@ class Relay:
         result.answer = self._answer(result, notes, question)
         return result
 
+    def run_messages(self, messages: Sequence[dict[str, Any]]) -> RelayResult:
+        """:meth:`_run_messages_once`, continued while the context cuts the answer."""
+        return self._continue(messages, self._run_messages_once(messages),
+                              self._run_messages_once)
+
+    def _continuation(self, messages: Sequence[dict[str, Any]], answer: str) -> list[dict[str, Any]]:
+        """The chat again, with the cut answer in it and a request to go on.
+
+        The whole partial answer is an assistant turn (the relay condenses it
+        with the rest of the history when it no longer fits); its last words
+        ride in the new user turn, which the relay always keeps whole, so the
+        model knows exactly where to resume.
+        """
+        tail = self._clip_tail(answer, CONTINUE_TAIL_TOKENS)
+        return [dict(m) for m in messages] + [
+            {"role": "assistant", "content": answer},
+            {"role": "user", "content": CONTINUE_PROMPT.format(tail=tail)},
+        ]
+
+    @staticmethod
+    def _needs_space(before: str, after: str) -> bool:
+        return bool(before and after) and not before.endswith((" ", "\n")) \
+            and not after.startswith((" ", "\n", ",", ".", ";", ":", "!", "?", ")"))
+
+    @staticmethod
+    def _clip_tail(text: str, tokens: int) -> str:
+        limit = max(1, tokens) * CHARS_PER_TOKEN
+        return text if len(text) <= limit else "…" + text[-limit:]
+
+    def _continue(self, messages: Sequence[dict[str, Any]], result: RelayResult,
+                  once: Callable[[Sequence[dict[str, Any]]], RelayResult]) -> RelayResult:
+        """Intercept an answer the context cut off and keep it going.
+
+        Only a plain-text answer is continued: a reply with tool calls is a
+        turn the caller acts on, and a cancelled one stays cancelled.
+        """
+        while (result.continued < self.continuations and not result.cancelled
+               and result.finish_reason == "length" and not result.has_tool_calls
+               and result.answer.strip()):
+            more = once(self._continuation(messages, result.answer))
+            for hop in more.hops:
+                result.hops.append(replace(hop, index=len(result.hops)))
+            result.continued += 1
+            result.cancelled = more.cancelled
+            joiner = " " if self._needs_space(result.answer, more.answer) else ""
+            result.answer = result.answer + joiner + more.answer
+            envelope = dict(more.envelope or result.envelope or {})
+            choices = envelope.get("choices") or [{}]
+            first = dict(choices[0])
+            first["message"] = {**dict(first.get("message") or {}), "role": "assistant",
+                                "content": result.answer}
+            first["finish_reason"] = more.finish_reason or "stop"
+            envelope["choices"] = [first, *choices[1:]]
+            result.envelope = envelope
+            if not more.answer.strip():
+                break
+        return result
+
+    def _run_messages_once(self, messages: Sequence[dict[str, Any]]) -> RelayResult:
+        """Run a structured chat through the same planner and hop engine.
+
+        A prompt that fits is sent unchanged, including roles, image parts,
+        tool history and provider-specific fields. For an oversized
+        conversation, older messages become a role-labelled transcript;
+        system/developer instructions are repeated on every hop, and the
+        newest user message remains the final question. This is the chat
+        entry point used by HyperLink and HyperChat.
+        """
+        if not messages:
+            raise ValueError("a relay chat needs at least one message")
+
+        system_parts: list[str] = []
+        body: list[dict[str, Any]] = []
+        for message in messages:
+            role = str(message.get("role") or "user")
+            if role in ("system", "developer"):
+                value = self._content_text(message.get("content"))
+                if value:
+                    system_parts.append(f"[{role}]\n{value}")
+            else:
+                body.append(dict(message))
+        if not body:
+            raise ValueError("a relay chat needs a user or conversation message")
+
+        question_index = next(
+            (i for i in range(len(body) - 1, -1, -1) if body[i].get("role") == "user"),
+            len(body) - 1,
+        )
+        question_message = body[question_index]
+        question_content = question_message.get("content", "")
+        question = self._content_text(question_content)
+        if not question:
+            question = "Respond to the latest message in the conversation."
+
+        transcript = []
+        for message in body[:question_index]:
+            role = str(message.get("role") or "message").upper()
+            content = self._content_text(message.get("content"))
+            tool_calls = message.get("tool_calls")
+            if tool_calls:
+                content = (content + "\n" if content else "") + f"Tool calls: {tool_calls}"
+            if content:
+                transcript.append(f"{role}:\n{content}")
+        document = "\n\n".join(transcript)
+        system_prompt = "\n\n".join(system_parts)
+
+        # The system/developer instructions are sent on every hop, so
+        # count them against every hop's question allowance as well.
+        system_prompt, question, question_content, planned = self._plan_chat(
+            system_prompt, question, question_content, document)
+        result = RelayResult("", planned)
+        if planned.single:
+            result.answer = self._call(
+                result, 0, "direct", None, [dict(m) for m in messages],
+                planned.answer_tokens,
+            )
+            return result
+
+        if self.mode == CHAIN:
+            notes = self._chain(
+                result, planned.chunks, question, planned.notes_tokens,
+                system_prompt=system_prompt,
+            )
+        else:
+            notes = self._map(
+                result, planned, question, system_prompt=system_prompt,
+            )
+        result.notes = notes
+        result.answer = self._answer(
+            result, notes, question, system_prompt=system_prompt,
+            question_content=question_content,
+        )
+        return result
+
+    def stream_messages(
+        self,
+        messages: Sequence[dict[str, Any]],
+        *,
+        stream_call: Callable[[list[dict[str, Any]], int, int], Any],
+        on_chunk: Callable[[dict[str, Any]], None],
+        cancelled: Callable[[], bool] = lambda: False,
+    ) -> RelayResult:
+        """Run chat through Relay and stream the final answer hop as it arrives.
+
+        A continuation (see :meth:`run_messages`) streams on as more of the
+        same answer, with a joining space when the two halves need one.
+        """
+        tail = [""]          # the last characters sent, to decide on a joining space
+        join = [False]       # the next text is the start of a continuation
+        calls = [0]
+
+        def track(chunk: dict[str, Any]) -> None:
+            for choice in chunk.get("choices") or []:
+                delta = choice.get("delta")
+                text = delta.get("content") if isinstance(delta, dict) else None
+                if not isinstance(text, str) or not text:
+                    continue
+                if join[0]:
+                    join[0] = False
+                    if self._needs_space(tail[0], text):
+                        delta["content"] = text = " " + text
+                tail[0] = (tail[0] + text)[-8:]
+            on_chunk(chunk)
+
+        def once(msgs: Sequence[dict[str, Any]]) -> RelayResult:
+            join[0] = calls[0] > 0  # a continuation: join it to what went before
+            calls[0] += 1
+            return self._stream_messages_once(msgs, stream_call=stream_call, on_chunk=track,
+                                              cancelled=cancelled)
+
+        return self._continue(messages, once(messages), once)
+
+    def _stream_messages_once(
+        self,
+        messages: Sequence[dict[str, Any]],
+        *,
+        stream_call: Callable[[list[dict[str, Any]], int, int], Any],
+        on_chunk: Callable[[dict[str, Any]], None],
+        cancelled: Callable[[], bool] = lambda: False,
+    ) -> RelayResult:
+        if not messages:
+            raise ValueError("a relay chat needs at least one message")
+
+        system_parts: list[str] = []
+        body: list[dict[str, Any]] = []
+        for message in messages:
+            role = str(message.get("role") or "user")
+            if role in ("system", "developer"):
+                value = self._content_text(message.get("content"))
+                if value:
+                    system_parts.append(f"[{role}]\n{value}")
+            else:
+                body.append(dict(message))
+        if not body:
+            raise ValueError("a relay chat needs a user or conversation message")
+
+        question_index = next(
+            (i for i in range(len(body) - 1, -1, -1) if body[i].get("role") == "user"),
+            len(body) - 1,
+        )
+        question_content = body[question_index].get("content", "")
+        question = self._content_text(question_content)
+        if not question:
+            question = "Respond to the latest message in the conversation."
+
+        transcript: list[str] = []
+        for message in body[:question_index]:
+            role = str(message.get("role") or "message").upper()
+            content = self._content_text(message.get("content"))
+            if message.get("tool_calls"):
+                content = (content + "\n" if content else "") + f"Tool calls: {message['tool_calls']}"
+            if content:
+                transcript.append(f"{role}:\n{content}")
+        document = "\n\n".join(transcript)
+        system_prompt = "\n\n".join(system_parts)
+        system_prompt, question, question_content, planned = self._plan_chat(
+            system_prompt, question, question_content, document)
+        result = RelayResult("", planned)
+        if planned.single:
+            result.answer = self._call_stream(
+                result, 0, "direct", None, [dict(message) for message in messages],
+                planned.answer_tokens, stream_call, on_chunk, cancelled,
+            )
+            return result
+
+        if self.mode == CHAIN:
+            notes = self._chain(
+                result, planned.chunks, question, planned.notes_tokens,
+                system_prompt=system_prompt,
+            )
+        else:
+            notes = self._map(result, planned, question, system_prompt=system_prompt)
+        result.notes = notes
+        if cancelled():
+            result.cancelled = True
+            return result
+
+        prefix = f"Notes:\n{notes or '(nothing relevant was found)'}\n\nQuestion: "
+        content: Any = (
+            [{"type": "text", "text": prefix}, *question_content]
+            if isinstance(question_content, list) else prefix + question
+        )
+        final_messages = [
+            {"role": "system", "content": self._system_prompt(ANSWER_PROMPT, system_prompt)},
+            {"role": "user", "content": content},
+        ]
+        slot = len(result.hops) % len(self.instances)
+        result.answer = self._call_stream(
+            result, slot, "answer", None, final_messages, planned.answer_tokens,
+            stream_call, on_chunk, cancelled,
+        )
+        return result
+
+    def _plan_chat(self, system_prompt: str, question: str, question_content: Any,
+                   document: str) -> tuple[str, str, Any, RelayPlan]:
+        """Plan a chat; reshape it for a small context only when it has to be."""
+        def planned(system: str, asked: str, text: str) -> RelayPlan:
+            # The instructions go out on every hop, so they are sized with the question.
+            return plan(text, f"{system}\n\n{asked}" if system else asked,
+                        context_tokens=self.context_tokens, instances=len(self.instances),
+                        mode=self.mode, notes_tokens=self.notes_tokens,
+                        answer_tokens=self.answer_tokens)
+
+        try:
+            first = planned(system_prompt, question, document)
+            if first.single:
+                return system_prompt, question, question_content, first
+        except ContextTooSmall:
+            pass
+        system_prompt, question, question_content, document = self._fit_question(
+            system_prompt, question, question_content, document)
+        return system_prompt, question, question_content, planned(system_prompt, question, document)
+
+    def _question_budget(self) -> int:
+        """Tokens the part every hop repeats (instructions + question) may take.
+
+        What is left of the context after the hop's own framing, the notes
+        in and out, and either a minimal part of the document or the
+        answer, whichever asks for more.
+        """
+        usable = _usable(self.context_tokens)
+        notes = self.notes_tokens if self.notes_tokens is not None \
+            else max(64, self.context_tokens // 6)
+        answer = self.answer_tokens if self.answer_tokens is not None \
+            else default_answer_tokens(self.context_tokens)
+        carried = notes if self.mode == CHAIN else 0
+        return min(usable - OVERHEAD_TOKENS - carried - notes - 32,
+                   usable - OVERHEAD_TOKENS - notes - answer)
+
+    def _fit_question(self, system_prompt: str, question: str, question_content: Any,
+                      document: str) -> tuple[str, str, Any, str]:
+        """Make the instructions and the latest message fit a small context.
+
+        Every hop repeats both, so in a 512-token context a long system
+        prompt or a long latest message used to leave no room for anything
+        else and the relay refused. Whatever does not fit is read like the
+        rest of the conversation instead:
+
+        * a long latest message goes to the end of the transcript, and the
+          question becomes a short request to answer it;
+        * long instructions go to its start (so the notes keep what
+          matters in them), and each hop carries only their opening.
+
+        Nothing changes for a chat whose repeated part already fits.
+        """
+        budget = self._question_budget()
+        if budget < 16:
+            return system_prompt, question, question_content, document
+        total = estimate_tokens(f"{system_prompt}\n\n{question}" if system_prompt else question)
+        if total <= budget:
+            return system_prompt, question, question_content, document
+
+        q_tokens = estimate_tokens(question)
+        if q_tokens > budget // 2:
+            document = (f"{document}\n\n" if document else "") + \
+                f"USER (latest message, answer this):\n{question}"
+            question = LATEST_MESSAGE_QUESTION
+            if isinstance(question_content, list):
+                # Images and other non-text parts stay with the question.
+                question_content = [{"type": "text", "text": question}] + [
+                    part for part in question_content
+                    if not (isinstance(part, dict) and part.get("type") in ("text", "input_text"))]
+            else:
+                question_content = question
+            q_tokens = estimate_tokens(question)
+
+        room = budget - q_tokens
+        if system_prompt and estimate_tokens(system_prompt) > room:
+            document = f"INSTRUCTIONS (follow these):\n{system_prompt}\n\n{document}"
+            # Their opening only, and no more than a third of the budget: the
+            # rest of it is what each hop has left for the conversation.
+            keep = min(room - 8, budget // 3)
+            system_prompt = self._clip(system_prompt, keep) if keep >= 16 else ""
+        return system_prompt, question, question_content, document
+
+    @staticmethod
+    def _content_text(content: Any) -> str:
+        """A conservative text estimate for OpenAI chat content.
+
+        Image and other non-text parts are represented by a marker rather
+        than silently disappearing from the transcript. The original
+        structured content is retained on the direct path and on the
+        final question of a relayed conversation.
+        """
+        if isinstance(content, str):
+            return content
+        if not isinstance(content, list):
+            return str(content or "")
+        parts: list[str] = []
+        for part in content:
+            if not isinstance(part, dict):
+                continue
+            if part.get("type") == "text":
+                parts.append(str(part.get("text") or ""))
+            elif part.get("type") == "image_url":
+                # Match HyperLink's existing conservative vision allowance
+                # when estimating a prompt. The real image content remains
+                # intact for the direct/final backend request.
+                parts.append("[image attached] " + ("x" * 1024))
+            elif part.get("type"):
+                parts.append(f"[{part['type']} content attached]")
+        return "\n".join(part for part in parts if part)
+
+    @staticmethod
+    def _system_prompt(base: str, extra: str) -> str:
+        return f"{extra}\n\n{base}" if extra else base
+
     # -- the two modes ---------------------------------------------------
 
-    def _chain(self, result: RelayResult, chunks: Sequence[str], question: str,
-               notes_tokens: int) -> str:
+    def _chain(
+        self, result: RelayResult, chunks: Sequence[str], question: str,
+        notes_tokens: int, *, system_prompt: str = "",
+        cancelled: Callable[[], bool] = lambda: False,
+    ) -> str:
         notes = ""
         total = len(chunks)
         for part, chunk in enumerate(chunks):
+            if cancelled():
+                break
             user = (f"Question: {question}\n\nNotes so far:\n{notes or '(none yet)'}\n\n"
                     f"Part {part + 1} of {total}:\n{chunk}")
             notes = self._clip(self._call(
                 result, len(result.hops) % len(self.instances), "read", part,
-                [{"role": "system", "content": READ_PROMPT}, {"role": "user", "content": user}],
+                [{"role": "system", "content": self._system_prompt(READ_PROMPT, system_prompt)},
+                 {"role": "user", "content": user}],
                 notes_tokens,
             ), notes_tokens)
+            if cancelled():
+                break
         return notes
 
-    def _map(self, result: RelayResult, planned: RelayPlan, question: str) -> str:
+    def _map(
+        self, result: RelayResult, planned: RelayPlan, question: str,
+        *, system_prompt: str = "",
+    ) -> str:
         chunks, n = planned.chunks, len(self.instances)
         digests: list[str] = [""] * len(chunks)
 
@@ -498,7 +914,8 @@ class Relay:
                 user = f"Question: {question}\n\nPart {part + 1} of {len(chunks)}:\n{chunks[part]}"
                 digests[part] = self._clip(self._call(
                     result, slot, "digest", part,
-                    [{"role": "system", "content": DIGEST_PROMPT}, {"role": "user", "content": user}],
+                    [{"role": "system", "content": self._system_prompt(DIGEST_PROMPT, system_prompt)},
+                     {"role": "user", "content": user}],
                     planned.notes_tokens,
                 ), planned.notes_tokens)
 
@@ -521,8 +938,13 @@ class Relay:
             raise failures[0]
 
         joined = "\n\n".join(f"[Part {i + 1}] {d}" for i, d in enumerate(digests))
-        room = (_usable(self.context_tokens) - OVERHEAD_TOKENS - estimate_tokens(question)
-                - planned.answer_tokens)
+        sized_question = (
+            f"{system_prompt}\n\n{question}" if system_prompt else question
+        )
+        room = (
+            _usable(self.context_tokens) - OVERHEAD_TOKENS
+            - estimate_tokens(sized_question) - planned.answer_tokens
+        )
         if estimate_tokens(joined) <= room:
             return joined
         # Too long to answer from at once: fold the digests together in
@@ -534,34 +956,152 @@ class Relay:
                     f"More notes to merge in:\n{chunk}")
             notes = self._clip(self._call(
                 result, len(result.hops) % n, "fold", None,
-                [{"role": "system", "content": READ_PROMPT}, {"role": "user", "content": user}],
+                [{"role": "system", "content": self._system_prompt(READ_PROMPT, system_prompt)},
+                 {"role": "user", "content": user}],
                 planned.notes_tokens,
             ), planned.notes_tokens)
         return notes
 
-    def _answer(self, result: RelayResult, notes: str, question: str) -> str:
-        user = f"Notes:\n{notes or '(nothing relevant was found)'}\n\nQuestion: {question}"
+    def _answer(
+        self, result: RelayResult, notes: str, question: str, *,
+        system_prompt: str = "", question_content: Any = None,
+    ) -> str:
+        prefix = f"Notes:\n{notes or '(nothing relevant was found)'}\n\nQuestion: "
+        if isinstance(question_content, list):
+            content: Any = [{"type": "text", "text": prefix}, *question_content]
+        else:
+            content = prefix + question
         return self._call(
             result, len(result.hops) % len(self.instances), "answer", None,
-            [{"role": "system", "content": ANSWER_PROMPT}, {"role": "user", "content": user}],
+            [{"role": "system", "content": self._system_prompt(ANSWER_PROMPT, system_prompt)},
+             {"role": "user", "content": content}],
             result.plan.answer_tokens,
         )
 
     # -- one call ----------------------------------------------------------
 
+    def _record_hop(
+        self, result: RelayResult, slot: int, kind: str, part: int | None,
+        reply: Reply, started: float,
+    ) -> None:
+        with self._lock:
+            hop = Hop(
+                len(result.hops), slot, kind, part, int(reply.input_tokens),
+                int(reply.output_tokens), time.monotonic() - started,
+            )
+            result.hops.append(hop)
+            if kind in ("direct", "answer") and reply.raw is not None:
+                result.envelope = reply.raw
+            if self.on_hop is not None:
+                self.on_hop(hop)
+
     def _call(self, result: RelayResult, slot: int, kind: str, part: int | None,
               messages: list[dict[str, Any]], max_tokens: int) -> str:
         started = time.monotonic()
         reply = self.instances[slot](messages, max_tokens)
-        # Map-mode digests finish in whatever order they finish; the index
-        # is the order they finished in.
-        with self._lock:
-            hop = Hop(len(result.hops), slot, kind, part, int(reply.input_tokens),
-                      int(reply.output_tokens), time.monotonic() - started)
-            result.hops.append(hop)
-            if self.on_hop is not None:
-                self.on_hop(hop)
+        self._record_hop(result, slot, kind, part, reply, started)
         return reply.text.strip()
+
+    def _call_stream(
+        self,
+        result: RelayResult,
+        slot: int,
+        kind: str,
+        part: int | None,
+        messages: list[dict[str, Any]],
+        max_tokens: int,
+        stream_call: Callable[[list[dict[str, Any]], int, int], Any],
+        on_chunk: Callable[[dict[str, Any]], None],
+        cancelled: Callable[[], bool],
+    ) -> str:
+        if cancelled():
+            result.cancelled = True
+            return ""
+        started = time.monotonic()
+        stream = stream_call(messages, max_tokens, slot)
+        text_parts: list[str] = []
+        tool_calls: dict[int, dict[str, Any]] = {}
+        input_tokens = 0
+        output_tokens = 0
+        model = ""
+        finish = "stop"
+        interrupted = False
+        try:
+            for chunk in stream:
+                if cancelled():
+                    interrupted = True
+                    break
+                if not isinstance(chunk, dict):
+                    continue
+                on_chunk(chunk)
+                model = str(chunk.get("model") or model)
+                usage = chunk.get("usage")
+                if isinstance(usage, dict):
+                    input_tokens = int(usage.get("prompt_tokens") or input_tokens)
+                    output_tokens = int(usage.get("completion_tokens") or output_tokens)
+                for choice in chunk.get("choices") or []:
+                    if not isinstance(choice, dict):
+                        continue
+                    delta = choice.get("delta") or {}
+                    if not isinstance(delta, dict):
+                        continue
+                    piece = delta.get("content")
+                    if isinstance(piece, str) and piece:
+                        text_parts.append(piece)
+                    for position, update in enumerate(delta.get("tool_calls") or []):
+                        if not isinstance(update, dict):
+                            continue
+                        index = int(update.get("index", position))
+                        call = tool_calls.setdefault(index, {
+                            "id": "", "type": "function",
+                            "function": {"name": "", "arguments": ""},
+                        })
+                        if update.get("id"):
+                            call["id"] = update["id"]
+                        if update.get("type"):
+                            call["type"] = update["type"]
+                        function = update.get("function") or {}
+                        if function.get("name"):
+                            call["function"]["name"] += str(function["name"])
+                        if function.get("arguments"):
+                            argument_part = function["arguments"]
+                            call["function"]["arguments"] += (
+                                argument_part if isinstance(argument_part, str)
+                                else str(argument_part)
+                            )
+                    if choice.get("finish_reason"):
+                        finish = str(choice["finish_reason"])
+        finally:
+            if interrupted or cancelled():
+                close = getattr(stream, "close", None)
+                if callable(close):
+                    close()
+
+        content = "".join(text_parts)
+        input_estimate = estimate_tokens("\n".join(
+            self._content_text(message.get("content")) for message in messages
+        ))
+        if not input_tokens:
+            input_tokens = input_estimate
+        if not output_tokens:
+            output_tokens = estimate_tokens(content)
+        message: dict[str, Any] = {"role": "assistant", "content": content}
+        if tool_calls:
+            message["tool_calls"] = [tool_calls[index] for index in sorted(tool_calls)]
+        raw: dict[str, Any] = {
+            "model": model,
+            "choices": [{"message": message, "finish_reason": finish}],
+            "usage": {
+                "prompt_tokens": input_tokens,
+                "completion_tokens": output_tokens,
+                "total_tokens": input_tokens + output_tokens,
+            },
+        }
+        reply = Reply(content, input_tokens, output_tokens, raw)
+        self._record_hop(result, slot, kind, part, reply, started)
+        if interrupted or cancelled():
+            result.cancelled = True
+        return content.strip()
 
     @staticmethod
     def _clip(text: str, tokens: int) -> str:

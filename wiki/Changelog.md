@@ -35,6 +35,327 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.73.0a1 — 2026-11-12
+
+Alpha 1: Strife, HyperNix's own GGUF runtime, with its native kernels, GPU
+offload through PyTorch, a benchmark that records what it measured, and
+CI smoke jobs on Linux and Windows. An alpha is for trying things out, not
+for a server other people depend on.
+
+### Breaking Changes
+
+❌ **`hnx chat` never downloads a model on its own.** `-M PATH` takes a model
+  on this machine: a folder for an unquantised model, or a `.gguf` file.
+  `-r HF_ID` downloads that Hugging Face model, and is the only option that
+  downloads. With neither, chat exits and says so. It used to download
+  `ray0rf1re/hyper-nix.1` by default, and to re-download into a `--model-dir`
+  that was missing or incomplete.
+
+### Added
+
+๋࣭⭑ **Strife native kernels**: `hnx strife kernels build` compiles one C file
+  for your CPU (AVX-512, AVX2 or plain C, with OpenMP threads) and checks
+  every tensor type against the Python decoders before Strife uses it.
+  With them, a weight is multiplied while still quantised, so nothing is
+  decoded whole.
+  - Kernels for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 and Q2_K to
+    Q6_K. Models that are mostly HyperNix sub-bit or low-bit types keep the
+    numpy path.
+  - On LFM3 1.2B Q4_K_M on one 4-vCPU AVX-512 machine: decode 7.8 tok/s
+    against 6.2 with numpy, the first answer after load in 9 s against
+    41 s, and 1 MB of decoded weights in RAM against 6.6 GB. Warm prefill is
+    slower: 76 tok/s against 139.
+  - Nothing is compiled unless asked. `--kernels off` and
+    `HNX_STRIFE_KERNELS=off` keep numpy; `diag` and `status()` say which
+    path runs and why.
+
+✨ **Strife GPU offload**: `--gpu-layers N` (`-1`: as many as fit) puts the
+  weight matrices of the first N blocks on a CUDA device through PyTorch,
+  decoded once to half precision. The rest stay on the CPU.
+  - How many layers fit is decided from the card's free memory less a
+    768 MiB reserve. A model that does not fit is split, and `diag`,
+    `status()` and the benchmark say how: layers on each side, device
+    bytes, and the reason.
+  - A card the installed PyTorch was not built for is refused by name with
+    its compute capability. That includes Pascal (GTX 1080) on current
+    PyTorch wheels.
+  - `hnx strife diag MODEL --gpu-layers N` plans the split without loading.
+
+✨ **`hnx strife benchmark MODEL`** (also `benchmarks/strife_bench.py`):
+  - a cold run reported apart from the warm ones, then the median of the
+    repeats with its spread;
+  - prefill and decode tokens per second, time to the first token, and the
+    time between tokens as p50, p90, p99 and max;
+  - peak resident memory, decode-cache and device memory, and the placement;
+  - a quality check: greedy output from a fixed prompt must repeat exactly,
+    and with `--numpy` the native kernels and numpy must produce the same
+    tokens. A failed check fails the run;
+  - llama.cpp's `llama-bench` on the same file when a build is found, and a
+    stated skip when none is;
+  - `--target` reports a decode speed as met or unmet (exit 1);
+  - `--out-dir` writes a JSON record (file SHA-256, HyperNix version,
+    machine, every setting), a CSV and a Markdown report.
+
+  It never downloads a model.
+
+### Security
+
+🔒 The native kernel library is code Strife loads, so it and its folder are
+  written owner-only and not loaded if anyone else can write them.
+
+### Fixed
+
+𖢥 **The relay refused long prompts in a 512-token context.** Every hop
+  repeats the instructions and the latest message, so when either was long
+  nothing else fit, and a 2,200-token prompt that worked at 1,024 tokens was
+  refused at 512. A long latest message is now read in parts like the rest of
+  the conversation and then answered. Long instructions are read too, with
+  their opening kept on every hop. It works down to 384 tokens.
+
+🐛 `hnx strife run --help` crashed on a bare `%` in a help string. Every
+  subcommand's help is now tested.
+
+### Tests
+
+🧪 `tests/strife/test_strife_kernels.py` (77 tests): the kernels built three
+  ways (this CPU's widest path, AVX2, plain C), each type's decode and
+  multiply against the Python decoders, the engine's tokens with and
+  without them on every architecture, permissions, and the BLAS hand-back.
+
+🧪 `tests/strife/test_strife_gpu.py` (22 tests): the device path on PyTorch's
+  CPU device gives the same tokens as the CPU path on every architecture;
+  the split for a card too small; a simulated GTX 1080 refused by name.
+  `tests/strife/test_strife_bench.py` covers the record, the CSV, the report
+  and a failing quality check. `tests/runtime/test_relay.py` covers contexts
+  of 2,048, 1,024, 512 and 384 tokens.
+
+🧪 CI: a `strife` job on Linux and Windows runs the selftest, builds and
+  verifies the kernels, benchmarks a generated model and runs the Strife
+  tests. On Windows the kernel build is reported but does not gate. The
+  `strife-benchmark` workflow runs the benchmark on a self-hosted runner,
+  on request.
+
+### Known Issues
+
+❗ With the native kernels, Strife's prefill of a long prompt is slower than
+  numpy's once numpy has decoded the whole model (76 against 139 tok/s in
+  the measurement above). `--kernels off` picks numpy.
+
+❗ Strife's GPU offload has not been run on a real GPU by its author: the
+  machine it was written on has none. The same code runs on PyTorch's CPU
+  device in the tests. The spec's speed targets (8 tok/s for a 27B Q4_K_M
+  model on a GTX 1080, and the others) are **unmeasured**, not met.
+
+❗ No llama.cpp comparison has been recorded: no llama.cpp build was
+  available where the benchmark was run.
+
+## 0.73.0.dev2 — 2026-11-10
+
+Pre-alpha 2. Strife runs four new architectures and is a T1 runner, a
+user's own Strife build can serve, HyperLink's relay picks up answers the
+context cut off, and HyperNix0xV3 arrives behind `brew new -E`. The fixes
+from the `create` branch are merged in. A pre-alpha is for trying things
+out, not for a server other people depend on.
+
+### Added
+
+๋࣭⭑ **Strife** (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference
+  runtime, `hnx strife` and `hypernix.strife`. It reads the GGUF and runs
+  the model itself: no llama.cpp process, no T1 key, no network.
+  - llama, mistral, qwen2 and qwen3;
+  - **Qwen3.5** (dense and MoE): gated DeltaNet layers between gated
+    attention;
+  - **LFM3**: short convolutions, sliding-window and full attention;
+  - **GLM-4.5**: sigmoid-routed experts with a shared expert, dense leading
+    layers;
+  - every llama.cpp K-quant and legacy type, and every HyperNix sub-bit and
+    low-bit type;
+  - the GGUF's own tokenizer (BPE or SentencePiece) and chat template,
+    sandboxed;
+  - sessions that reuse their prefix, with checkpoints for recurrent state,
+    streaming, stop strings, cancellation, timeouts, and bounded queues and
+    caches.
+
+  `inspect` checks a file before loading anything. `diag` reports hardware
+  and placement. Alpha 1 computes on the CPU with numpy; GPU offload, native
+  kernels and the benchmark are next. See `wiki/Strife.md`.
+
+✨ **`hnx strife chat MODEL_ID`**: a terminal screen with saved chats, a
+  context meter, a text area and the mouse. `--plain` is the line-by-line
+  chat.
+
+✨ **Strife on T1 and in HyperLink**: the runner has a `strife` backend
+  (`POST /runner/load {"backend": "strife"}`). `hypernix.strife.server`
+  speaks the OpenAI API, so HyperLink chats are answered by Strife unchanged.
+
+✨ **Your own Strife build as a T1 runner**: `hnx strife build NAME --source
+  CHECKOUT` (or `--python INTERPRETER`) selftests the build in its own
+  interpreter and registers it (`--default` makes it the one `strife` loads
+  use). `GET /runner/status` lists `strife_builds`.
+  `POST /runner/load {"backend": "strife", "strife_build": NAME}` serves with
+  that build. The API accepts registered names only, never a path.
+
+✨ **Relay continuations**: a HyperLink answer the model's context cut off
+  (finish reason `length`) is picked up and continued in a fresh call, up to
+  `T1_RELAY_CONTINUATIONS` times (default 2). The cut answer joins the
+  history, which the relay condenses if it no longer fits, and the model
+  resumes from its last words. Streamed answers continue in the same stream.
+
+๋࣭⭑ **HyperNix0xV3** (experimental): `brew new --preset NAME -E`. Its Tidepool
+  attention reads a local window plus summaries of every earlier chunk in
+  one softmax. Its Keel state is a set of memory slots each token reads and
+  each chunk updates. Presets have the same names as V2, plus `xl`, a
+  mixture of experts. Without `-E`, `brew new` still builds HyperNix0xV2.
+  Brewer trains, saves, reloads and exports V3 (`.pt`). The runner, NeoOven
+  and the HyperLink catalogue serve it in PyTorch.
+
+### Security
+
+🔒 The GGUF reader checks every length against the bytes actually left in the
+  file before reading. A 40-byte file claiming a 16 GB array used to make
+  `read()` try to allocate 16 GB; it is now refused as truncated. Every user
+  of `hypernix.quant.gguf` benefits.
+
+🔒 Strife chat templates: an attribute starting with `_` is refused however a
+  template spells it (`.__class__`, `|attr('__class__')`, `['__' ~ 'class__']`),
+  not only as a literal.
+
+🔒 The Strife build registry names programs to run, so it is written
+  owner-only and refused if anyone else can write it.
+
+### Fixed
+
+🐛 A refusal from the runner named LM Studio ("LM Studio returned HTTP ...").
+  It now names the HyperNix runner.
+
+🐛 `get_origin` no longer fails on an app without a T1 config.
+
+### Tests
+
+🧪 Strife: logits against `transformers` for every architecture (Qwen3.5,
+  Qwen3.5-MoE and GLM-4.5 within 6e-6; LFM3 against an independent
+  reference). Also the BPE tokenizer against the `tokenizers` library,
+  hostile and damaged files, sessions, the chat screen in a real terminal,
+  and T1 → Strife → HyperLink end to end. `tests/strife/test_strife_builds.py`
+  covers user builds, `tests/models/test_hnx0xv3.py` covers V3, and
+  `tests/runtime/test_relay.py` covers continuations.
+
+### Known Issues
+
+❗ HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers.
+  `brew export --format gguf` refuses it with that reason.
+
+## 0.73.0.dev1 — 2026-11-04
+
+Pre-alpha 1: the first pre-alpha of 0.73.0, and T1 **v1.2.26.11.0.0**: a new T1
+generation, because `/web/v1` is gone. A pre-alpha is for trying things
+out, not for a server other people depend on.
+
+### Breaking Changes
+
+❌ **T1 `/web/v1`.** Every route under it answers `410 Gone` with
+  `details.successor`, the `/web/v2` route that replaced it (`/web/v1/search`
+  → `/web/v2/I`, `/web/v1/summarize` → `/web/v2/summarize`, `/web/v1/ai/config`
+  → `/web/v2/ai/config`). The waiter's tools and the Firefox extension now
+  call `/web/v2`. Removing routes is what a new generation is for, so the T1
+  API is now generation 1.2 and `MIN_CLIENT_VERSION` moves with it. A 1.1
+  client is told to upgrade instead of failing on a missing route.
+
+### Added
+
+✨ **HyperLink for the Mac**, as DMGs: `HyperLink-<version>-macos-apple-silicon.dmg`
+  (arm64) and `HyperLink-<version>-macos-intel.dmg` (x86_64), built by Mac
+  Catalyst (`ios/scripts/make_macos_dmg.sh`). They are attached to every
+  public release with `SHA256SUMS.macos`. They are signed ad hoc, so macOS
+  asks before opening one the first time (right-click → Open).
+  **Paused until 0.73.2:** the release does not build or attach them yet, and
+  pull requests no longer build them. The build itself is in place and runs
+  on demand (the `macos` workflow, `workflow_dispatch`).
+
+✨ `waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL`: an administrator grants a key an
+  access level, 1-9, and gets back the key spelled at that level. With
+  `-Pro`, `-L` takes the level; on its own it is still `--local-only`.
+  Server side: `POST /auth/t1/admin/access-level` (admin only), recorded as a
+  reversible `level_change` (`POST /t1/auth/undo`), and
+  `T1Client.admin_set_access_level()` in the SDK.
+
+✨ `T1_ACCOUNTS_DEFAULT_PERMISSIONS`: what keys minted from a T1 account page may
+  do, as comma-separated scopes (`read`, `write`, `plugin`, `service`).
+  Unset is `read,write`, as before; `read` makes every account read-only.
+  `admin` is never given whatever it says, unknown names are left out with a
+  warning, and a value that leaves nothing usable falls back to the default.
+
+✨ ATC (API traffic control), `hypernix.atc`: the outermost layer of the T1 API,
+  on by default (`T1_ATC_ENABLED`). It jails addresses that probe for
+  `/.env`, `/wp-admin` and similar, guess keys or map the API, with times that
+  double on each repeat. It also enforces a body limit (`413`) and in-flight
+  limits per server and per client (`503`), gzips complete JSON and text
+  replies, and keeps per-route statistics. Admin routes: `GET /atc/status`,
+  `POST /atc/jail`, `POST /atc/release`. See `wiki/T1-API.md#atc-api-traffic-control`.
+
+✨ End-to-end encryption, `hypernix-atc/1`: `POST /atc/handshake`, an X25519
+  exchange signed by the server's T2C identity key, then `POST /atc/tunnel`.
+  The request (route, key, body) and the reply are sealed with
+  ChaCha20-Poly1305, so they stay private past wherever TLS ends: a proxy, a
+  tunnel, an inspection box. Replies are sealed frame by frame, so streams
+  still stream. Replays are refused. `T1_ATC_E2E_REQUIRED=1` makes other
+  machines use the tunnel. The client is `hypernix.atc.client.ATCTunnel`.
+
+✨ `hnx sandbox DIR` (or `hnx sb`): runs a command, or your shell, shut inside one
+  directory. `-s` changes the settings and keeps them for that directory
+  (`-s` alone asks for each one):
+  - web access (`no-web`);
+  - file editing and creation: only in the directory, or nowhere with
+    `no-write`;
+  - a private `/tmp`;
+  - a hidden home folder;
+  - secret-looking environment variables left out;
+  - a timeout, memory, CPU and file-size limits.
+
+  Enforced by Linux namespaces (`unshare`) or macOS `sandbox-exec`. Where
+  neither exists, those settings are refused, never skipped.
+  See `wiki/CLI.md#sandbox--sb`.
+
+### Security
+
+🔒 A T2 key's stated access level is now held to the level the server granted it.
+  The level is the key's last character and the server took it at its word, so
+  a holder could rewrite `-1` as `-9`. The grant is the key's recorded
+  `access_level` (gkey already wrote it); a key with none recorded keeps the
+  level it states, as before.
+
+### Dependencies and Packaging
+
+📦 Building hypernix no longer warns, and keeps building after 2027-02-18.
+  `project.license` is a PEP 639 SPDX string (`LicenseRef-HOS-1.1 OR
+  Apache-2.0`) with `license-files`, instead of the TOML table setuptools has
+  deprecated. `setup.cfg` no longer repeats the dependencies, extras, licence
+  or a `License ::` classifier: setuptools overwrote those copies from
+  `pyproject.toml` on every build ("install_requires overwritten"), and the
+  ignored copy had drifted (`rich==15.0.0` against `>14,<=15`, three extras
+  missing). The wheel's dependencies are unchanged.
+
+### Tests
+
+🧪 `tests/t1api/test_key_promotion.py`: the command line, a rewritten suffix
+  buying nothing, promotion and its new spelling, admin-only, undo, and
+  `waiter serv -Pro` end to end.
+
+🧪 `tests/t1api/test_t1_accounts.py`: account keys get the variable's scopes (the
+  server's record, not only the reply), `admin` is refused, and bad values
+  are left out or fall back.
+
+🧪 `tests/interfaces/test_sandbox.py`: settings and saving, the macOS profile,
+  refusing without a sandbox, the timeout, `hnx sb` dispatch. Where the
+  machine allows user namespaces, real runs check four things: writes go
+  only into the directory, `no-write` changes nothing, `no-web` has no
+  network, and the home folder is hidden while the command keeps its own uid.
+
+🧪 `tests/atc/`: the shield, traffic limits, settings, the handshake and its
+  signature, sealing, replays, tampered and truncated replies, and ATC in front
+  of a real app: the jail, probes, `413`, gzip, the admin routes, and requests
+  through `ATCTunnel` that leave no key on the wire.
+
 ## 0.72.8.post2 — patch 2 - `hnx-t1 runner start` loads the model again
 
 ### Fixed

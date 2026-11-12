@@ -14,7 +14,7 @@ const DEFAULTS = {
   maxSteps: 25,
   maxTokens: 0,
   allowPasswords: false,
-  search: "duckduckgo",  // or "t1": the T1 API's own /web/v1/search
+  search: "duckduckgo",  // or "t1": the T1 API's own /web/v2/I
 }
 
 async function settings() {
@@ -103,7 +103,7 @@ async function searchWeb({ query, max_results: max = 8 }, s) {
   const limit = Math.min(20, Math.max(1, Number(max) || 8))
   if (s.search === "t1") {
     const cfg = providerConfig({ ...s, provider: "t1" })
-    const url = `${cfg.base.replace(/\/+$/, "")}/web/v1/search?q=${encodeURIComponent(query)}&depth=1`
+    const url = `${cfg.base.replace(/\/+$/, "")}/web/v2/I?query=${encodeURIComponent(query)}&depth=1&max=${limit}`
     const json = await fetchJson(url, { headers: cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {} })
     return HNX.formatResults(query, (json.hits || []).slice(0, limit), "T1 web search")
   }

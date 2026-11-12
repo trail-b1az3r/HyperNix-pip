@@ -1,0 +1,74 @@
+# Strife on real hardware, on request.
+#
+# The CI smoke job proves Strife runs; it measures nothing worth quoting.
+# This runs `hnx strife benchmark` on a self-hosted runner that has the
+# hardware and the model, and uploads the record. Nothing is downloaded:
+# `model` is a path that already exists on that runner. A target that is
+# not met fails the run and is reported as unmet.
+name: strife-benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Labels of the self-hosted runner, as JSON (e.g. [\"self-hosted\",\"gtx1080\"])"
+        required: true
+        default: '["self-hosted"]'
+      model:
+        description: "Path of a .gguf on that runner"
+        required: true
+      prompt_tokens:
+        description: "Prompt tokens"
+        default: "512"
+      gen_tokens:
+        description: "Generated tokens"
+        default: "128"
+      gpu_layers:
+        description: "Blocks on the GPU (-1: as many as fit, 0: none)"
+        default: "0"
+      target:
+        description: "Decode tokens/second to meet (empty: no target)"
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Strife benchmark
+    runs-on: ${{ fromJSON(inputs.runner) }}
+    timeout-minutes: 120
+    env:
+      MODEL: ${{ inputs.model }}
+      PROMPT_TOKENS: ${{ inputs.prompt_tokens }}
+      GEN_TOKENS: ${{ inputs.gen_tokens }}
+      GPU_LAYERS: ${{ inputs.gpu_layers }}
+      TARGET: ${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Kernels and diagnostics
+        shell: bash
+        run: |
+          python -m hypernix.strife.cli kernels build
+          python -m hypernix.strife.cli diag "$MODEL" --gpu-layers "$GPU_LAYERS"
+      - name: Benchmark
+        shell: bash
+        run: |
+          args=("$MODEL" -p "$PROMPT_TOKENS" -n "$GEN_TOKENS" -r 5 --warmup 1 --gpu-layers "$GPU_LAYERS" --out-dir strife-bench)
+          if [ -n "$TARGET" ]; then args+=(--target "$TARGET"); fi
+          python -m hypernix.strife.cli benchmark "${args[@]}"
+      - name: Report
+        if: always()
+        shell: bash
+        run: cat strife-bench/strife-bench.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: strife-benchmark
+          path: strife-bench/
+          if-no-files-found: ignore

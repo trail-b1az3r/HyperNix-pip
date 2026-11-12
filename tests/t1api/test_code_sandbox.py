@@ -1,6 +1,6 @@
 """``/code`` — sandboxes that run code, and their permissions grammar.
 
-The grammar is ``/web/v1/config``'s, so the tests of it here are about
+The grammar is ``/web/v2/config``'s, so the tests of it here are about
 what is new: numbered settings with names, ``;`` and a clause written
 straight after ``perms``, ``s1=?`` as a read, and ``s2=on`` refused
 rather than taken as a change. The boundary tests run real processes:

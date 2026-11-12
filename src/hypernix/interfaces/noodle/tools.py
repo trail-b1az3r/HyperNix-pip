@@ -135,7 +135,7 @@ class ToolContext:
     #: which no screen reads. Anything with `load()`, `set(key, value)`
     #: and `forget(key)`.
     memory_backend: Any = None
-    #: How web_search searches. None is the keyless /web/v1 engine; a
+    #: How web_search searches. None is the keyless /web/v2 engine; a
     #: test passes a callable ``(query) -> SearchOutcome``.
     search_backend: Any = None
 
@@ -600,7 +600,7 @@ def _web_search(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if not query:
         raise ToolError("web_search needs a query", code="bad_args")
 
-    # Real results first: the same keyless engine /web/v1 serves. This
+    # Real results first: the same keyless engine /web/v2 serves. This
     # tool used to go straight to DuckDuckGo's *instant-answer* API, which
     # answers "capital of France" and returns nothing for almost every
     # real question — so a model asked to search came back with "no

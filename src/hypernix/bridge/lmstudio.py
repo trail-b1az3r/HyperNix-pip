@@ -240,7 +240,12 @@ class LMStudioBridge:
         timeout: float = 300.0,
         connect_timeout: float = 3.0,
         user_agent: str = "hypernix-bridge/1.0.26.8.0.1",
+        name: str = "LM Studio",
     ) -> None:
+        #: What the errors call the server: the same client talks to the
+        #: built-in runner too, and "LM Studio returned HTTP 400" about a
+        #: server that is not LM Studio sends people to the wrong place.
+        self.name = name
         self.base_url = _normalise_url(base_url or os.environ.get(ENV_URL) or f"http://localhost:{DEFAULT_PORT}")
         self.api_key = api_key if api_key is not None else os.environ.get(ENV_API_KEY, "")
         self.timeout = float(timeout)
@@ -280,7 +285,7 @@ class LMStudioBridge:
                 return
         except OSError as exc:
             raise LMStudioError(
-                f"No LM Studio server answering at {self.base_url} ({exc}). "
+                f"No {self.name} server answering at {self.base_url} ({exc}). "
                 "Start LM Studio, open the Developer tab, and press Start Server; "
                 "for another machine also tick 'Serve on Local Network'.",
                 code="unreachable",
@@ -310,20 +315,20 @@ class LMStudioBridge:
         except urllib.error.HTTPError as exc:
             detail = _read_error_detail(exc)
             raise LMStudioError(
-                f"LM Studio returned HTTP {exc.code} for {method} {path}: {detail}",
+                f"{self.name} returned HTTP {exc.code} for {method} {path}: {detail}",
                 code="no_model_loaded" if _looks_like_no_model(detail) else "http_error",
                 base_url=self.base_url,
                 status=exc.code,
             ) from exc
         except urllib.error.URLError as exc:
             raise LMStudioError(
-                f"Could not reach LM Studio at {self.base_url}: {exc.reason}",
+                f"Could not reach {self.name} at {self.base_url}: {exc.reason}",
                 code="unreachable",
                 base_url=self.base_url,
             ) from exc
         except TimeoutError as exc:
             raise LMStudioError(
-                f"LM Studio at {self.base_url} did not answer within {timeout or self.timeout:.0f}s",
+                f"{self.name} at {self.base_url} did not answer within {timeout or self.timeout:.0f}s",
                 code="timeout",
                 base_url=self.base_url,
             ) from exc
@@ -337,7 +342,7 @@ class LMStudioBridge:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
             raise LMStudioError(
-                f"LM Studio returned non-JSON from {path}: {raw[:200]!r}",
+                f"{self.name} returned non-JSON from {path}: {raw[:200]!r}",
                 code="bad_response",
                 base_url=self.base_url,
             ) from exc

@@ -76,6 +76,7 @@ class AuthOp(StrEnum):
     REVOKE = "revoke"                 # inverse: un-revoke
     ASSIGN_SSPKID = "assign_sspkid"   # inverse: restore the previous SSPKID (or none)
     PLAN_CHANGE = "plan_change"       # inverse: restore the previous plan
+    LEVEL_CHANGE = "level_change"     # inverse: restore the previous access level (or none)
 
 
 #: Which fields an entry must carry to be reversible. An entry missing
@@ -87,6 +88,7 @@ _REQUIRED_PAYLOAD: dict[AuthOp, tuple[str, ...]] = {
     AuthOp.REVOKE: ("previous_revoked",),
     AuthOp.ASSIGN_SSPKID: ("previous_sspkid", "new_sspkid"),
     AuthOp.PLAN_CHANGE: ("previous_plan", "new_plan"),
+    AuthOp.LEVEL_CHANGE: ("previous_level", "new_level"),
 }
 
 #: Payload keys that are key material. Never returned by describe().

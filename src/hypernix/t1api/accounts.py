@@ -824,6 +824,53 @@ def registration_mode_from_env() -> str:
     return os.environ.get("T1_ACCOUNTS_REGISTRATION", "closed").strip().lower()
 
 
+#: What a key minted from an account page may do, unless
+#: ``T1_ACCOUNTS_DEFAULT_PERMISSIONS`` says otherwise.
+DEFAULT_PERMISSIONS: tuple[str, ...] = ("read", "write")
+
+#: Never granted to a self-service key, whatever the variable says. An
+#: account can be created by anyone the registration policy lets in, and
+#: "anyone who can sign up can mint an admin key" would make that policy
+#: the only thing between a stranger and the whole API.
+_NEVER_SELF_SERVICE = frozenset({"admin"})
+
+
+def default_permissions_from_env() -> tuple[str, ...]:
+    """``T1_ACCOUNTS_DEFAULT_PERMISSIONS``: the scopes of an account's keys.
+
+    Comma-separated key scopes -- ``read``, ``write``, ``plugin``,
+    ``service`` -- for example ``read`` for read-only accounts or
+    ``read,write,plugin``. Unset or empty is ``read,write``. ``admin`` is
+    never granted this way, and an unknown name is left out; both are
+    logged rather than failing the server's start. A value that leaves
+    nothing grantable falls back to the default, because a key that can
+    do nothing is a broken key, not a safe one.
+    """
+    from hypernix.security.keymaster import KeyScope
+
+    raw = os.environ.get("T1_ACCOUNTS_DEFAULT_PERMISSIONS", "")
+    asked = [part.strip().lower() for part in raw.split(",") if part.strip()]
+    if not asked:
+        return DEFAULT_PERMISSIONS
+    known = {scope.value for scope in KeyScope}
+    granted: list[str] = []
+    for name in asked:
+        if name in _NEVER_SELF_SERVICE:
+            logger.warning("T1_ACCOUNTS_DEFAULT_PERMISSIONS: %r is never given to an "
+                           "account's keys; mint admin keys with gkey", name)
+        elif name not in known:
+            logger.warning("T1_ACCOUNTS_DEFAULT_PERMISSIONS: %r is not a key scope "
+                           "(known: %s); left out", name,
+                           ", ".join(sorted(known - _NEVER_SELF_SERVICE)))
+        elif name not in granted:
+            granted.append(name)
+    if not granted:
+        logger.warning("T1_ACCOUNTS_DEFAULT_PERMISSIONS=%r grants nothing usable; "
+                       "using %s", raw, ",".join(DEFAULT_PERMISSIONS))
+        return DEFAULT_PERMISSIONS
+    return tuple(sorted(granted))
+
+
 def invite_codes_from_env() -> tuple[str, ...]:
     raw = os.environ.get("T1_ACCOUNTS_INVITE_CODES", "")
     return tuple(code.strip() for code in raw.split(",") if code.strip())

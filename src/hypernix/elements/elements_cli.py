@@ -33,8 +33,11 @@ def _registry(args):
 def _list(args) -> int:
     reg = _registry(args)
     rows = [s.to_dict() for s in reg.specs()]
+    from .isotope_3h import ISOTOPE_3H
+    isotopes = [ISOTOPE_3H.to_dict()]
     if args.json:
-        print(json.dumps({"elements": rows, "failures": reg.failures}, indent=2))
+        print(json.dumps({"elements": rows, "isotopes": isotopes,
+                          "failures": reg.failures}, indent=2))
         return 0
     for row in rows:
         tags = []
@@ -45,12 +48,17 @@ def _list(args) -> int:
         tag = f"  [{', '.join(tags)}]" if tags else ""
         print(f"{row['number']:>3} {row['symbol']:<3} {row['name']:<12} "
               f"{row['summary']}{tag}")
+    print("  3H  tritium       3H editable element-script interpreter (isotope runtime)")
     for symbol, why in sorted(reg.failures.items()):
         print(f"  ! {symbol}: {why}")
     return 0
 
 
 def _info(args) -> int:
+    if args.element.strip().casefold() in {"3h", "tritium"}:
+        from .isotope_3h import ISOTOPE_3H
+        print(json.dumps(ISOTOPE_3H.to_dict(), indent=2))
+        return 0
     print(json.dumps(_registry(args).lookup(args.element).spec.to_dict(), indent=2))
     return 0
 
@@ -99,7 +107,11 @@ def _run(args) -> int:
 
 
 def _new(args) -> int:
-    path = carbon.scaffold(args.symbol, registry=_registry(args))
+    if args.format == "hnx":
+        from .isotope_3h import scaffold_hnx
+        path = scaffold_hnx(args.symbol, registry=_registry(args))
+    else:
+        path = carbon.scaffold(args.symbol, registry=_registry(args))
     print(f"wrote {path}\nedit it, then: hypernix elements list")
     return 0
 
@@ -132,6 +144,8 @@ def main(argv: list[str] | None = None) -> int:
 
     new = sub.add_parser("new", help="scaffold a user element")
     new.add_argument("symbol")
+    new.add_argument("--format", choices=("py", "hnx"), default="py",
+                     help="source format: Python (.py) or editable 3H (.hnx)")
     new.set_defaults(func=_new)
 
     args = parser.parse_args(argv)

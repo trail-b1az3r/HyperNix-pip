@@ -201,11 +201,16 @@ def load_user_elements(registry: Registry, directory: Path | None = None) -> lis
     loaded: list[str] = []
     if not root.is_dir():
         return loaded
-    for path in sorted(root.glob("*.py")):
-        if path.name.startswith("_"):
+    for path in sorted(root.rglob("*.py")):
+        if path.name.startswith("_") or any(part.startswith(".") for part in path.relative_to(root).parts):
+            continue
+        source_key = str(path.resolve())
+        if source_key in registry.sources:
+            loaded.extend(registry.sources[source_key])
             continue
         namespace: dict[str, Any] = {"__name__": f"hypernix_user_element_{path.stem}",
                                      "__file__": str(path)}
+        source_symbols: list[str] = []
         try:
             code = compile(path.read_text(encoding="utf-8"), str(path), "exec")
             exec(code, namespace)  # nosec B102 - runs code the user wrote or approved (consent-gated tool)
@@ -230,6 +235,11 @@ def load_user_elements(registry: Registry, directory: Path | None = None) -> lis
             try:
                 registry.register(value)
                 loaded.append(value.spec.symbol)
+                source_symbols.append(value.spec.symbol)
             except HyperNixError as exc:
                 registry.failures[value.spec.symbol] = str(exc)
+        registry.sources[source_key] = source_symbols
+
+    from .isotope_3h import load_hnx_elements
+    loaded.extend(load_hnx_elements(registry, root))
     return loaded

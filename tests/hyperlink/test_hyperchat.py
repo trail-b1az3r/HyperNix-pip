@@ -382,6 +382,23 @@ class TestOneShape:
         chat.close()
         chat.close()
 
+    def test_a_structured_result_is_returned_without_stringifying(self):
+        expected = {
+            "choices": [{"message": {"role": "assistant", "content": "hello"}}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 2},
+        }
+        with Hyperchat(lambda: (lambda _prompt, operation, **_: operation()),
+                       budget=plan_cores(2)) as chat:
+            assert chat.ask("relay", operation=lambda: expected, timeout=5) is expected
+
+    def test_the_original_worker_exception_is_preserved(self):
+        failure = ValueError("backend rejected the request")
+        with Hyperchat(lambda: (lambda _prompt, **_: (_ for _ in ()).throw(failure)),
+                       budget=plan_cores(2)) as chat:
+            with pytest.raises(ValueError, match="backend rejected") as caught:
+                chat.ask("relay", timeout=5)
+            assert caught.value is failure
+
 
 # ---------------------------------------------------------------------------
 # Ports, for the pool of llama.cpp processes

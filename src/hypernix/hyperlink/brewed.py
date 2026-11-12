@@ -158,14 +158,25 @@ def describe(path: str | Path) -> dict[str, Any]:
     weights = next((folder / n for n in _WEIGHTS if (folder / n).is_file()), None)
     size = weights.stat().st_size if weights is not None else 0
     name = str(config.get("name") or folder.name)
+    # Read the arch tag without importing the V3 module (it needs torch).
+    v3 = str(config.get("arch") or "").lower() == "hypernix0x-v3"
+    arch = "hyperNix0x-v3" if v3 else "hyperNix0x-v2"
     try:
-        from ..training.brewer import BrewerConfig
+        if v3:
+            from ..models.hnx0xv3 import HyperNix0xV3Config
 
-        params = BrewerConfig.from_dict(config).approx_params()
+            params = HyperNix0xV3Config.from_dict(config).approx_params()
+        else:
+            from ..training.brewer import BrewerConfig
+
+            params = BrewerConfig.from_dict(config).approx_params()
     except Exception:  # noqa: BLE001 - a count is a nicety, not a requirement
         params = 0
     detail = ("native HyperNix model (hyperNix0x-v2); the runner serves it through "
               "llama.cpp when there is a build, converting it once, else in PyTorch")
+    if v3:
+        detail = ("experimental HyperNix model (hyperNix0x-v3, brewed with -E); the runner "
+                  "serves it in PyTorch only: there is no GGUF form of this architecture yet")
     if matches_default(name) or folder.name == DEFAULT_MODEL_DIR:
         detail = ("the default model: a small base model that completes text. "
                   "It does not follow instructions or call tools")
@@ -174,7 +185,7 @@ def describe(path: str | Path) -> dict[str, Any]:
         "name": name,
         "path": str(folder),
         "size_bytes": size,
-        "architecture": "hyperNix0x-v2",
+        "architecture": arch,
         "parameters_b": round(params / 1e9, 4) if params else 0.0,
         "context_limit": int(config.get("max_seq_len") or 0),
         "detail": detail,

@@ -3,6 +3,384 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.73.0a1",
+      "key": "0.73.0a1",
+      "aliases": [
+        "0.73.0a1"
+      ],
+      "kind": "alpha",
+      "heading": "0.73.0a1 \u2014 2026-11-12",
+      "date": "2026-11-12",
+      "title": "",
+      "summary": "hnx chat never downloads a model on its own. -M PATH takes a model on this machine: a folder for an unquantised model, or a .gguf file. -r HF_ID downloads that Hugging Face model, and is the only option that downloads. With neither, chat exits and says so. It used to download\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "hnx chat never downloads a model on its own. -M PATH takes a model on this machine: a folder for an unquantised model, or a .gguf file. -r HF_ID downloads that Hugging Face model, and is the only option that downloads. With neither, chat exits and says so. It used to download\u2026",
+        "Strife native kernels: hnx strife kernels build compiles one C file for your CPU (AVX-512, AVX2 or plain C, with OpenMP threads) and checks every tensor type against the Python decoders before Strife uses it. With them, a weight is multiplied while still quantised, so nothing\u2026",
+        "Strife GPU offload: --gpu-layers N (-1: as many as fit) puts the weight matrices of the first N blocks on a CUDA device through PyTorch, decoded once to half precision. The rest stay on the CPU.",
+        "hnx strife benchmark MODEL (also benchmarks/strife_bench.py):",
+        "The native kernel library is code Strife loads, so it and its folder are written owner-only and not loaded if anyone else can write them.",
+        "The relay refused long prompts in a 512-token context. Every hop repeats the instructions and the latest message, so when either was long nothing else fit, and a 2,200-token prompt that worked at 1,024 tokens was refused at 512. A long latest message is now read in parts like\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Breaking Changes",
+          "text": "hnx chat never downloads a model on its own. -M PATH takes a model on this machine: a folder for an unquantised model, or a .gguf file. -r HF_ID downloads that Hugging Face model, and is the only option that downloads. With neither, chat exits and says so. It used to download\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Strife native kernels: hnx strife kernels build compiles one C file for your CPU (AVX-512, AVX2 or plain C, with OpenMP threads) and checks every tensor type against the Python decoders before Strife uses it. With them, a weight is multiplied while still quantised, so nothing\u2026",
+          "details": [
+            "Kernels for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 and Q2_K to Q6_K. Models that are mostly HyperNix sub-bit or low-bit types keep the numpy path.",
+            "On LFM3 1.2B Q4_K_M on one 4-vCPU AVX-512 machine: decode 7.8 tok/s against 6.2 with numpy, the first answer after load in 9 s against 41 s, and 1 MB of decoded weights in RAM against 6.6 GB. Warm prefill is slower: 76 tok/s against 139.",
+            "Nothing is compiled unless asked. --kernels off and HNX_STRIFE_KERNELS=off keep numpy; diag and status() say which path runs and why."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Strife GPU offload: --gpu-layers N (-1: as many as fit) puts the weight matrices of the first N blocks on a CUDA device through PyTorch, decoded once to half precision. The rest stay on the CPU.",
+          "details": [
+            "How many layers fit is decided from the card's free memory less a 768 MiB reserve. A model that does not fit is split, and diag, status() and the benchmark say how: layers on each side, device bytes, and the reason.",
+            "A card the installed PyTorch was not built for is refused by name with its compute capability. That includes Pascal (GTX 1080) on current PyTorch wheels.",
+            "hnx strife diag MODEL --gpu-layers N plans the split without loading."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx strife benchmark MODEL (also benchmarks/strife_bench.py):",
+          "details": [
+            "a cold run reported apart from the warm ones, then the median of the repeats with its spread;",
+            "prefill and decode tokens per second, time to the first token, and the time between tokens as p50, p90, p99 and max;",
+            "peak resident memory, decode-cache and device memory, and the placement;",
+            "a quality check: greedy output from a fixed prompt must repeat exactly, and with --numpy the native kernels and numpy must produce the same tokens. A failed check fails the run;",
+            "llama.cpp's llama-bench on the same file when a build is found, and a stated skip when none is;",
+            "--target reports a decode speed as met or unmet (exit 1);",
+            "--out-dir writes a JSON record (file SHA-256, HyperNix version, machine, every setting), a CSV and a Markdown report. It never downloads a model."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "The native kernel library is code Strife loads, so it and its folder are written owner-only and not loaded if anyone else can write them.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "The relay refused long prompts in a 512-token context. Every hop repeats the instructions and the latest message, so when either was long nothing else fit, and a 2,200-token prompt that worked at 1,024 tokens was refused at 512. A long latest message is now read in parts like\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hnx strife run --help crashed on a bare % in a help string. Every subcommand's help is now tested.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/strife/test_strife_kernels.py (77 tests): the kernels built three ways (this CPU's widest path, AVX2, plain C), each type's decode and multiply against the Python decoders, the engine's tokens with and without them on every architecture, permissions, and the BLAS hand-back.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/strife/test_strife_gpu.py (22 tests): the device path on PyTorch's CPU device gives the same tokens as the CPU path on every architecture; the split for a card too small; a simulated GTX 1080 refused by name. tests/strife/test_strife_bench.py covers the record, the CSV\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "CI: a strife job on Linux and Windows runs the selftest, builds and verifies the kernels, benchmarks a generated model and runs the Strife tests. On Windows the kernel build is reported but does not gate. The strife-benchmark workflow runs the benchmark on a self-hosted runner\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "With the native kernels, Strife's prefill of a long prompt is slower than numpy's once numpy has decoded the whole model (76 against 139 tok/s in the measurement above). --kernels off picks numpy.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "Strife's GPU offload has not been run on a real GPU by its author: the machine it was written on has none. The same code runs on PyTorch's CPU device in the tests. The spec's speed targets (8 tok/s for a 27B Q4_K_M model on a GTX 1080, and the others) are unmeasured, not met.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "No llama.cpp comparison has been recorded: no llama.cpp build was available where the benchmark was run.",
+          "details": []
+        }
+      ]
+    },
+    {
+      "version": "0.73.0.dev2",
+      "key": "0.73.0.dev2",
+      "aliases": [
+        "0.73.0.dev2",
+        "0.73.0dev2"
+      ],
+      "kind": "dev",
+      "heading": "0.73.0.dev2 \u2014 2026-11-10",
+      "date": "2026-11-10",
+      "title": "",
+      "summary": "Strife (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference runtime, hnx strife and hypernix.strife. It reads the GGUF and runs the model itself: no llama.cpp process, no T1 key, no network.",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "Strife (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference runtime, hnx strife and hypernix.strife. It reads the GGUF and runs the model itself: no llama.cpp process, no T1 key, no network.",
+        "hnx strife chat MODEL_ID: a terminal screen with saved chats, a context meter, a text area and the mouse. --plain is the line-by-line chat.",
+        "Strife on T1 and in HyperLink: the runner has a strife backend (POST /runner/load {\"backend\": \"strife\"}). hypernix.strife.server speaks the OpenAI API, so HyperLink chats are answered by Strife unchanged.",
+        "Your own Strife build as a T1 runner: hnx strife build NAME --source CHECKOUT (or --python INTERPRETER) selftests the build in its own interpreter and registers it (--default makes it the one strife loads use). GET /runner/status lists strife_builds. POST /runner/load\u2026",
+        "Relay continuations: a HyperLink answer the model's context cut off (finish reason length) is picked up and continued in a fresh call, up to T1_RELAY_CONTINUATIONS times (default 2). The cut answer joins the history, which the relay condenses if it no longer fits, and the model\u2026",
+        "HyperNix0xV3 (experimental): brew new --preset NAME -E. Its Tidepool attention reads a local window plus summaries of every earlier chunk in one softmax. Its Keel state is a set of memory slots each token reads and each chunk updates. Presets have the same names as V2, plus xl\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Strife (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference runtime, hnx strife and hypernix.strife. It reads the GGUF and runs the model itself: no llama.cpp process, no T1 key, no network.",
+          "details": [
+            "llama, mistral, qwen2 and qwen3;",
+            "Qwen3.5 (dense and MoE): gated DeltaNet layers between gated attention;",
+            "LFM3: short convolutions, sliding-window and full attention;",
+            "GLM-4.5: sigmoid-routed experts with a shared expert, dense leading layers;",
+            "every llama.cpp K-quant and legacy type, and every HyperNix sub-bit and low-bit type;",
+            "the GGUF's own tokenizer (BPE or SentencePiece) and chat template, sandboxed;",
+            "sessions that reuse their prefix, with checkpoints for recurrent state, streaming, stop strings, cancellation, timeouts, and bounded queues and caches. inspect checks a file before loading anything. diag reports hardware and placement. Alpha 1 computes on the CPU with numpy\u2026"
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx strife chat MODEL_ID: a terminal screen with saved chats, a context meter, a text area and the mouse. --plain is the line-by-line chat.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Strife on T1 and in HyperLink: the runner has a strife backend (POST /runner/load {\"backend\": \"strife\"}). hypernix.strife.server speaks the OpenAI API, so HyperLink chats are answered by Strife unchanged.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Your own Strife build as a T1 runner: hnx strife build NAME --source CHECKOUT (or --python INTERPRETER) selftests the build in its own interpreter and registers it (--default makes it the one strife loads use). GET /runner/status lists strife_builds. POST /runner/load\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Relay continuations: a HyperLink answer the model's context cut off (finish reason length) is picked up and continued in a fresh call, up to T1_RELAY_CONTINUATIONS times (default 2). The cut answer joins the history, which the relay condenses if it no longer fits, and the model\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "HyperNix0xV3 (experimental): brew new --preset NAME -E. Its Tidepool attention reads a local window plus summaries of every earlier chunk in one softmax. Its Keel state is a set of memory slots each token reads and each chunk updates. Presets have the same names as V2, plus xl\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "The GGUF reader checks every length against the bytes actually left in the file before reading. A 40-byte file claiming a 16 GB array used to make read() try to allocate 16 GB; it is now refused as truncated. Every user of hypernix.quant.gguf benefits.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Strife chat templates: an attribute starting with is refused however a template spells it (.class, |attr('class'), ['' 'class']), not only as a literal.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "The Strife build registry names programs to run, so it is written owner-only and refused if anyone else can write it.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "A refusal from the runner named LM Studio (\"LM Studio returned HTTP ...\"). It now names the HyperNix runner.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "get_origin no longer fails on an app without a T1 config.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Strife: logits against transformers for every architecture (Qwen3.5, Qwen3.5-MoE and GLM-4.5 within 6e-6; LFM3 against an independent reference). Also the BPE tokenizer against the tokenizers library, hostile and damaged files, sessions, the chat screen in a real terminal, and\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers. brew export --format gguf refuses it with that reason.",
+          "details": []
+        }
+      ]
+    },
+    {
+      "version": "0.73.0.dev1",
+      "key": "0.73.0.dev1",
+      "aliases": [
+        "0.73.0.dev1",
+        "0.73.0dev1"
+      ],
+      "kind": "dev",
+      "heading": "0.73.0.dev1 \u2014 2026-11-04",
+      "date": "2026-11-04",
+      "title": "",
+      "summary": "T1 /web/v1. Every route under it answers 410 Gone with details.successor, the /web/v2 route that replaced it (/web/v1/search \u2192 /web/v2/I, /web/v1/summarize \u2192 /web/v2/summarize, /web/v1/ai/config \u2192 /web/v2/ai/config). The waiter's tools and the Firefox extension now call\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "T1 /web/v1. Every route under it answers 410 Gone with details.successor, the /web/v2 route that replaced it (/web/v1/search \u2192 /web/v2/I, /web/v1/summarize \u2192 /web/v2/summarize, /web/v1/ai/config \u2192 /web/v2/ai/config). The waiter's tools and the Firefox extension now call\u2026",
+        "HyperLink for the Mac, as DMGs: HyperLink-<version>-macos-apple-silicon.dmg (arm64) and HyperLink-<version>-macos-intel.dmg (x86_64), built by Mac Catalyst (ios/scripts/make_macos_dmg.sh). They are attached to every public release with SHA256SUMS.macos. They are signed ad hoc\u2026",
+        "waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL: an administrator grants a key an access level, 1-9, and gets back the key spelled at that level. With -Pro, -L takes the level; on its own it is still --local-only. Server side: POST /auth/t1/admin/access-level (admin only), recorded\u2026",
+        "T1_ACCOUNTS_DEFAULT_PERMISSIONS: what keys minted from a T1 account page may do, as comma-separated scopes (read, write, plugin, service). Unset is read,write, as before; read makes every account read-only. admin is never given whatever it says, unknown names are left out with\u2026",
+        "ATC (API traffic control), hypernix.atc: the outermost layer of the T1 API, on by default (T1_ATC_ENABLED). It jails addresses that probe for /.env, /wp-admin and similar, guess keys or map the API, with times that double on each repeat. It also enforces a body limit (413) and\u2026",
+        "End-to-end encryption, hypernix-atc/1: POST /atc/handshake, an X25519 exchange signed by the server's T2C identity key, then POST /atc/tunnel. The request (route, key, body) and the reply are sealed with ChaCha20-Poly1305, so they stay private past wherever TLS ends: a proxy, a\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Breaking Changes",
+          "text": "T1 /web/v1. Every route under it answers 410 Gone with details.successor, the /web/v2 route that replaced it (/web/v1/search \u2192 /web/v2/I, /web/v1/summarize \u2192 /web/v2/summarize, /web/v1/ai/config \u2192 /web/v2/ai/config). The waiter's tools and the Firefox extension now call\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "HyperLink for the Mac, as DMGs: HyperLink-<version>-macos-apple-silicon.dmg (arm64) and HyperLink-<version>-macos-intel.dmg (x86_64), built by Mac Catalyst (ios/scripts/make_macos_dmg.sh). They are attached to every public release with SHA256SUMS.macos. They are signed ad hoc\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL: an administrator grants a key an access level, 1-9, and gets back the key spelled at that level. With -Pro, -L takes the level; on its own it is still --local-only. Server side: POST /auth/t1/admin/access-level (admin only), recorded\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "T1_ACCOUNTS_DEFAULT_PERMISSIONS: what keys minted from a T1 account page may do, as comma-separated scopes (read, write, plugin, service). Unset is read,write, as before; read makes every account read-only. admin is never given whatever it says, unknown names are left out with\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "ATC (API traffic control), hypernix.atc: the outermost layer of the T1 API, on by default (T1_ATC_ENABLED). It jails addresses that probe for /.env, /wp-admin and similar, guess keys or map the API, with times that double on each repeat. It also enforces a body limit (413) and\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "End-to-end encryption, hypernix-atc/1: POST /atc/handshake, an X25519 exchange signed by the server's T2C identity key, then POST /atc/tunnel. The request (route, key, body) and the reply are sealed with ChaCha20-Poly1305, so they stay private past wherever TLS ends: a proxy, a\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx sandbox DIR (or hnx sb): runs a command, or your shell, shut inside one directory. -s changes the settings and keeps them for that directory (-s alone asks for each one):",
+          "details": [
+            "web access (no-web);",
+            "file editing and creation: only in the directory, or nowhere with no-write;",
+            "a private /tmp;",
+            "a hidden home folder;",
+            "secret-looking environment variables left out;",
+            "a timeout, memory, CPU and file-size limits. Enforced by Linux namespaces (unshare) or macOS sandbox-exec. Where neither exists, those settings are refused, never skipped. See wiki/CLI.md#sandbox--sb."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "A T2 key's stated access level is now held to the level the server granted it. The level is the key's last character and the server took it at its word, so a holder could rewrite -1 as -9. The grant is the key's recorded access_level (gkey already wrote it); a key with none\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "Building hypernix no longer warns, and keeps building after 2027-02-18. project.license is a PEP 639 SPDX string (LicenseRef-HOS-1.1 OR Apache-2.0) with license-files, instead of the TOML table setuptools has deprecated. setup.cfg no longer repeats the dependencies, extras\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/t1api/test_key_promotion.py: the command line, a rewritten suffix buying nothing, promotion and its new spelling, admin-only, undo, and waiter serv -Pro end to end.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/t1api/test_t1_accounts.py: account keys get the variable's scopes (the server's record, not only the reply), admin is refused, and bad values are left out or fall back.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/interfaces/test_sandbox.py: settings and saving, the macOS profile, refusing without a sandbox, the timeout, hnx sb dispatch. Where the machine allows user namespaces, real runs check four things: writes go only into the directory, no-write changes nothing, no-web has no\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/atc/: the shield, traffic limits, settings, the handshake and its signature, sealing, replays, tampered and truncated replies, and ATC in front of a real app: the jail, probes, 413, gzip, the admin routes, and requests through ATCTunnel that leave no key on the wire.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8.post2",
       "key": "0.72.8.post2",
       "aliases": [
@@ -108,197 +486,7 @@
         "HyperLink: signed prompts and the ping, a Code section, dataset parts, full Markdown, web search v2, and documents a model writes.",
         "hnx-t1 setup, the interactive T1 installer."
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "Claude Code on models running in HyperNix: T1 speaks the Anthropic Messages API, and hnx claude points Claude Code at it.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "The context relay: POST /inference/relay reads a document longer than the model's context in hops, priced first and billed per hop.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "hnx0xv2image, an image-to-text architecture fused onto LFM2.5, Qwen3.5 or HyperNix, quantisable with hyprslug.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "MCP both ways, Net inside T1, and a live count of public T1 servers.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "HyperLink: signed prompts and the ping, a Code section, dataset parts, full Markdown, web search v2, and documents a model writes.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "hnx-t1 setup, the interactive T1 installer.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "CPU offloading for the runners, hnx download --latest (HyperNix.3.1-mini), and HyperNix releases loaded by name.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "scriptgen writes scripts that run, with a redesigned window, recipes and a terminal wizard.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "c4 (explode a model, measure, reap and sow its layers), the Firefox Browser Agent, and the multi-llama runner.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "T1 v1.1.26.10.2.0: /v1/messages, /mcp/remote, /net, /inference/relay, /usage/statement (t1.statement/2), and cpu_moe / kv_on_cpu on /runner/load.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "Python 3.15: torch and sentencepiece are no longer pip dependencies there; see Compatibility.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "HyperLink for iOS no longer signs itself out or crashes when connecting over Tailscale.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "A model the runner loads is registered, so chat and the relay can ask it; the relay sizes its answer to the context.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "scriptgen's generated script can build its default optimiser.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "hypernix-t1 runner start is fast again and its model picker no longer freezes.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "Following a job's log no longer skips a line written as it starts.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "About 10,300 tests; generated training scripts run for real on a tiny HyperNix model; a runner-loaded model is relayed through T1 end to end.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "The T1 API page covers the 0.72.8 runner, the relay and the statement, and marks T1 v1.1.26.10.1.0 and v1.1.26.10.2.0 shipped. The README has a 0.72.8 section and the Python 3.15 install notes.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udedc",
-          "label": "site",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "The website's docs were remade, with a T1 API reference, a security page, and downloads by HyperNix version on the Stats page.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Python 3.15: torch from a shim. A new Python gets PyTorch wheels months after it ships, and pip refused pip install hypernix there. hypernix.system.torch_shim installs stable PyTorch when its newest release has a wheel for this Python and platform, and the nightly build (CPU\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u274c",
-          "label": "breaking",
-          "category": "Compatibility",
-          "text": "On Python 3.15+, torch and sentencepiece are not pip dependencies (python_version < '3.15' markers): torch comes from the shim, and sentencepiece, which has no 3.15 wheel, is needed only by hnx convert of a SentencePiece model. hnx doctor reports it as not required there\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udce6",
-          "label": "packaging",
-          "category": "Dependencies and Packaging",
-          "text": "The markers above, in pyproject.toml and setup.cfg alike. Dependencies were otherwise unchanged since 0.72.8rc1.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "T1-API: the 0.72.8 runner (offloading, releases by name, registration on load), Python 3.15 in the installer, the roadmap rows for T1 v1.1.26.10.1.0 and v1.1.26.10.2.0 marked shipped.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "README: a 0.72.8 section, the Python 3.15 install notes, and the PyPI badge.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "The shim's choices (stable, nightly, nothing), its PyPI wheel lookup per platform, the hooks, and the markers.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "Checked on CPython 3.15.0b4 (Linux x86_64): pip install . succeeds, the nightly path installs torch 2.16.0.dev, and hnx with torch missing installs stable torch 2.15.0, which has cp315 wheels today. macOS and Windows were not run.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "The stable path installs PyPI's default torch, the CUDA build on Linux, as pip install hypernix does on 3.12-3.14. For CPU only, install torch from the CPU index first.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8rc1",
@@ -321,169 +509,7 @@
         "cryptography's floor is 50: 49 still allowed GHSA-g6cj-pr64-35w5 (high). The new security page found it.",
         "/inference/relay and /inference/chat refused a model the runner had loaded but the registry did not list (MODEL_NOT_SUPPORTED), so a downloaded HyperNix.3.1-mini could be served and never asked. The runner registers what it loads (local, free, sized from the loaded context); an\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "scriptgen: a script that runs, a new window, more options. hnx scriptgen (now a subcommand as well as hnx-scriptgen) writes a training script that loads the model (a HyperNix model through hypernix, anything else through transformers), reads the data (a Hub dataset or a local\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "CPU offloading for the HyperNix runners. A native HyperNix model larger than the card is split by layer: the first blocks, the embeddings and the head on the GPU, the rest in RAM, as -ngl splits a GGUF (it was wholly on the CPU). The llama.cpp runners can keep a\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx download --latest downloads the newest HyperNix model -- HyperNix.3.1-mini (Compactbot/hypernix-3.1-mini) today -- into the folder the runner reads, and says how to serve and relay it. Later releases are found on the Hub from the two accounts HyperNix models come from\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Fixed the critical and 26 high CodeQL alerts from the exported first page of code scanning: the docs-conflict resolver workflow ran the pull request's own resolver with a write token (now only the base's, with no stored credentials); hnx-t1 setup --dry-run built its output\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "cryptography's floor is 50: 49 still allowed GHSA-g6cj-pr64-35w5 (high). The new security page found it.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "/inference/relay and /inference/chat refused a model the runner had loaded but the registry did not list (MODEL_NOT_SUPPORTED), so a downloaded HyperNix.3.1-mini could be served and never asked. The runner registers what it loads (local, free, sized from the loaded context); an\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "The relay refused every document for a 512-token model: it reserved a fixed 512 tokens for the answer. The answer now defaults to a quarter of the usable context, between 32 and 512 tokens; HyperNix.3.1-mini relays a long document in hops.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "scriptgen's generated script could not build its default optimiser: it asked hypernix.optimizers for PressureCookerV5, which lives in pressure_cooker_v5, and passed betas, which the Pressure Cookers do not take. Its main() also stopped at \"bring your own loader\".",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "scriptgen's window cut its tab titles (\"Model an\", \"Precision anc\"), gave a third of its height to the status line, and its Advanced switch changed nothing until another tab was opened.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx scriptgen, as the help and wiki wrote it, was an unknown command.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "The Stats page's downloads graph was cut off on phones: it measured its width before the stats arrived and kept the 760px default.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx-t1 setup --dry-run > .env.new produced a summary instead of the file after an automated security fix; stdout is the file again, its secrets shown as <redacted>, and switches such as T1_BOOTSTRAP_KEY=1 are no longer mistaken for secrets.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Noodle answered bad_path for a path leaving the workspace after an automated security fix; it is outside_workspace again.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Following a job's log could stop on the completion line before the job's last lines were printed; they are drained first.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Following a job's log (--logs JOB -F) could skip a line the job wrote while following began: the tail was read, then the file's size taken as the place to continue from. Both come from one read now.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udce6",
-          "label": "packaging",
-          "category": "Dependencies and Packaging",
-          "text": "cryptography>=50 (see Security). Reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max); nothing else changed.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udedc",
-          "label": "site",
-          "category": "Site Changes",
-          "text": "A security page (#/security) shows what the repository's own scanners -- the T1 audit, Bandit, Semgrep, and OSV over every dependency floor and lockfile -- find in the commit being deployed. It is rescanned on every Pages build, reached by a hidden button in the footer, and\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udedc",
-          "label": "site",
-          "category": "Site Changes",
-          "text": "The Stats page shows which hypernix version people download: a \"HyperNix version\" view in the downloads graph (the seven most downloaded releases in the range, the rest as one line) and a breakdown by exact version or by release, over 30 days or all time. The data is ClickPy's\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "A generated script trained for real on a tiny HyperNix model on the CPU (evaluation, checkpoints, resume, LoRA, the default optimiser, a sweep, the saved model reloading), the wizard, recipes and CLI, the window under a virtual display; --latest and release discovery; a\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "The CPU offloading split was tested on the CPU (the split model gives the same output as the whole one); there is no GPU here. The llama.cpp flags were checked in the command line, not against a running server.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "Relayed through T1, HyperNix.3.1-mini runs every hop, but it is a 48.7M-parameter base model: its answers are not coherent.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "The scriptgen window was checked on Linux under Xvfb only.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "The version breakdown appears once the daily stats job runs with the new script; ClickPy's counts include mirrors, so they run a little above pypistats' \"Downloads\".",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8a5",
@@ -506,134 +532,7 @@
         "Fixed the T1 audit in the security scan, whose findings in tests and examples were filed by GitHub as high alerts (59 of the 60). It reported them at level \"note\", but GitHub takes an alert's severity from the rule, so they now have rules of their own at low severity. It also\u2026",
         "The benchmark's T1 server uses a generated token secret, not a fixed one."
       ],
-      "changes": [
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx image quant MODEL TIER -o OUT: hyprslug for hnx0xv2image. The whole fused model -- image tower, projector and text model (LFM2.5, Qwen3.5 or Brewer) -- goes into one GGUF (general.architecture = hnx0xv2image-fused) and is packed at any hyprslug tier, sub-bit ones included\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "hnx prot holds a Hyprland session unlocked while the screen is dark. Hyprland never locks by itself; hypridle does (running hyprlock, loginctl lock-session or a Quickshell lock), and so can Quickshell's own IdleMonitor. A logind idle inhibitor is held for hypridle, which is\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u26a1",
-          "label": "performance",
-          "category": "Performance",
-          "text": "hypernix-t1 runner start was slow because the model list behind it (GET /hyperlink/models) opened every GGUF on disk, twice each, on every call, reading 150k-entry tokenizer arrays one item at a time. Arrays are now read in bulk (about 0.24 s to 0.07 s for a Qwen3-sized\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Raised dependency floors that allowed versions with known advisories: Pillow>=13 (from 11, including a critical one), cryptography>=49 (from 42), python-multipart>=0.0.31 (from 0.0.9), transformers>=5.10 (from 4.44), pillow-heif>=1.3, pydantic>=2.4, python-dotenv>=1.2.2\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Fixed the T1 audit in the security scan, whose findings in tests and examples were filed by GitHub as high alerts (59 of the 60). It reported them at level \"note\", but GitHub takes an alert's severity from the rule, so they now have rules of their own at low severity. It also\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "The benchmark's T1 server uses a generated token secret, not a fixed one.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "HyperLink for iOS signed itself out on connecting keyless, the usual way in over Tailscale: the server refused keyless chats with 401 AUTH_MISSING_CREDENTIALS, and the app read every 401 AUTH as a revoked device. The server now answers 403 AUTH_INSUFFICIENT_SCOPE (so the builds\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "HyperLink for iOS crashed (index out of range) when it connected somewhere else while a request was still waiting on another address -- away from home, the LAN address at the front of the list takes its full timeout to fail. A request now uses a copy of the list, and one\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "The model picker of hypernix-t1 runner start froze: it fetched the list in its key loop, so nothing was drawn until the first answer and keys went unread during each refresh. It fetches on a thread of its own.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx0xv2image refused a Brewer folder straight from a training run (no config.json, as HyperNix.3.1-mini's beta is uploaded) and a Brewer .pt; it reads them the way the GGUF exporter does. A Brewer with a real tokenizer was saved without it and could not be loaded again.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hyprslug given a folder it cannot read says what it reads, instead of IsADirectoryError.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "The wiki's \"current version\" lines named the previous release, and a re-run release added a second, empty section to the release timeline. scripts/sync_wiki_versions.py keeps those lines and the release runs it; the timeline step replaces a version's section.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udce6",
-          "label": "packaging",
-          "category": "Dependencies and Packaging",
-          "text": "See Security for the raised floors. torch stays at >=1.13 and the legacy-torch extra keeps its floors, both for old Intel Macs (and guarded by tests/repo/test_install_pin.py). npm and Bun lockfiles audit clean.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "Changelog guide v2.2.1 is followed: the format tests and the site's legend know Caveats, Notes and \ud83d\udec8.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "A slow model list (pty), the inspect cache, Brewer from a training run, hyprslug on fused models (Brewer and LFM2) and hnx image quant, the Hyprland lock guard against a faked session, the iOS client's endpoint copy and re-pair rule, the wiki version lines, and the T1 audit's\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "The iOS changes were checked against the Swift source, not built: there is no Xcode here.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "The Hyprland lock guard was tested against a faked Hyprland session, not a running one.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "GitHub's code-scanning and Dependabot alerts could not be read from here (403); the fixes follow the security scan's own SARIF output and an OSV check of every dependency floor. CodeQL's alerts were not seen.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8a4",

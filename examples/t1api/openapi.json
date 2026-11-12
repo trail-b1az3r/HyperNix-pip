@@ -1,6 +1,68 @@
 {
   "components": {
     "schemas": {
+      "AccessLevelRequest": {
+        "description": "Grant a key an access level (0.72.9): ``waiter serv -Pro KEY -L N``.",
+        "properties": {
+          "access_level": {
+            "maximum": 9.0,
+            "minimum": 1.0,
+            "title": "Access Level",
+            "type": "integer"
+          },
+          "key": {
+            "minLength": 8,
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "access_level"
+        ],
+        "title": "AccessLevelRequest",
+        "type": "object"
+      },
+      "AccessLevelResponse": {
+        "properties": {
+          "access_level": {
+            "title": "Access Level",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "key_id": {
+            "title": "Key Id",
+            "type": "string"
+          },
+          "previous_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Level"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key_id",
+          "access_level",
+          "previous_level",
+          "key",
+          "request_id"
+        ],
+        "title": "AccessLevelResponse",
+        "type": "object"
+      },
       "AddBalanceRequest": {
         "properties": {
           "account_id": {
@@ -1050,6 +1112,28 @@
           "outer"
         ],
         "title": "ChatRingResponse",
+        "type": "object"
+      },
+      "ClientRequest": {
+        "properties": {
+          "client": {
+            "description": "The IP address.",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Client",
+            "type": "string"
+          },
+          "reason": {
+            "default": "jailed by an administrator",
+            "maxLength": 200,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client"
+        ],
+        "title": "ClientRequest",
         "type": "object"
       },
       "CompactRequest": {
@@ -2164,6 +2248,22 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HandshakeRequest": {
+        "properties": {
+          "public_key": {
+            "description": "The client's X25519 public key, 32 bytes, base64url.",
+            "maxLength": 64,
+            "minLength": 40,
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "title": "HandshakeRequest",
+        "type": "object"
+      },
       "HardwareResponse": {
         "description": "One sample of what the machine is doing.\n\nEvery measurement is optional and `unavailable` says what could not\nbe read. A snapshot that invented a zero would be a dashboard\nconfidently reporting an overloaded machine as idle.",
         "properties": {
@@ -3125,10 +3225,16 @@
             "type": "integer"
           },
           "max_tokens": {
-            "default": 512,
-            "minimum": 1.0,
-            "title": "Max Tokens",
-            "type": "integer"
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
           },
           "mode": {
             "default": "chain",
@@ -6194,6 +6300,11 @@
             ],
             "title": "Context Length"
           },
+          "cpu_moe": {
+            "default": 0,
+            "title": "Cpu Moe",
+            "type": "integer"
+          },
           "gpu_layers": {
             "anyOf": [
               {
@@ -6204,6 +6315,11 @@
               }
             ],
             "title": "Gpu Layers"
+          },
+          "kv_on_cpu": {
+            "default": false,
+            "title": "Kv On Cpu",
+            "type": "boolean"
           },
           "mmproj": {
             "anyOf": [
@@ -8765,7 +8881,7 @@
   "info": {
     "description": "Controlled gateway into HyperNix-pip. The client requests an operation; the server decides what exists, what's available, and how much is left. See wiki/T1-API.md for the full contract.",
     "title": "HyperNix T1 API",
-    "version": "1.1.26.10.2.0"
+    "version": "1.2.26.11.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -9069,6 +9185,223 @@
         ]
       }
     },
+    "/atc/handshake": {
+      "post": {
+        "description": "Start an encrypted session. The answer is signed by the server's\nidentity key (the T2C key); check ``server_fingerprint`` against the\none you pinned before trusting it.",
+        "operationId": "handshake_atc_handshake_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandshakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Handshake Atc Handshake Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Handshake",
+        "tags": [
+          "atc"
+        ]
+      }
+    },
+    "/atc/jail": {
+      "post": {
+        "operationId": "jail_atc_jail_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Jail Atc Jail Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Jail",
+        "tags": [
+          "atc"
+        ]
+      }
+    },
+    "/atc/release": {
+      "post": {
+        "operationId": "release_atc_release_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Release Atc Release Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release",
+        "tags": [
+          "atc"
+        ]
+      }
+    },
+    "/atc/status": {
+      "get": {
+        "operationId": "status_atc_status_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status Atc Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "atc"
+        ]
+      }
+    },
     "/audit": {
       "get": {
         "operationId": "list_audit_events_audit_get",
@@ -9258,6 +9591,66 @@
         "summary": "List Audit Events",
         "tags": [
           "audit"
+        ]
+      }
+    },
+    "/auth/t1/admin/access-level": {
+      "post": {
+        "description": "Grant a key an access level, 1-9 (``waiter serv -Pro KEY -K ADMIN -L N``).\n\nAdmin only. The grant is the server's record (the key's\n``access_level`` tag), and a T2 key's own suffix is held to it when it\nauthenticates -- so the answer carries the key spelled at its new\nlevel, which is the spelling its holder now uses. Reversible with\n``POST /t1/auth/undo``.",
+        "operationId": "admin_set_access_level_auth_t1_admin_access_level_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessLevelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessLevelResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Set Access Level",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -11404,7 +11797,7 @@
     },
     "/code/create/sandbox/perms{directives}": {
       "get": {
-        "description": "``perms/s2?:=on|s3?:=120``, or ``perms|s1=?;s2?:=on``.\n\nAs with ``/web/v1/config``, everything from the first ``?`` on is the\nquery string to HTTP, so the clause is rebuilt from the path and the\nraw query before it is read. A request that only reads (``s1=?``,\n``s1?=k``) is open to anyone who may read the perms; one that\nchanges something needs an admin key.",
+        "description": "``perms/s2?:=on|s3?:=120``, or ``perms|s1=?;s2?:=on``.\n\nAs with ``/web/v2/config``, everything from the first ``?`` on is the\nquery string to HTTP, so the clause is rebuilt from the path and the\nraw query before it is read. A request that only reads (``s1=?``,\n``s1?=k``) is open to anyone who may read the perms; one that\nchanges something needs an admin key.",
         "operationId": "code_perms_write_code_create_sandbox_perms_directives__get",
         "parameters": [
           {
@@ -22680,10 +23073,10 @@
         ]
       }
     },
-    "/web/v1/I": {
+    "/web/v2/I": {
       "get": {
-        "description": "``/web/v1/I?=query&q?=maxdepth`` \u2014 or ``?q=cats&depth=2``.\n\nThree paths for one endpoint: ``I`` is the documented name, ``i``\nbecause nobody can tell a capital I from a lowercase l in a URL,\nand ``search`` because that is what people type.",
-        "operationId": "web_search_web_v1_I_get",
+        "description": "``/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true``\n\nSearch, return at most ``mx`` results, read and summarise the top\n``sq`` sites (``sq?=1``: only the first), and with ``kpd?=true`` keep\nthe search and the sites' text -- when the operator has turned search\nstorage on, in the format they chose (``hypernix-t1 config web``).",
+        "operationId": "web_search_v2_web_v2_I_get",
         "parameters": [
           {
             "in": "header",
@@ -22722,16 +23115,16 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Web Search",
+        "summary": "Web Search V2",
         "tags": [
           "web"
         ]
       }
     },
-    "/web/v1/ai/config": {
+    "/web/v2/ai/config": {
       "get": {
         "description": "The web settings, for a model acting for its user (as a tool).\n\nReading needs partial admin (a key with write) or admin; so does\nchanging the less risky settings -- ``store_format``, ``max_items``,\n``max_read_sites`` -- when ``ai_config`` allows it. Turning search\nstorage on, and ``ai_config`` itself, need a full admin, because a\nprompt injected into a web page must not be able to start recording\nwhat people search for.",
-        "operationId": "web_ai_config_web_v1_ai_config_get",
+        "operationId": "web_ai_config_web_v2_ai_config_get",
         "parameters": [
           {
             "in": "header",
@@ -22777,7 +23170,7 @@
       },
       "post": {
         "description": "The web settings, for a model acting for its user (as a tool).\n\nReading needs partial admin (a key with write) or admin; so does\nchanging the less risky settings -- ``store_format``, ``max_items``,\n``max_read_sites`` -- when ``ai_config`` allows it. Turning search\nstorage on, and ``ai_config`` itself, need a full admin, because a\nprompt injected into a web page must not be able to start recording\nwhat people search for.",
-        "operationId": "web_ai_config_web_v1_ai_config_post",
+        "operationId": "web_ai_config_web_v2_ai_config_post",
         "parameters": [
           {
             "in": "header",
@@ -22822,10 +23215,10 @@
         ]
       }
     },
-    "/web/v1/config": {
+    "/web/v2/config": {
       "get": {
         "description": "The three settings, and the browsers actually installed.\n\nNever the API key. ``s3`` reports whether one is set and which\nprovider it belongs to, which is everything a caller needs to know\nand nothing it needs to hold.",
-        "operationId": "web_config_read_web_v1_config_get",
+        "operationId": "web_config_read_web_v2_config_get",
         "parameters": [
           {
             "in": "header",
@@ -22870,10 +23263,10 @@
         ]
       }
     },
-    "/web/v1/config/{directives}": {
+    "/web/v2/config/{directives}": {
       "get": {
-        "description": "``/web/v1/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``\n\nEverything from the first ``?`` onwards is the query string as far\nas HTTP is concerned, so the clause is rebuilt from the path\nsegment and the raw query before it is parsed. Changing settings\nover GET is unusual; it is what the documented form is, and the\nroute is admin-gated instead.",
-        "operationId": "web_config_write_web_v1_config__directives__get",
+        "description": "``/web/v2/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``\n\nEverything from the first ``?`` onwards is the query string as far\nas HTTP is concerned, so the clause is rebuilt from the path\nsegment and the raw query before it is parsed. Changing settings\nover GET is unusual; it is what the documented form is, and the\nroute is admin-gated instead.",
+        "operationId": "web_config_write_web_v2_config__directives__get",
         "parameters": [
           {
             "in": "path",
@@ -22927,246 +23320,6 @@
         ]
       }
     },
-    "/web/v1/i": {
-      "get": {
-        "description": "``/web/v1/I?=query&q?=maxdepth`` \u2014 or ``?q=cats&depth=2``.\n\nThree paths for one endpoint: ``I`` is the documented name, ``i``\nbecause nobody can tell a capital I from a lowercase l in a URL,\nand ``search`` because that is what people type.",
-        "operationId": "web_search_web_v1_i_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Web Search",
-        "tags": [
-          "web"
-        ]
-      }
-    },
-    "/web/v1/search": {
-      "get": {
-        "description": "``/web/v1/I?=query&q?=maxdepth`` \u2014 or ``?q=cats&depth=2``.\n\nThree paths for one endpoint: ``I`` is the documented name, ``i``\nbecause nobody can tell a capital I from a lowercase l in a URL,\nand ``search`` because that is what people type.",
-        "operationId": "web_search_web_v1_search_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Web Search",
-        "tags": [
-          "web"
-        ]
-      }
-    },
-    "/web/v1/summarise": {
-      "post": {
-        "description": "Summarise text, a URL, or the results of a search.\n\nWorks with no model loaded. The summary is extractive unless the\nserver has a model to hand \u2014 not as a placeholder but because a\nphone asking for the gist of a page should not have to wait for a\nmodel load, and most servers have not loaded one.",
-        "operationId": "web_summarize_web_v1_summarise_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Web Summarize",
-        "tags": [
-          "web"
-        ]
-      }
-    },
-    "/web/v1/summarize": {
-      "post": {
-        "description": "Summarise text, a URL, or the results of a search.\n\nWorks with no model loaded. The summary is extractive unless the\nserver has a model to hand \u2014 not as a placeholder but because a\nphone asking for the gist of a page should not have to wait for a\nmodel load, and most servers have not loaded one.",
-        "operationId": "web_summarize_web_v1_summarize_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Web Summarize",
-        "tags": [
-          "web"
-        ]
-      }
-    },
-    "/web/v2/I": {
-      "get": {
-        "description": "``/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true``\n\nSearch, return at most ``mx`` results, read and summarise the top\n``sq`` sites (``sq?=1``: only the first), and with ``kpd?=true`` keep\nthe search and the sites' text -- when the operator has turned search\nstorage on, in the format they chose (``hypernix-t1 config web``).",
-        "operationId": "web_search_v2_web_v2_I_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Web Search V2",
-        "tags": [
-          "web"
-        ]
-      }
-    },
     "/web/v2/i": {
       "get": {
         "description": "``/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true``\n\nSearch, return at most ``mx`` results, read and summarise the top\n``sq`` sites (``sq?=1``: only the first), and with ``kpd?=true`` keep\nthe search and the sites' text -- when the operator has turned search\nstorage on, in the format they chose (``hypernix-t1 config web``).",
@@ -23210,6 +23363,102 @@
           }
         },
         "summary": "Web Search V2",
+        "tags": [
+          "web"
+        ]
+      }
+    },
+    "/web/v2/summarise": {
+      "post": {
+        "description": "Summarise text, a URL, or the results of a search.\n\nWorks with no model loaded. The summary is extractive unless the\nserver has a model to hand \u2014 not as a placeholder but because a\nphone asking for the gist of a page should not have to wait for a\nmodel load, and most servers have not loaded one.",
+        "operationId": "web_summarize_web_v2_summarise_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Web Summarize",
+        "tags": [
+          "web"
+        ]
+      }
+    },
+    "/web/v2/summarize": {
+      "post": {
+        "description": "Summarise text, a URL, or the results of a search.\n\nWorks with no model loaded. The summary is extractive unless the\nserver has a model to hand \u2014 not as a placeholder but because a\nphone asking for the gist of a page should not have to wait for a\nmodel load, and most servers have not loaded one.",
+        "operationId": "web_summarize_web_v2_summarize_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Web Summarize",
         "tags": [
           "web"
         ]

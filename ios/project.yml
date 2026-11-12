@@ -204,8 +204,17 @@ targets:
         # by a test, because a stale default here is exactly what shipped
         # the wrong version before -- and a default nobody checks goes
         # stale the first time the T1 version moves.
-        MARKETING_VERSION: "1.1.26.10.2.0"
+        MARKETING_VERSION: "1.2.26.11.0.0"
         TARGETED_DEVICE_FAMILY: "1,2"
+        # HyperLink for the Mac (0.73.0): the same app built with Mac
+        # Catalyst -- ios/scripts/make_macos_dmg.sh, .github/workflows/
+        # macos.yml. Family stays "1,2", so the Mac app scales the iPad
+        # layout rather than switching to the Mac idiom (6), which would
+        # re-lay out every screen. Only a Catalyst destination reads these;
+        # the iPhone build is unchanged.
+        SUPPORTS_MACCATALYST: YES
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 

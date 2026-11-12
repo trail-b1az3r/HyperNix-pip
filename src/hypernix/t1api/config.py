@@ -259,6 +259,16 @@ class T1APIConfig:
     feature_prices_json: str = field(default_factory=lambda: os.environ.get("T1_FEATURE_PRICES", ""))
     # The most instances one POST /inference/relay may rotate through.
     relay_max_instances: int = field(default_factory=lambda: _int_env("T1_RELAY_MAX_INSTANCES", 8))
+    # Used only when a backend does not report its loaded context size.
+    # It still lets the normal Relay planner run instead of bypassing it.
+    relay_default_context_tokens: int = field(
+        default_factory=lambda: _int_env("T1_RELAY_DEFAULT_CONTEXT_TOKENS", 4096)
+    )
+    # A HyperLink answer the context cut off (finish reason "length") is
+    # picked up and continued this many times; 0 leaves it cut.
+    relay_continuations: int = field(
+        default_factory=lambda: _int_env("T1_RELAY_CONTINUATIONS", 2)
+    )
 
     # HyperLink prompts carry a signature (hypernix.hyperlink.signing) from
     # 0.72.8 apps. Off: a signature that is present is checked, and one
@@ -699,6 +709,7 @@ class T1APIConfig:
             "hyperchat_max_queued": self.hyperchat_max_queued,
             "feature_prices": self.feature_prices(),
             "relay_max_instances": self.relay_max_instances,
+            "relay_continuations": self.relay_continuations,
             "hyperlink_require_signed": self.hyperlink_require_signed,
             "hyperlink_default_prompt": self.hyperlink_default_prompt,
             "hyperlink_public_url": self.hyperlink_public_url,

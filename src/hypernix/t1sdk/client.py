@@ -276,6 +276,20 @@ class T1Client:
             idempotent=False,
         )
 
+    def admin_set_access_level(self, key: str, access_level: int) -> dict[str, Any]:
+        """Grant *key* an access level, 1-9 (``waiter serv -Pro KEY -L N``).
+
+        Admin only. The answer's ``key`` is *key* spelled at its new level,
+        which its holder needs: a T2 key states its level in its last
+        character, and the server holds that claim to the grant.
+        """
+        return self._post(
+            "/auth/t1/admin/access-level",
+            body={"key": key, "access_level": int(access_level)},
+            auth=True,
+            idempotent=False,
+        )
+
     # ------------------------------------------------------------------
     # Models
     # ------------------------------------------------------------------

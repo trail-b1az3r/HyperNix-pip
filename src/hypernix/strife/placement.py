@@ -1,0 +1,140 @@
+"""strife.placement — what this machine has, and where the model will run.
+
+The plan states every number separately and never rounds a partial
+placement up to "on the GPU":
+
+* host RAM and how much the model's weights, the decode cache and the
+  KV caches can take of it;
+* each GPU found, its VRAM and compute capability;
+* how many layers run where, and *why* (a request the hardware or this
+  build cannot honour is reported as a fallback reason, not ignored).
+
+``gpu_layers`` puts whole blocks' matrices on a GPU through PyTorch
+(:mod:`.gpu`); a request the machine cannot honour is answered with what
+was placed (possibly 0) and the reason. Platform scope is stated by
+:func:`platform_support`: Linux x86_64 and Windows are the alpha's
+targets; macOS is experimental on Apple M5 or newer only.
+"""
+from __future__ import annotations
+
+import os
+import platform
+import re
+import subprocess  # sysctl, for the Apple chip name
+from typing import Any
+
+from .inspect import ModelReport
+
+__all__ = ["detect", "plan", "platform_support"]
+
+
+def _ram() -> dict[str, int]:
+    try:
+        import psutil
+
+        vm = psutil.virtual_memory()
+        return {"total_bytes": int(vm.total), "available_bytes": int(vm.available)}
+    except Exception:
+        try:
+            pages, size = os.sysconf("SC_PHYS_PAGES"), os.sysconf("SC_PAGE_SIZE")
+            avail = os.sysconf("SC_AVPHYS_PAGES")
+            return {"total_bytes": pages * size, "available_bytes": avail * size}
+        except (ValueError, OSError, AttributeError):
+            return {"total_bytes": 0, "available_bytes": 0}
+
+
+def _gpus() -> list[dict[str, Any]]:
+    """Every GPU :mod:`hypernix.system.gpus` finds, NVIDIA and AMD alike."""
+    try:
+        from ..system import gpus
+
+        cards = gpus.detect()
+    except Exception:
+        return []
+    return [{"index": c.index, "name": c.name, "vendor": str(getattr(c.vendor, "value", c.vendor)),
+             "vram_bytes": int(c.memory_total_mb or 0) * 1024 * 1024,
+             "compute_capability": c.compute} for c in cards]
+
+
+def _apple_chip() -> str:
+    try:
+        out = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True,
+                             text=True, timeout=5)
+        return out.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def platform_support(system: str | None = None, machine: str | None = None,
+                     chip: str | None = None) -> dict[str, Any]:
+    system = system or platform.system()
+    machine = (machine or platform.machine()).lower()
+    if system == "Linux" and machine in ("x86_64", "amd64"):
+        return {"tier": "alpha", "note": "Linux x86_64: an alpha target."}
+    if system == "Windows":
+        return {"tier": "alpha", "note": "Windows: an alpha target."}
+    if system == "Darwin":
+        chip = chip if chip is not None else _apple_chip()
+        match = re.search(r"Apple M(\d+)", chip or "")
+        if match and int(match.group(1)) >= 5:
+            return {"tier": "experimental", "note": f"{chip}: experimental in this alpha."}
+        return {"tier": "unsupported",
+                "note": f"{chip or 'This Mac'}: Strife alpha supports Apple M5 or newer only "
+                        "(experimentally). It may run on the CPU path, but it is not tested or "
+                        "supported here."}
+    return {"tier": "untested", "note": f"{system} {machine}: not an alpha target; the CPU "
+                                        "path may work but is untested."}
+
+
+def detect() -> dict[str, Any]:
+    return {"os": f"{platform.system()} {platform.release()}", "machine": platform.machine(),
+            "python": platform.python_version(), "cpu_count": os.cpu_count() or 1,
+            "cpu": platform.processor() or platform.machine(), "ram": _ram(),
+            "gpus": _gpus(), "support": platform_support()}
+
+
+def plan(report: ModelReport, model_plan: Any = None, *, n_ctx: int, gpu_layers: int = 0,
+         max_sessions: int = 1, hardware: dict[str, Any] | None = None,
+         backend: str = "cpu-numpy", gpu: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Where everything goes. *model_plan* is the :class:`~.archs.Plan`
+    (read from ``report.path`` when not given)."""
+    hw = hardware or detect()
+    from .model import state_bytes
+
+    if model_plan is None:
+        from .archs import build_plan
+        from .inspect import read_gguf, shapes_of
+
+        gguf, _ = read_gguf(report.path)
+        assert gguf is not None
+        model_plan = build_plan(gguf.metadata, shapes_of(gguf))
+    state = state_bytes(model_plan, n_ctx)
+    reasons: list[str] = []
+    gpu = gpu or {}
+    used = int(gpu.get("layers_used", 0))
+    reasons.extend(gpu.get("reasons", []))
+    if gpu_layers and not used and not reasons:
+        reasons.append("no GPU was found, so every layer runs on the CPU" if not hw["gpus"]
+                       else "no layer was placed on a GPU")
+    avail = int(hw["ram"].get("available_bytes") or 0)
+    if avail and report.weight_bytes > avail:
+        reasons.append(f"the weights ({report.weight_bytes / 2**30:.1f} GiB) are larger than "
+                       f"free RAM ({avail / 2**30:.1f} GiB); they stay memory-mapped and are "
+                       "read from disk as needed, which is slow")
+    per_session = state["total"] + state["checkpoints_max"]
+    return {
+        "backend": backend,
+        "layers_total": model_plan.n_layers, "gpu_layers_requested": int(gpu_layers),
+        "gpu_layers_used": used, "cpu_layers": model_plan.n_layers - used,
+        "gpu_device": gpu.get("device", ""), "gpu_name": gpu.get("name", ""),
+        "gpu_bytes": int(gpu.get("bytes", 0)), "gpu_free_bytes": int(gpu.get("free_bytes", 0)),
+        "gpu_total_bytes": int(gpu.get("total_bytes", 0)),
+        "weights_mapped_bytes": report.weight_bytes,
+        "kv_cache_bytes_per_session": state["kv_cache"],
+        "recurrent_state_bytes_per_session": state["conv_state"] + state["recurrent_state"]
+        + state["checkpoints_max"],
+        "state_bytes_per_session": per_session,
+        "kv_cache_bytes_max": per_session * max(1, max_sessions),
+        "peak_vram_bytes": int(gpu.get("bytes", 0)),
+        "fallback_reasons": reasons, "hardware": hw,
+    }
