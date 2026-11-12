@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "de2291144406bcff3757ffb9f643227416f4bb7c",
+  "commit": "d8044710e19767f0814c86f05c3c514a8116edc5",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -100,10 +100,10 @@
           "api_changes": []
         },
         {
-          "sha": "ede2f627",
-          "date": "2026-07-26",
-          "author": "Ray0ffire",
-          "subject": "Add LICENSE-betaversionofit file",
+          "sha": "f6897ceb",
+          "date": "2026-06-29",
+          "author": "minerofthesoal",
+          "subject": "Replace entire repository with new local version",
           "api_changes": []
         }
       ]
@@ -21384,7 +21384,7 @@
     {
       "module": "hypernix.interfaces.sandbox",
       "source": "src/hypernix/interfaces/sandbox.py",
-      "line_count": 415,
+      "line_count": 420,
       "summary": "``hnx sandbox`` (``hnx sb``) \u2014 run a command shut inside one directory.",
       "api": [
         {
@@ -21485,6 +21485,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "f0288e97",
+          "date": "2026-11-12",
+          "author": "Rayla",
+          "subject": "Document intentional sandbox subprocess boundary for Semgrep",
+          "api_changes": []
+        },
         {
           "sha": "e8ffe9d9",
           "date": "2026-11-04",
@@ -66276,14 +66283,14 @@
         {
           "kind": "function",
           "name": "usage_by",
-          "signature": "def usage_bygroup_by: str=Query(..., description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
+          "signature": "def usage_bygroup_by: str=Query(..., description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
           "line": 183,
           "doc": "\"Usage by model / key / server / module / user / account\", as one endpoint rather than six near-identical ones."
         },
         {
           "kind": "function",
           "name": "usage_cost",
-          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
+          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
           "line": 246,
           "doc": "Actual cost with optional forecast \u2014 totals, date ranges, and per-model/per-server breakdowns in one shape."
         },
