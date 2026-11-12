@@ -43,6 +43,15 @@ context cut off, and HyperNix0xV3 arrives behind `brew new -E`. The fixes
 from the `create` branch are merged in. A pre-alpha is for trying things
 out, not for a server other people depend on.
 
+### Breaking Changes
+
+❌ **`hnx chat` never downloads a model on its own.** `-M PATH` takes a model
+  on this machine: a folder for an unquantised model, or a `.gguf` file.
+  `-r HF_ID` downloads that Hugging Face model, and is the only option that
+  downloads. With neither, chat exits and says so. It used to download
+  `ray0rf1re/hyper-nix.1` by default, and to re-download into a `--model-dir`
+  that was missing or incomplete.
+
 ### Added
 
 ๋࣭⭑ **Strife** (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference
@@ -138,6 +147,13 @@ out, not for a server other people depend on.
 
 🐛 A refusal from the runner named LM Studio ("LM Studio returned HTTP ...").
   It now names the HyperNix runner.
+
+𖢥 **The relay refused long prompts in a 512-token context.** Every hop
+  repeats the instructions and the latest message, so when either was long
+  nothing else fit, and a 2,200-token prompt that worked at 1,024 tokens was
+  refused at 512. A long latest message is now read in parts like the rest of
+  the conversation and then answered. Long instructions are read too, with
+  their opening kept on every hop. It works down to 384 tokens.
 
 🐛 `get_origin` no longer fails on an app without a T1 config.
 

@@ -1610,8 +1610,13 @@ def preheat(
     device: str | None = None,
     dtype: str = "float32",
     quiet: bool = False,
+    allow_download: bool = True,
 ) -> NeoOven:
     """Download (if necessary) + load a HyperNix snapshot into a :class:`NeoOven`.
+
+    With ``allow_download=False`` nothing is fetched: *local_dir* must hold
+    a complete model already, and a missing or incomplete one raises
+    :class:`FileNotFoundError` instead of reaching for the Hub.
 
     Drop-in replacement for ``old_oven.preheat``; returns a :class:`NeoOven`
     instead of a ``CodeOven`` — the API is fully compatible.
@@ -1632,7 +1637,18 @@ def preheat(
         if brewer_adapter.is_brewer_checkpoint(local_dir):
             return preheat_brewed(local_dir, device=device, dtype=dtype)
 
-    if local_dir is not None:
+    if not allow_download:
+        if local_dir is None:
+            raise FileNotFoundError("no model folder was given, and downloading is off")
+        ld = Path(local_dir)
+        if not ld.exists():
+            raise FileNotFoundError(f"{ld} does not exist")
+        try:
+            verify_snapshot(ld)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(f"{ld} is not a complete model folder: {exc}") from exc
+        path = ld
+    elif local_dir is not None:
         ld = Path(local_dir)
         try:
             if ld.exists():

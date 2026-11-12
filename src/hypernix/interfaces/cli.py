@@ -1273,13 +1273,19 @@ def _run_chat(raw: list[str]) -> int:
 
     p = argparse.ArgumentParser(
         prog="hypernix chat",
-        description="Chat with any HyperNix-family model.",
+        description="Chat with a model that is on this machine (-M), or download one "
+                    "from Hugging Face by naming it (-r). Without -r, nothing is ever "
+                    "downloaded.",
     )
-    p.add_argument("--repo-id", default="ray0rf1re/hyper-nix.1",
-                   help="Short name or full HF repo id.")
+    p.add_argument("-r", "--repo-id", default=None, metavar="HF_ID",
+                   help="Download this Hugging Face model (a repo id such as "
+                        "org/name, or a short name) and chat with it. The only option "
+                        "that downloads.")
     p.add_argument("--revision", default=None)
-    p.add_argument("--model-dir", default=None,
-                   help="Reuse an existing local snapshot instead of downloading.")
+    p.add_argument("-M", "--model-dir", "--model", dest="model_dir", default=None,
+                   metavar="PATH",
+                   help="A model on this machine: a folder for an unquantised model, "
+                        "or a .gguf file. Never downloads.")
     p.add_argument("--token", default=None)
     p.add_argument("--device", default=None)
     p.add_argument("--dtype", default="float32",
@@ -1313,6 +1319,22 @@ def _run_chat(raw: list[str]) -> int:
 
     ns = p.parse_args(raw)
 
+    # Chat never downloads on its own: a model comes from this machine (-M)
+    # or from an explicit request for a Hugging Face model (-r).
+    if not ns.model_dir and not ns.repo_id:
+        print("hypernix chat: no model given, and chat never downloads one on its own.\n"
+              "  -M PATH    a model on this machine: a folder (unquantised) or a .gguf file\n"
+              "  -r HF_ID   download a Hugging Face model by its id, e.g. -r org/name",
+              file=sys.stderr)
+        return 2
+    if ns.model_dir and not ns.repo_id and not os.path.exists(os.path.expanduser(ns.model_dir)):
+        print(f"hypernix chat: {ns.model_dir} does not exist. -M takes a model folder or a "
+              ".gguf file on this machine; to download a model, name it with -r HF_ID.",
+              file=sys.stderr)
+        return 2
+    if ns.model_dir:
+        ns.model_dir = os.path.expanduser(ns.model_dir)
+
     element_registry = None
     selected_elements: list[str] = []
     if ns.elements is not None or ns.element_group:
@@ -1342,10 +1364,20 @@ def _run_chat(raw: list[str]) -> int:
         oven = None
         target = gguf_model
     else:
-        oven = preheat(
-            repo_id=ns.repo_id, revision=ns.revision, local_dir=ns.model_dir,
-            token=ns.token, device=ns.device, dtype=ns.dtype, quiet=ns.quiet,
-        )
+        try:
+            oven = preheat(
+                repo_id=ns.repo_id or "", revision=ns.revision, local_dir=ns.model_dir,
+                token=ns.token, device=ns.device, dtype=ns.dtype, quiet=ns.quiet,
+                # Only -r may reach the Hub.
+                allow_download=bool(ns.repo_id),
+            )
+        except FileNotFoundError as exc:
+            if ns.repo_id:
+                print(f"hypernix chat: could not get {ns.repo_id}: {exc}", file=sys.stderr)
+            else:
+                print(f"hypernix chat: {exc}. Nothing was downloaded; to download a model, "
+                      "name it with -r HF_ID.", file=sys.stderr)
+            return 1
         target = oven
 
     attachment = None

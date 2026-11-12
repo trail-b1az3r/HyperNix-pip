@@ -13,18 +13,25 @@
       "heading": "0.73.0.dev2 \u2014 2026-11-10",
       "date": "2026-11-10",
       "title": "",
-      "summary": "Strife (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference runtime, hnx strife and hypernix.strife. It reads the GGUF and runs the model itself: no llama.cpp process, no T1 key, no network.",
+      "summary": "hnx chat never downloads a model on its own. -M PATH takes a model on this machine: a folder for an unquantised model, or a .gguf file. -r HF_ID downloads that Hugging Face model, and is the only option that downloads. With neither, chat exits and says so. It used to download\u2026",
       "patch": null,
       "headline": "",
       "highlights": [
+        "hnx chat never downloads a model on its own. -M PATH takes a model on this machine: a folder for an unquantised model, or a .gguf file. -r HF_ID downloads that Hugging Face model, and is the only option that downloads. With neither, chat exits and says so. It used to download\u2026",
         "Strife (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference runtime, hnx strife and hypernix.strife. It reads the GGUF and runs the model itself: no llama.cpp process, no T1 key, no network.",
         "hnx strife chat MODEL_ID: a terminal screen with saved chats, a context meter, a text area and the mouse. --plain is the line-by-line chat.",
         "Strife on T1 and in HyperLink: the runner has a strife backend (POST /runner/load {\"backend\": \"strife\"}). hypernix.strife.server speaks the OpenAI API, so HyperLink chats are answered by Strife unchanged.",
         "Your own Strife build as a T1 runner: hnx strife build NAME --source CHECKOUT (or --python INTERPRETER) selftests the build in its own interpreter and registers it (--default makes it the one strife loads use). GET /runner/status lists strife_builds. POST /runner/load\u2026",
-        "Relay continuations: a HyperLink answer the model's context cut off (finish reason length) is picked up and continued in a fresh call, up to T1_RELAY_CONTINUATIONS times (default 2). The cut answer joins the history, which the relay condenses if it no longer fits, and the model\u2026",
-        "Strife native kernels: hnx strife kernels build compiles one C file for your CPU (AVX-512, AVX2 or plain C, with OpenMP threads) and checks every tensor type against the Python decoders before Strife uses it. With them, a weight is multiplied while still quantised, so nothing\u2026"
+        "Relay continuations: a HyperLink answer the model's context cut off (finish reason length) is picked up and continued in a fresh call, up to T1_RELAY_CONTINUATIONS times (default 2). The cut answer joins the history, which the relay condenses if it no longer fits, and the model\u2026"
       ],
       "changes": [
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Breaking Changes",
+          "text": "hnx chat never downloads a model on its own. -M PATH takes a model on this machine: a folder for an unquantised model, or a .gguf file. -r HF_ID downloads that Hugging Face model, and is the only option that downloads. With neither, chat exits and says so. It used to download\u2026",
+          "details": []
+        },
         {
           "symbol": "\u0e4b\u08ed\u2b51",
           "label": "major",
@@ -126,6 +133,13 @@
           "label": "fix",
           "category": "Fixed",
           "text": "A refusal from the runner named LM Studio (\"LM Studio returned HTTP ...\"). It now names the HyperNix runner.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "The relay refused long prompts in a 512-token context. Every hop repeats the instructions and the latest message, so when either was long nothing else fit, and a 2,200-token prompt that worked at 1,024 tokens was refused at 512. A long latest message is now read in parts like\u2026",
           "details": []
         },
         {

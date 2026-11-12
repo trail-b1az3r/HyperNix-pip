@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "78f6fcd413ecc638d94ec33f128c81f6337ee38c",
+  "commit": "44b43caad37b6de98915e765a787372b69eb90cb",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -8981,6 +8981,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "44b43caa",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Lint: explicit strict= on the 3H interpreter's zips; regenerated docs data",
+          "api_changes": []
+        },
+        {
           "sha": "bd1a7587",
           "date": "2026-11-11",
           "author": "Rayla",
@@ -17424,14 +17431,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1745,
+      "line_count": 1776,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1471,
+          "line": 1503,
           "doc": ""
         }
       ],
@@ -25309,7 +25316,7 @@
     {
       "module": "hypernix.models.neo_oven",
       "source": "src/hypernix/models/neo_oven.py",
-      "line_count": 1531,
+      "line_count": 1546,
       "summary": "neo_oven \u2014 Unified, production-ready model management, generation, and data utilities.",
       "api": [
         {
@@ -25586,7 +25593,7 @@
         {
           "kind": "function",
           "name": "preheat",
-          "signature": "def preheatrepo_id: str='ray0rf1re/hyper-nix.1', *, local_dir: Path | str | None=None, revision: str | None=None, token: str | None=None, device: str | None=None, dtype: str='float32', quiet: bool=False -> NeoOven",
+          "signature": "def preheatrepo_id: str='ray0rf1re/hyper-nix.1', *, local_dir: Path | str | None=None, revision: str | None=None, token: str | None=None, device: str | None=None, dtype: str='float32', quiet: bool=False, allow_download: bool=True -> NeoOven",
           "line": 1604,
           "doc": "Download (if necessary) + load a HyperNix snapshot into a :class:`NeoOven`."
         },
@@ -25594,56 +25601,56 @@
           "kind": "function",
           "name": "new_oven",
           "signature": "def new_ovenout_dir: Path | str, *, arch: str='hypernix', vocab_size: int=32000, hidden_size: int=1024, intermediate_size: int=4096, num_hidden_layers: int=16, num_attention_heads: int=16, num_key_value_heads: int | None=None, max_position_embeddings: int=2048, tokenizer_source: Path | str | None=None, device: str | None=None, dtype: str='float32', seed: int | None=None -> NeoOven",
-          "line": 1659,
+          "line": 1675,
           "doc": "Create a fresh untrained :class:`NeoOven` from an architecture preset."
         },
         {
           "kind": "function",
           "name": "bake_code",
           "signature": "def bake_codesource: NeoOven | Path | str, prompt: str, **kwargs: Any -> str",
-          "line": 1703,
+          "line": 1719,
           "doc": "Convenience: accepts a preheated NeoOven or a snapshot path/URL."
         },
         {
           "kind": "function",
           "name": "fill_middle",
           "signature": "def fill_middlesource: NeoOven | Path | str, prefix: str, suffix: str, **kwargs: Any -> str",
-          "line": 1709,
+          "line": 1725,
           "doc": "Convenience FIM API \u2014 accepts a preheated NeoOven or a snapshot path."
         },
         {
           "kind": "function",
           "name": "load_pt",
           "signature": "def load_ptpt_path: Path | str, *, device: str | None=None -> NeoOven",
-          "line": 1715,
+          "line": 1731,
           "doc": "Rehydrate a NeoOven from a ``save_pt`` bundle."
         },
         {
           "kind": "function",
           "name": "plot_loss_curve",
           "signature": "def plot_loss_curvepairs: Sequence[tuple[int, float]], out_path: Path | str, *, title: str='Training loss' -> Path",
-          "line": 1745,
+          "line": 1761,
           "doc": "Alias for new_fridge.plot_loss_curve \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "plot_score_distribution",
           "signature": "def plot_score_distributionscores: Sequence[float], out_path: Path | str, *, title: str='Judge score distribution', bins: int=20 -> Path",
-          "line": 1750,
+          "line": 1766,
           "doc": "Alias for new_fridge.plot_score_distribution \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "plot_round_losses",
           "signature": "def plot_round_lossesrounds: Sequence[Sequence[tuple[int, float]]], out_path: Path | str, *, title: str='Multi-round training loss', round_labels: Sequence[str] | None=None -> Path",
-          "line": 1755,
+          "line": 1771,
           "doc": "Alias for new_fridge.plot_round_losses \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "synthesize_judge_corpus",
           "signature": "def synthesize_judge_corpusn: int, out_path: Path | str, *, seed: int | None=0, good_ratio: float=0.5 -> Path",
-          "line": 1761,
+          "line": 1777,
           "doc": "Alias for the old mediocre_fridge.synthesize_judge_corpus."
         }
       ],
@@ -38933,21 +38940,21 @@
     {
       "module": "hypernix.runtime.relay",
       "source": "src/hypernix/runtime/relay.py",
-      "line_count": 912,
+      "line_count": 974,
       "summary": "Read prompts longer than a model's context, with small-context instances in series.",
       "api": [
         {
           "kind": "function",
           "name": "estimate_tokens",
           "signature": "def estimate_tokenstext: str -> int",
-          "line": 118,
+          "line": 122,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "ContextTooSmall",
           "signature": "class ContextTooSmall",
-          "line": 122,
+          "line": 126,
           "doc": "The context cannot hold the instructions, the notes and any document.",
           "methods": []
         },
@@ -38955,7 +38962,7 @@
           "kind": "class",
           "name": "Reply",
           "signature": "class Reply",
-          "line": 130,
+          "line": 134,
           "doc": "One instance's answer, what it cost, and the original response envelope.",
           "methods": []
         },
@@ -38963,46 +38970,46 @@
           "kind": "function",
           "name": "openai_instance",
           "signature": "def openai_instanceclient: Any, model: str='', *, temperature: float | None=0.2 -> Instance",
-          "line": 143,
+          "line": 147,
           "doc": "An instance over an OpenAI-compatible client."
         },
         {
           "kind": "function",
           "name": "load_instances",
           "signature": "def load_instancesmodel_path: str, *, instances: int=2, context_tokens: int=4096, port: int=8790, avoid_ports: Sequence[int]=(), model_id: str='', **load_kwargs: Any -> tuple[Any, list[Instance]]",
-          "line": 169,
+          "line": 173,
           "doc": "Start *instances* copies of a GGUF, each with *context_tokens* of context, and return ``(pool, instances)``."
         },
         {
           "kind": "function",
           "name": "split",
           "signature": "def splittext: str, chunk_tokens: int -> list[str]",
-          "line": 199,
+          "line": 203,
           "doc": "*text* in parts of at most *chunk_tokens* (estimated), cut at paragraph breaks where it can, then sentences, then anywhere."
         },
         {
           "kind": "class",
           "name": "RelayPlan",
           "signature": "class RelayPlan",
-          "line": 234,
+          "line": 238,
           "doc": "What a relay will do, and its worst-case token cost, before it runs.",
           "methods": [
             {
               "name": "single",
               "signature": "def singleself -> bool",
-              "line": 257,
+              "line": 261,
               "doc": ""
             },
             {
               "name": "overhead_factor",
               "signature": "def overhead_factorself -> float",
-              "line": 261,
+              "line": 265,
               "doc": "Relay tokens over one-big-read tokens: the price of the context."
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 266,
+              "line": 270,
               "doc": ""
             }
           ]
@@ -39011,27 +39018,27 @@
           "kind": "function",
           "name": "default_answer_tokens",
           "signature": "def default_answer_tokenscontext_tokens: int -> int",
-          "line": 290,
+          "line": 294,
           "doc": "How long an answer is when nobody says: a quarter of what the context can use, between 32 and 512 tokens."
         },
         {
           "kind": "function",
           "name": "plan",
           "signature": "def plandocument: str, question: str, *, context_tokens: int, instances: int=1, mode: str=CHAIN, notes_tokens: int | None=None, answer_tokens: int | None=None -> RelayPlan",
-          "line": 296,
+          "line": 300,
           "doc": "Cut *document* into parts that fit *context_tokens* alongside the question, the instructions and the notes, and count the cost."
         },
         {
           "kind": "class",
           "name": "Hop",
           "signature": "class Hop",
-          "line": 383,
+          "line": 387,
           "doc": "One call: which instance made it, what it was for, what it cost.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 394,
+              "line": 398,
               "doc": ""
             }
           ]
@@ -39040,43 +39047,43 @@
           "kind": "class",
           "name": "RelayResult",
           "signature": "class RelayResult",
-          "line": 403,
+          "line": 407,
           "doc": "",
           "methods": [
             {
               "name": "input_tokens",
               "signature": "def input_tokensself -> int",
-              "line": 416,
+              "line": 420,
               "doc": ""
             },
             {
               "name": "output_tokens",
               "signature": "def output_tokensself -> int",
-              "line": 420,
+              "line": 424,
               "doc": ""
             },
             {
               "name": "requests",
               "signature": "def requestsself -> int",
-              "line": 424,
+              "line": 428,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 427,
+              "line": 431,
               "doc": ""
             },
             {
               "name": "finish_reason",
               "signature": "def finish_reasonself -> str",
-              "line": 439,
+              "line": 443,
               "doc": ""
             },
             {
               "name": "has_tool_calls",
               "signature": "def has_tool_callsself -> bool",
-              "line": 446,
+              "line": 450,
               "doc": ""
             }
           ]
@@ -39085,31 +39092,31 @@
           "kind": "class",
           "name": "Relay",
           "signature": "class Relay",
-          "line": 453,
+          "line": 457,
           "doc": "Several copies of one small-context model, reading as one.",
           "methods": [
             {
               "name": "plan",
               "signature": "def planself, document: str, question: str -> RelayPlan",
-              "line": 487,
+              "line": 491,
               "doc": ""
             },
             {
               "name": "run",
               "signature": "def runself, document: str, question: str -> RelayResult",
-              "line": 492,
+              "line": 496,
               "doc": ""
             },
             {
               "name": "run_messages",
               "signature": "def run_messagesself, messages: Sequence[dict[str, Any]] -> RelayResult",
-              "line": 508,
+              "line": 512,
               "doc": ":meth:`_run_messages_once`, continued while the context cuts the answer."
             },
             {
               "name": "stream_messages",
               "signature": "def stream_messagesself, messages: Sequence[dict[str, Any]], *, stream_call: Callable[[list[dict[str, Any]], int, int], Any], on_chunk: Callable[[dict[str, Any]], None], cancelled: Callable[[], bool]=lambda: False -> RelayResult",
-              "line": 646,
+              "line": 652,
               "doc": "Run chat through Relay and stream the final answer hop as it arrives."
             }
           ]

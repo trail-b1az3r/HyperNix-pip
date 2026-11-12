@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 266539,
-  "code_files": 898,
+  "total_lines": 266752,
+  "code_files": 899,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -29,11 +29,11 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1745
+      "lines": 1776
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1531
+      "lines": 1546
     },
     {
       "path": "src/hypernix/quant/hyprslug.py",
@@ -116,23 +116,23 @@
       "lines": 999
     },
     {
-      "path": "src/hypernix/models/old_oven.py",
-      "lines": 963
+      "path": "src/hypernix/runtime/relay.py",
+      "lines": 974
     },
     {
-      "path": "src/hypernix/training/train.py",
-      "lines": 957
+      "path": "src/hypernix/models/old_oven.py",
+      "lines": 963
     }
   ],
   "contributors": [
     {
       "author": "Claude",
-      "additions": 261097,
-      "deletions": 19280,
-      "net": 241817,
-      "changes": 280377,
-      "commits": 318,
-      "files": 1775
+      "additions": 261101,
+      "deletions": 19285,
+      "net": 241816,
+      "changes": 280386,
+      "commits": 319,
+      "files": 1777
     },
     {
       "author": "Ray0ffire",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "78f6fcd413ecc638d94ec33f128c81f6337ee38c",
+  "commit": "44b43caad37b6de98915e765a787372b69eb90cb",
   "generated_at": null
 }

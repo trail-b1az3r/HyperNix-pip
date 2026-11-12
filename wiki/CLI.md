@@ -670,10 +670,10 @@ Shortcut: `hypernix --auto-oven --prompt "..."` == `hypernix oven --auto --promp
 
 ```bash
 # Single-turn (scripting).
-hypernix chat --repo-id nix2.5 --message "Capital of France?"
+hypernix chat -r nix2.5 --message "Capital of France?"   # -r downloads; nothing else does
 
 # Interactive REPL.
-hypernix chat --repo-id gemma-4-e4b --system "You are terse."
+hypernix chat -M ~/models/gemma-4-e4b --system "You are terse."   # a folder on this machine
 ```
 
 Same flags as `oven` minus the FIM options, plus `--system` and

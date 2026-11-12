@@ -100,6 +100,10 @@ DIGEST_PROMPT = (
     "help answer the question: facts, names, numbers, quotes worth keeping word for "
     "word. If nothing in it is relevant, say so in one line. Write only the notes."
 )
+#: The question, when the latest message is too long to repeat on every hop.
+LATEST_MESSAGE_QUESTION = (
+    "Answer the user's latest message, which is the last part of the conversation."
+)
 CONTINUE_PROMPT = (
     "Your previous answer stopped because it ran out of room. Continue it exactly "
     "where it stopped: do not repeat anything, do not start over, do not summarise. "
@@ -613,12 +617,8 @@ class Relay:
 
         # The system/developer instructions are sent on every hop, so
         # count them against every hop's question allowance as well.
-        sizing_question = f"{system_prompt}\n\n{question}" if system_prompt else question
-        planned = plan(
-            document, sizing_question, context_tokens=self.context_tokens,
-            instances=len(self.instances), mode=self.mode,
-            notes_tokens=self.notes_tokens, answer_tokens=self.answer_tokens,
-        )
+        system_prompt, question, question_content, planned = self._plan_chat(
+            system_prompt, question, question_content, document)
         result = RelayResult("", planned)
         if planned.single:
             result.answer = self._call(
@@ -724,12 +724,8 @@ class Relay:
                 transcript.append(f"{role}:\n{content}")
         document = "\n\n".join(transcript)
         system_prompt = "\n\n".join(system_parts)
-        sizing_question = f"{system_prompt}\n\n{question}" if system_prompt else question
-        planned = plan(
-            document, sizing_question, context_tokens=self.context_tokens,
-            instances=len(self.instances), mode=self.mode,
-            notes_tokens=self.notes_tokens, answer_tokens=self.answer_tokens,
-        )
+        system_prompt, question, question_content, planned = self._plan_chat(
+            system_prompt, question, question_content, document)
         result = RelayResult("", planned)
         if planned.single:
             result.answer = self._call_stream(
@@ -765,6 +761,88 @@ class Relay:
             stream_call, on_chunk, cancelled,
         )
         return result
+
+    def _plan_chat(self, system_prompt: str, question: str, question_content: Any,
+                   document: str) -> tuple[str, str, Any, RelayPlan]:
+        """Plan a chat; reshape it for a small context only when it has to be."""
+        def planned(system: str, asked: str, text: str) -> RelayPlan:
+            # The instructions go out on every hop, so they are sized with the question.
+            return plan(text, f"{system}\n\n{asked}" if system else asked,
+                        context_tokens=self.context_tokens, instances=len(self.instances),
+                        mode=self.mode, notes_tokens=self.notes_tokens,
+                        answer_tokens=self.answer_tokens)
+
+        try:
+            first = planned(system_prompt, question, document)
+            if first.single:
+                return system_prompt, question, question_content, first
+        except ContextTooSmall:
+            pass
+        system_prompt, question, question_content, document = self._fit_question(
+            system_prompt, question, question_content, document)
+        return system_prompt, question, question_content, planned(system_prompt, question, document)
+
+    def _question_budget(self) -> int:
+        """Tokens the part every hop repeats (instructions + question) may take.
+
+        What is left of the context after the hop's own framing, the notes
+        in and out, and either a minimal part of the document or the
+        answer, whichever asks for more.
+        """
+        usable = _usable(self.context_tokens)
+        notes = self.notes_tokens if self.notes_tokens is not None \
+            else max(64, self.context_tokens // 6)
+        answer = self.answer_tokens if self.answer_tokens is not None \
+            else default_answer_tokens(self.context_tokens)
+        carried = notes if self.mode == CHAIN else 0
+        return min(usable - OVERHEAD_TOKENS - carried - notes - 32,
+                   usable - OVERHEAD_TOKENS - notes - answer)
+
+    def _fit_question(self, system_prompt: str, question: str, question_content: Any,
+                      document: str) -> tuple[str, str, Any, str]:
+        """Make the instructions and the latest message fit a small context.
+
+        Every hop repeats both, so in a 512-token context a long system
+        prompt or a long latest message used to leave no room for anything
+        else and the relay refused. Whatever does not fit is read like the
+        rest of the conversation instead:
+
+        * a long latest message goes to the end of the transcript, and the
+          question becomes a short request to answer it;
+        * long instructions go to its start (so the notes keep what
+          matters in them), and each hop carries only their opening.
+
+        Nothing changes for a chat whose repeated part already fits.
+        """
+        budget = self._question_budget()
+        if budget < 16:
+            return system_prompt, question, question_content, document
+        total = estimate_tokens(f"{system_prompt}\n\n{question}" if system_prompt else question)
+        if total <= budget:
+            return system_prompt, question, question_content, document
+
+        q_tokens = estimate_tokens(question)
+        if q_tokens > budget // 2:
+            document = (f"{document}\n\n" if document else "") + \
+                f"USER (latest message, answer this):\n{question}"
+            question = LATEST_MESSAGE_QUESTION
+            if isinstance(question_content, list):
+                # Images and other non-text parts stay with the question.
+                question_content = [{"type": "text", "text": question}] + [
+                    part for part in question_content
+                    if not (isinstance(part, dict) and part.get("type") in ("text", "input_text"))]
+            else:
+                question_content = question
+            q_tokens = estimate_tokens(question)
+
+        room = budget - q_tokens
+        if system_prompt and estimate_tokens(system_prompt) > room:
+            document = f"INSTRUCTIONS (follow these):\n{system_prompt}\n\n{document}"
+            # Their opening only, and no more than a third of the budget: the
+            # rest of it is what each hop has left for the conversation.
+            keep = min(room - 8, budget // 3)
+            system_prompt = self._clip(system_prompt, keep) if keep >= 16 else ""
+        return system_prompt, question, question_content, document
 
     @staticmethod
     def _content_text(content: Any) -> str:
