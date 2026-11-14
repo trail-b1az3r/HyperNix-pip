@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "e43af79cc57cd17b4ebeba4b566cb918b09c4155",
+  "commit": "8dee1036615a1ba13238eed3617c53ba37ea9334",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -100,10 +100,10 @@
           "api_changes": []
         },
         {
-          "sha": "f6897ceb",
-          "date": "2026-06-29",
-          "author": "minerofthesoal",
-          "subject": "Replace entire repository with new local version",
+          "sha": "ede2f627",
+          "date": "2026-07-26",
+          "author": "Ray0ffire",
+          "subject": "Add LICENSE-betaversionofit file",
           "api_changes": []
         }
       ]
@@ -21384,7 +21384,7 @@
     {
       "module": "hypernix.interfaces.sandbox",
       "source": "src/hypernix/interfaces/sandbox.py",
-      "line_count": 420,
+      "line_count": 421,
       "summary": "``hnx sandbox`` (``hnx sb``) \u2014 run a command shut inside one directory.",
       "api": [
         {
@@ -43516,7 +43516,7 @@
     {
       "module": "hypernix.strife.bench",
       "source": "src/hypernix/strife/bench.py",
-      "line_count": 434,
+      "line_count": 433,
       "summary": "strife.bench \u2014 Strife's benchmark: one GGUF, measured, next to llama.cpp.",
       "api": [
         {
@@ -43632,28 +43632,28 @@
     {
       "module": "hypernix.strife.blasctl",
       "source": "src/hypernix/strife/blasctl.py",
-      "line_count": 88,
+      "line_count": 109,
       "summary": "strife.blasctl \u2014 how many threads BLAS uses, set at run time.",
       "api": [
         {
           "kind": "function",
           "name": "controllable",
           "signature": "def controllable -> bool",
-          "line": 67,
+          "line": 94,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "set_threads",
           "signature": "def set_threadscount: int -> bool",
-          "line": 76,
+          "line": 103,
           "doc": "Hold BLAS to *count* threads. ``False`` when nothing here can do that."
         },
         {
           "kind": "function",
           "name": "get_threads",
           "signature": "def get_threads -> int | None",
-          "line": 92,
+          "line": 119,
           "doc": "The BLAS thread count, when it can be read."
         }
       ],
@@ -44063,7 +44063,7 @@
     {
       "module": "hypernix.strife.engine",
       "source": "src/hypernix/strife/engine.py",
-      "line_count": 446,
+      "line_count": 457,
       "summary": "strife.engine \u2014 load once, serve requests: sessions, streaming, stops, limits.",
       "api": [
         {
@@ -44113,20 +44113,20 @@
             },
             {
               "name": "stream",
-              "signature": "def streamself, prompt: str | None=None, *, messages: list[dict[str, str]] | None=None, session: str | None=None, max_tokens: int=256, stop: list[str] | None=None, sampling: SamplerConfig | None=None, timeout: float | None=None, cancel: threading.Event | None=None, template_vars: dict[str, Any] | None=None, prompt_ids: list[int] | None=None -> Iterator[dict[str, Any]]",
+              "signature": "def streamself, prompt: str | None=None, *, messages: list[dict[str, str]] | None=None, session: str | None=None, max_tokens: int=256, stop: list[str] | None=None, sampling: SamplerConfig | None=None, timeout: float | None=None, cancel: threading.Event | None=None, template_vars: dict[str, Any] | None=None, prompt_ids: list[int] | None=None, ignore_eos: bool=False, timings: bool=False -> Iterator[dict[str, Any]]",
               "line": 249,
               "doc": ""
             },
             {
               "name": "status",
               "signature": "def statusself -> dict[str, Any]",
-              "line": 416,
+              "line": 427,
               "doc": ""
             },
             {
               "name": "close",
               "signature": "def closeself -> None",
-              "line": 428,
+              "line": 439,
               "doc": ""
             }
           ]
@@ -44817,7 +44817,7 @@
     {
       "module": "hypernix.strife.kernels",
       "source": "src/hypernix/strife/kernels.py",
-      "line_count": 462,
+      "line_count": 466,
       "summary": "strife.kernels \u2014 Strife's native kernels: built here, verified, then used.",
       "api": [
         {
@@ -44878,35 +44878,35 @@
           "kind": "function",
           "name": "verify",
           "signature": "def verify -> dict[str, Any]",
-          "line": 437,
+          "line": 441,
           "doc": "Check the built library again, and update what it may be used for."
         },
         {
           "kind": "function",
           "name": "reset",
           "signature": "def reset -> None",
-          "line": 464,
+          "line": 468,
           "doc": "Forget the loaded library (after a build, a removal, or in tests)."
         },
         {
           "kind": "function",
           "name": "load",
           "signature": "def load -> Kernels | None",
-          "line": 471,
+          "line": 475,
           "doc": "The verified kernels for this machine, or ``None`` (numpy is used)."
         },
         {
           "kind": "function",
           "name": "status",
           "signature": "def status -> dict[str, Any]",
-          "line": 507,
+          "line": 511,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "remove",
           "signature": "def remove -> int",
-          "line": 518,
+          "line": 522,
           "doc": "Delete every built kernel library. Returns how many builds were removed."
         }
       ],
@@ -45786,7 +45786,7 @@
     {
       "module": "hypernix.strife.tokenizer",
       "source": "src/hypernix/strife/tokenizer.py",
-      "line_count": 368,
+      "line_count": 375,
       "summary": "strife.tokenizer \u2014 the tokenizer stored in the GGUF, nothing downloaded.",
       "api": [
         {
@@ -45829,7 +45829,7 @@
             {
               "name": "templated_has_bos",
               "signature": "def templated_has_bosself, text: str -> bool",
-              "line": 340,
+              "line": 347,
               "doc": ""
             }
           ]
@@ -45838,19 +45838,19 @@
           "kind": "class",
           "name": "StreamDecoder",
           "signature": "class StreamDecoder",
-          "line": 405,
+          "line": 412,
           "doc": "Token ids in, text out, never splitting a UTF-8 character.",
           "methods": [
             {
               "name": "push",
               "signature": "def pushself, tid: int -> str",
-              "line": 420,
+              "line": 427,
               "doc": ""
             },
             {
               "name": "flush",
               "signature": "def flushself -> str",
-              "line": 427,
+              "line": 434,
               "doc": ""
             }
           ]
@@ -66283,14 +66283,14 @@
         {
           "kind": "function",
           "name": "usage_by",
-          "signature": "def usage_bygroup_by: str=Query(..., description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
+          "signature": "def usage_bygroup_by: str=Query(..., description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
           "line": 183,
           "doc": "\"Usage by model / key / server / module / user / account\", as one endpoint rather than six near-identical ones."
         },
         {
           "kind": "function",
           "name": "usage_cost",
-          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
+          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
           "line": 246,
           "doc": "Actual cost with optional forecast \u2014 totals, date ranges, and per-model/per-server breakdowns in one shape."
         },

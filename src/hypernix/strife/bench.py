@@ -16,9 +16,10 @@ measured, each in a fresh session so none reuses another's prefix:
 
 load        seconds to open the model
 prefill     prompt tokens per second (``-p`` tokens)
-first token seconds from the request to the first generated token
+first token seconds from the request to the first generated token, prefill included
 decode      generated tokens per second, and the time between tokens as a
-            distribution (p50, p90, p99, max)
+            distribution (p50, p90, p99, max). End-of-sequence is ignored,
+            as llama-bench does, so every run decodes ``-n`` tokens
 memory      peak resident memory of this process, the decode cache, and
             device memory when layers are offloaded
 
@@ -95,28 +96,27 @@ def _peak_rss_bytes() -> int:
 
 
 def _one_run(engine: Any, ids: list[int], gen_tokens: int, sampling: Any) -> dict[str, Any]:
-    """One request in a fresh session, with the time of every token."""
+    """One request in a fresh session, with the time of every token.
+
+    The engine times the tokens itself (not the text events, which wait for
+    whole characters), and end-of-sequence is ignored so every run decodes
+    the number of tokens asked for.
+    """
     session = engine.new_session()
-    started = time.perf_counter()
-    stamps: list[float] = []
-    final: dict[str, Any] = {}
     try:
-        for event in engine.stream(prompt_ids=ids, session=session, max_tokens=gen_tokens,
-                                   sampling=sampling):
-            if event["type"] == "token":
-                stamps.append(time.perf_counter())
-            elif event["type"] == "done":
-                final = event
+        result = engine.generate(prompt_ids=ids, session=session, max_tokens=gen_tokens,
+                                 sampling=sampling, ignore_eos=True, timings=True)
     finally:
         engine.close_session(session)
-    stats = final.get("stats", {})
+    stats = result.stats
+    stamps = list(stats.get("token_seconds", []))
     return {
         "prefill_tps": float(stats.get("prefill_tokens_per_second") or 0),
         "decode_tps": float(stats.get("decode_tokens_per_second") or 0),
-        "first_token_seconds": (stamps[0] - started) if stamps else 0.0,
+        "first_token_seconds": float(stamps[0]) if stamps else 0.0,
         "gaps_ms": [(b - a) * 1000 for a, b in zip(stamps, stamps[1:], strict=False)],
-        "tokens": list(final.get("tokens", [])),
-        "stop_reason": final.get("stop_reason", ""),
+        "tokens": list(result.tokens),
+        "stop_reason": result.stop_reason,
     }
 
 

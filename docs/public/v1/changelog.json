@@ -3,6 +3,80 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.73.0a1.post1",
+      "key": "0.73.0a1.post1",
+      "aliases": [
+        "0.73.0a1-post1",
+        "0.73.0a1.post1"
+      ],
+      "kind": "post",
+      "heading": "0.73.0a1.post1 \u2014 patch 1 - Strife fixes from alpha 1's CI",
+      "date": "",
+      "title": "patch 1 - Strife fixes from alpha 1's CI",
+      "summary": "Strife fixes from alpha 1's CI",
+      "patch": 1,
+      "headline": "Strife fixes from alpha 1's CI",
+      "highlights": [
+        "Strife's kernel library is written 0600, not 0700: a shared library is mapped, not executed as a file, and needs no execute bit.",
+        "Strife silently ignored a model's chat template when Jinja2 was not installed, and prompted it in ChatML instead. That is the wrong format for most models, with nothing to say so. It now refuses with strife.chat.no_jinja and the remedy. Jinja2 arrives with PyTorch, so this\u2026",
+        "hnx strife benchmark could report a decode speed of zero. A run that sampled an end-of-sequence token stopped early, and tokens were timed by text events, which wait for whole characters. Benchmark runs now ignore end-of-sequence (as llama-bench does), so every run decodes -n\u2026",
+        "On Windows and macOS the native kernels only decoded. Strife hands the multiplies to the kernels only where it can hold BLAS to one thread, and it could find numpy's OpenBLAS only through Linux's memory map. It now also finds the library numpy's wheels ship beside the package.",
+        "jinja2>=3.1.4 is declared. PyTorch already requires it, so an ordinary install gains nothing new; an install without PyTorch now gets it. Reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). No other changes.",
+        "A template without Jinja2 is refused; ignore_eos decodes every token asked for; numpy's OpenBLAS is found beside the package; without BLAS control the kernels decode only and the tokens still match. Tests that need the kernels to carry the multiplies skip where BLAS cannot be\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Strife's kernel library is written 0600, not 0700: a shared library is mapped, not executed as a file, and needs no execute bit.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Strife silently ignored a model's chat template when Jinja2 was not installed, and prompted it in ChatML instead. That is the wrong format for most models, with nothing to say so. It now refuses with strife.chat.no_jinja and the remedy. Jinja2 arrives with PyTorch, so this\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hnx strife benchmark could report a decode speed of zero. A run that sampled an end-of-sequence token stopped early, and tokens were timed by text events, which wait for whole characters. Benchmark runs now ignore end-of-sequence (as llama-bench does), so every run decodes -n\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "On Windows and macOS the native kernels only decoded. Strife hands the multiplies to the kernels only where it can hold BLAS to one thread, and it could find numpy's OpenBLAS only through Linux's memory map. It now also finds the library numpy's wheels ship beside the package.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "jinja2>=3.1.4 is declared. PyTorch already requires it, so an ordinary install gains nothing new; an install without PyTorch now gets it. Reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). No other changes.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "A template without Jinja2 is refused; ignore_eos decodes every token asked for; numpy's OpenBLAS is found beside the package; without BLAS control the kernels decode only and the tokens still match. Tests that need the kernels to carry the multiplies skip where BLAS cannot be\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "The Windows results above come from reading CI logs, not from a Windows machine: the fixes are untested there until that job runs again.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.73.0a1",
       "key": "0.73.0a1",
       "aliases": [
@@ -437,33 +511,7 @@
         "Fixed the web HyperLink dropping a message whose chat the server would not create. send() created the chat outside its try, so a refusal was an unhandled rejection: the message vanished and nothing said why. It now shows \"Could not start a chat: \u2026\" in the thread and puts the\u2026",
         "tests/hyperlink/test_new_chat_failure_shown.py: the app keeps and shows the failure and recognises a keyless refusal, the web app guards chat creation, and the server still answers a keyless chat with the 403 the app reads. The Swift is compiled and unit-tested by the iOS CI job."
       ],
-      "changes": [
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed \"New chat\" in HyperLink for iOS doing nothing. Since 0.72.8 a chat belongs to an account or a key, and the server refuses one to a keyless connection -- the usual way a phone connects over Tailscale -- with 403 AUTH_INSUFFICIENT_SCOPE and a message saying how to get an\u2026",
-          "details": [
-            "The Chats screen now shows why a new chat (or the list) failed.",
-            "On a keyless connection it offers Pair with a code or sign in, which goes back to the pairing screen; the empty state no longer offers a \"New chat\" that can only fail again.",
-            "Any other failure to start a chat is shown the same way, instead of nothing happening."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed the web HyperLink dropping a message whose chat the server would not create. send() created the chat outside its try, so a refusal was an unhandled rejection: the message vanished and nothing said why. It now shows \"Could not start a chat: \u2026\" in the thread and puts the\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/hyperlink/test_new_chat_failure_shown.py: the app keeps and shows the failure and recognises a keyless refusal, the web app guards chat creation, and the server still answers a keyless chat with the 403 the app reads. The Swift is compiled and unit-tested by the iOS CI job.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8",

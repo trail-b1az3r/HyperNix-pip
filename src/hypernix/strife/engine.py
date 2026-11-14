@@ -251,7 +251,8 @@ class Engine:
                stop: list[str] | None = None, sampling: SamplerConfig | None = None,
                timeout: float | None = None, cancel: threading.Event | None = None,
                template_vars: dict[str, Any] | None = None,
-               prompt_ids: list[int] | None = None) -> Iterator[dict[str, Any]]:
+               prompt_ids: list[int] | None = None, ignore_eos: bool = False,
+               timings: bool = False) -> Iterator[dict[str, Any]]:
         if self._closed:
             raise StrifeError("strife.engine.closed", "the engine was closed")
         if max_tokens < 0:
@@ -293,11 +294,12 @@ class Engine:
                 s = self._session(session)
                 with s.lock:
                     yield from self._run(ids, s.cache, sampler, max_tokens, stops, stopped,
-                                         cancel, reuse=True)
+                                         cancel, reuse=True, ignore_eos=ignore_eos,
+                                         timings=timings)
             else:
                 cache = self.model.new_state(self.n_ctx)
                 yield from self._run(ids, cache, sampler, max_tokens, stops, stopped, cancel,
-                                     reuse=False)
+                                     reuse=False, ignore_eos=ignore_eos, timings=timings)
         finally:
             with self._queue_lock:
                 self._active -= 1
@@ -309,8 +311,8 @@ class Engine:
                 "stats": stats}
 
     def _run(self, ids: list[int], cache: SeqState, sampler: Sampler, max_tokens: int,
-             stops: list[str], stopped: Any, cancel: threading.Event | None, *, reuse: bool
-             ) -> Iterator[dict[str, Any]]:
+             stops: list[str], stopped: Any, cancel: threading.Event | None, *, reuse: bool,
+             ignore_eos: bool = False, timings: bool = False) -> Iterator[dict[str, Any]]:
         if len(ids) >= cache.n_ctx:
             raise StrifeError("strife.runtime.context_full",
                               f"the prompt is {len(ids)} tokens; the context is {cache.n_ctx}",
@@ -346,19 +348,25 @@ class Engine:
         text, shown = "", 0
         reason = "length"
         t_first: float | None = None
+        token_times: list[float] = []
         history = list(ids)
         for _ in range(max_tokens):
             if stopped():
                 reason = self._why(cancel)
                 break
             token = sampler(logits, history)
-            if token in self.tokenizer.stop_ids:
+            # *ignore_eos* is for measuring: a benchmark needs its N tokens
+            # whatever the model would rather do.
+            if token in self.tokenizer.stop_ids and not ignore_eos:
                 reason = "stop_token"
                 break
             generated.append(token)
             history.append(token)
+            now = time.perf_counter()
             if t_first is None:
-                t_first = time.perf_counter()
+                t_first = now
+            if timings:
+                token_times.append(now - t0)
             text += decoder.push(token)
             hit = _find_stop(text, stops)
             if hit is not None:
@@ -392,7 +400,7 @@ class Engine:
         t_end = time.perf_counter()
         decode_s = t_end - (t_first or t_end)
         n_gen = len(generated)
-        stats = {
+        stats: dict[str, Any] = {
             "prompt_tokens": len(ids), "prompt_tokens_reused": reused,
             "prompt_tokens_run": len(ids) - reused, "generated_tokens": n_gen,
             "prefill_seconds": round(t_prefill, 6),
@@ -405,6 +413,9 @@ class Engine:
             "total_seconds": round(t_end - t0, 6),
             "context_used": cache.n, "n_ctx": cache.n_ctx,
         }
+        if timings:
+            # Seconds from the start of the request to each generated token.
+            stats["token_seconds"] = [round(t, 6) for t in token_times]
         yield self._done(text, generated, reason, stats)
 
     @staticmethod

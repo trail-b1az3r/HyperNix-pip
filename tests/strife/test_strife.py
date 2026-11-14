@@ -285,6 +285,39 @@ class TestTokenizer:
         with pytest.raises(StrifeError, match="chat template"):
             Engine(evil["path"], n_ctx=64).tokenizer.apply_chat_template([])
 
+    def test_a_template_without_jinja_is_refused_not_replaced(self, tmp_path, monkeypatch):
+        """ChatML in place of the model's own template would prompt it wrongly, silently."""
+        import builtins
+
+        tpl = "{% for m in messages %}[{{ m.role }}] {{ m.content }}\n{% endfor %}"
+        model = make_model(tmp_path / "t.gguf", arch="qwen2", chat_template=tpl)
+        tok = Engine(model["path"], n_ctx=64).tokenizer
+        real_import = builtins.__import__
+
+        def no_jinja(name, *args, **kwargs):
+            if name == "jinja2" or name.startswith("jinja2."):
+                raise ImportError("No module named 'jinja2'")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", no_jinja)
+        with pytest.raises(StrifeError) as missing:
+            tok.apply_chat_template([{"role": "user", "content": "hi"}])
+        assert missing.value.code == "strife.chat.no_jinja" and "jinja2" in missing.value.remedy
+
+    def test_ignore_eos_decodes_every_token_asked_for(self, tmp_path):
+        model = make_model(tmp_path / "e.gguf", arch="qwen2", seed=6)
+        with Engine(model["path"], n_ctx=96) as engine:
+            stops = set(engine.tokenizer.stop_ids)
+            result = engine.generate(prompt_ids=[5, 6, 7], max_tokens=40, ignore_eos=True,
+                                     timings=True, sampling=SamplerConfig(temperature=1.5, seed=1))
+            assert len(result.tokens) == 40 and result.stop_reason == "length"
+            times = result.stats["token_seconds"]
+            assert len(times) == 40 and times == sorted(times) and times[0] > 0
+            plain = engine.generate(prompt_ids=[5, 6, 7], max_tokens=40,
+                                    sampling=SamplerConfig(temperature=1.5, seed=1))
+            assert "token_seconds" not in plain.stats
+            assert not stops & set(plain.tokens)          # without it, a stop token still ends
+
     @pytest.mark.parametrize("payload", [
         "{{ ''|attr('__class__') }}",
         "{{ ''['__' ~ 'class__'] }}",

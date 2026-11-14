@@ -35,6 +35,54 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.73.0a1.post1 — patch 1 - Strife fixes from alpha 1's CI
+
+Fixes found by alpha 1's own CI: the Strife smoke jobs on Linux and
+Windows, the Python 3.14 and 3.15 test jobs, and the security scan.
+
+### Security
+
+🔒 Strife's kernel library is written `0600`, not `0700`: a shared library is
+  mapped, not executed as a file, and needs no execute bit.
+
+### Fixed
+
+𖢥 **Strife silently ignored a model's chat template when Jinja2 was not
+  installed**, and prompted it in ChatML instead. That is the wrong format
+  for most models, with nothing to say so. It now refuses with
+  `strife.chat.no_jinja` and the remedy. Jinja2 arrives with PyTorch, so
+  this affected installs without it (Python 3.15).
+
+🐛 **`hnx strife benchmark` could report a decode speed of zero.** A run that
+  sampled an end-of-sequence token stopped early, and tokens were timed by
+  text events, which wait for whole characters. Benchmark runs now ignore
+  end-of-sequence (as `llama-bench` does), so every run decodes `-n`
+  tokens, and the engine times each token itself.
+
+🐛 **On Windows and macOS the native kernels only decoded.** Strife hands the
+  multiplies to the kernels only where it can hold BLAS to one thread, and
+  it could find numpy's OpenBLAS only through Linux's memory map. It now
+  also finds the library numpy's wheels ship beside the package.
+
+### Dependencies and Packaging
+
+📦 `jinja2>=3.1.4` is declared. PyTorch already requires it, so an ordinary
+  install gains nothing new; an install without PyTorch now gets it.
+  Reviewed across the repository: Python (pyproject.toml, setup.cfg), npm
+  (docs/), Bun (hyped-pro, tvtop-max). No other changes.
+
+### Tests
+
+🧪 A template without Jinja2 is refused; `ignore_eos` decodes every token
+  asked for; numpy's OpenBLAS is found beside the package; without BLAS
+  control the kernels decode only and the tokens still match. Tests that
+  need the kernels to carry the multiplies skip where BLAS cannot be held.
+
+### Known Issues
+
+❗ The Windows results above come from reading CI logs, not from a Windows
+  machine: the fixes are untested there until that job runs again.
+
 ## 0.73.0a1 — 2026-11-12
 
 Alpha 1: Strife, HyperNix's own GGUF runtime, with its native kernels, GPU
