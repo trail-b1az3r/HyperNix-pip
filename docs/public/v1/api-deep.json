@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "266f4acdfce7c92fdf5b9fc1105ec47b3d52519e",
+  "commit": "5d1dbfcc8ab866a5ae691b2d1b37e1bcc54297c8",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "5d1dbfcc",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "0.73.0a2: Optimizer Framework V2 and the Pressure Cooker V7 family",
+          "api_changes": []
+        },
         {
           "sha": "b8c5ce13",
           "date": "2026-11-15",
@@ -64,13 +71,6 @@
           "date": "2026-11-03",
           "author": "Claude",
           "subject": "0.72.8.post1: HyperLink -- a chat that cannot be started says why",
-          "api_changes": []
-        },
-        {
-          "sha": "0404ebd2",
-          "date": "2026-10-28",
-          "author": "Claude",
-          "subject": "0.72.8",
           "api_changes": []
         }
       ]
@@ -48865,14 +48865,14 @@
     {
       "module": "hypernix.system.doctor",
       "source": "src/hypernix/system/doctor.py",
-      "line_count": 332,
+      "line_count": 334,
       "summary": "Environment diagnostic for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "run",
           "signature": "def run*, fix: bool=False -> int",
-          "line": 310,
+          "line": 312,
           "doc": "Run the environment check. If ``fix`` is True, pip-install missing deps."
         }
       ],
@@ -48880,6 +48880,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "5d1dbfcc",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "0.73.0a2: Optimizer Framework V2 and the Pressure Cooker V7 family",
+          "api_changes": []
+        },
         {
           "sha": "10317ac6",
           "date": "2026-10-28",
