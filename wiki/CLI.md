@@ -142,6 +142,23 @@ installs (`waiter`, `gkey`, `hyprslug` and its other names, `tvtop-max`,
 appears without an edit. The suggestions `hnx` prints after a typo
 (`dl`, `quantise`) do not run, so they are not listed.
 
+## `optimizer`
+
+```bash
+hnx optimizer list                                  # every optimizer, with target ratings
+hnx optimizer list --measured results/optimizer-bench.json
+hnx optimizer select --params 120000000 --verified  # what auto-selection picks, and why
+hnx optimizer select --objective stability --json
+hnx optimizer benchmark                             # measure them: three quick workloads
+hnx optimizer benchmark --workloads all --out-dir results/
+```
+
+`select` builds nothing; it prints the choice, the reason and what was
+passed over. `benchmark` compares AdamW, V5, V5+, V5S, V6, V6V, V7, V7Mini,
+V7Q, V7S and V7M on the same models, data and steps, and keeps the
+optimizer-only time apart from the full training step. See
+[Pressure Cooker V7](Pressure-Cooker-V7.md).
+
 ## `strife`
 
 ```bash

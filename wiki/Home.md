@@ -67,6 +67,7 @@ reachable if you already knew the filename. Fixed.)
 | [Pressure Cooker v4](Pressure-Cooker-V4.md) | Optimized quantization-aware training mechanism and optimizer wrapper. |
 | [Pressure Cooker v5](Pressure-Cooker-V5.md) | Flagship ORCP optimizer — quantized momentum, QAT, MTP support, V5+/V5S variants. |
 | [Pressure Cooker v6](Pressure-Cooker-V6.md) | Speed-first optimizer — single fused momentum buffer, `torch._foreach_*` multi-tensor updates; `PressureCookerV6V` adds CUDA graph capture + optional `torch.compile`. |
+| [Pressure Cooker V7](Pressure-Cooker-V7.md) | The V7 family (Balanced, V7V, Mini, Q, S, M), `OptimizerFrameworkV2` (create any optimizer, explained auto-selection) and `hnx optimizer benchmark`. |
 | [MTP](MTP.md) | Multi-Token Prediction — predict several future tokens at once for sample efficiency + speculative decoding. |
 | [STML](STML.md) | Short Term Memory Loss — `STML` context manager and `calculate_vram_context` VRAM calculator. |
 | [Frameworks](Frameworks.md) | `ComputeFramework` multi-device training and `workshop` TTS/ASR pipelines. |

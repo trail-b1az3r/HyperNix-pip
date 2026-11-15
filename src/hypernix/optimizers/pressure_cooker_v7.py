@@ -866,6 +866,7 @@ class PressureCookerV7(OptimizerBase):
             "format": V7_FORMAT, "variant": self.variant, "preset": self.preset,
             "state_dtype": self.state_dtype, "global_step": self._global_step,
             "loss": [self._loss_fast, self._loss_slow, self._loss_factor],
+            "oscillation": self._osc_host, "skipped_steps": self._skipped_steps,
             "buckets": [{"key": list(b.key), "n": len(b.params), "decay_acc": b.decay_acc,
                          **{name: getattr(b, name).detach().cpu() for name in _Bucket.VECTORS}}
                         for b in self._buckets],
@@ -893,6 +894,9 @@ class PressureCookerV7(OptimizerBase):
         self._global_step = int(meta.get("global_step", 0))
         fast, slow, factor = meta.get("loss", [None, None, 1.0])
         self._loss_fast, self._loss_slow, self._loss_factor = fast, slow, float(factor)
+        self._osc_host = float(meta.get("oscillation", 0.0))
+        self._skipped_steps = int(meta.get("skipped_steps", 0))
+        self._accum_counter = 0
         self._buckets, self._bucket_signature = [], ()
         self._pending_bucket_state = {tuple(b["key"]): b for b in meta.get("buckets", [])}
 

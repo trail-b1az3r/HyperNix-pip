@@ -86,7 +86,8 @@ class _TinyLM(nn.Module):
 
     def forward(self, ids: torch.Tensor) -> torch.Tensor:
         x = self.embed(ids) + self.pos[: ids.shape[1]]
-        x = self.blocks(x, mask=self.mask[: ids.shape[1], : ids.shape[1]])
+        mask: torch.Tensor = self.mask  # type: ignore[assignment]
+        x = self.blocks(x, mask=mask[: ids.shape[1], : ids.shape[1]])
         return self.head(self.norm(x))
 
 

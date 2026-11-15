@@ -6,7 +6,10 @@ from the original device-tiered `PressureCooker` through to the
 superseded for new training by the memory-first V5/V5S line and the
 speed-first V6 line, both documented on their own pages:
 [Pressure Cooker V5 / V5+ / V5S](Pressure-Cooker-V5.md) and
-[Pressure Cooker V6 / V6V](Pressure-Cooker-V6.md). (V3 is also documented
+[Pressure Cooker V6 / V6V](Pressure-Cooker-V6.md). The newest generation
+is [Pressure Cooker V7 and Optimizer Framework V2](Pressure-Cooker-V7.md)
+(0.73.0a2): one interface that creates any optimizer here, explains which
+it would choose, and a benchmark that measures them against each other. (V3 is also documented
 separately: [Pressure Cooker V3](Pressure-Cooker-V3.md).)
 
 **Deprecated since 0.72.6:** the original `PressureCooker` (v1, below)
@@ -261,7 +264,30 @@ non-finite check rather than a per-parameter one; see the dedicated page
 for the CUDA-graph-capture caveat that comes with combining those and
 `PressureCookerV6V`.
 
+## `hypernix.optimizer_framework_v2` and the V7 family
+
+Full writeup: [Pressure Cooker V7 and Optimizer Framework V2](Pressure-Cooker-V7.md).
+
+```python
+from hypernix.optimizers.optimizer_framework_v2 import OptimizerFrameworkV2 as F
+
+optimizer = F.create("v6", model.parameters(), lr=1e-3)       # any key, the existing class
+choice = F.auto_select(model.parameters(), objective="balanced")
+optimizer = F.build(choice, model.parameters(), lr=3e-3)
+```
+
+`OptimizerFrameworkV2` sits beside `OptimizerBase`, not on top of it: the
+existing optimizers are constructed exactly as before and none of their
+update rules changed. Keys: `adamw`, `v1` to `v6v`, `v7`, `v7v`, `v7mini`,
+`v7q`, `v7s`, `v7m`. `hnx optimizer list | select | benchmark` is the same
+thing from the command line.
+
+The comparison matrix, with ratings labelled as targets and the measured
+figures beside them, is on the V7 page.
+
 ## See also
+
+- [Pressure Cooker V7 and Optimizer Framework V2](Pressure-Cooker-V7.md) — the newest generation, auto-selection and the benchmark
 
 - [Pressure Cooker V3](Pressure-Cooker-V3.md) — the ZeRO/FP8-focused generation between the base tier and V4
 - [Pressure Cooker V5 / V5+ / V5S](Pressure-Cooker-V5.md) — the memory-first generation after V4
