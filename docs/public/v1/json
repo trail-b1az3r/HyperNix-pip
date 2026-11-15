@@ -1,17 +1,13 @@
 {
   "version": "0.72.8.post1",
-  "total_downloads": 11556,
-  "last_day": 7,
-  "last_week": 123,
-  "last_month": 1192,
+  "total_downloads": 11554,
+  "last_day": 3,
+  "last_week": 117,
+  "last_month": 1185,
   "downloads": {
     "recent": {
       "window_days": 30,
       "daily": [
-        {
-          "date": "2026-10-15",
-          "downloads": 315
-        },
         {
           "date": "2026-10-16",
           "downloads": 38
@@ -123,20 +119,24 @@
         {
           "date": "2026-11-12",
           "downloads": 7
+        },
+        {
+          "date": "2026-11-13",
+          "downloads": 3
         }
       ]
     },
     "three_month": {
       "days": 60,
-      "total_downloads": 6047,
-      "from": "2026-08-16",
-      "to": "2026-10-14"
+      "total_downloads": 6277,
+      "from": "2026-08-17",
+      "to": "2026-10-15"
     },
     "older": {
       "days": 82,
-      "total_downloads": 4327,
-      "from": "2026-05-16",
-      "to": "2026-08-15"
+      "total_downloads": 4407,
+      "from": "2026-05-17",
+      "to": "2026-08-16"
     }
   },
   "python_versions": [
@@ -154,7 +154,7 @@
     },
     {
       "version": "3.13",
-      "downloads": 87
+      "downloads": 90
     },
     {
       "version": "3.10",
@@ -168,7 +168,7 @@
   "operating_systems": [
     {
       "os": "Linux",
-      "downloads": 2083
+      "downloads": 2086
     },
     {
       "os": "Darwin",
@@ -596,7 +596,7 @@
       9,
       8,
       7,
-      0
+      3
     ],
     "with_mirrors": [
       470,
@@ -805,7 +805,7 @@
       210,
       114,
       20,
-      0
+      128
     ],
     "by_python": {
       "Unknown": [
@@ -2060,7 +2060,7 @@
         2,
         5,
         2,
-        0
+        3
       ],
       "3.9": [
         0,
@@ -2689,7 +2689,7 @@
         2,
         5,
         2,
-        0
+        3
       ],
       "Darwin": [
         0,
@@ -14003,7 +14003,7 @@
       "version": "0.72.7.post1",
       "release": "0.72.7",
       "downloads": 588,
-      "last_30_days": 178,
+      "last_30_days": 165,
       "first_seen": "2026-10-08",
       "current": false
     },
@@ -14011,7 +14011,7 @@
       "version": "0.72.7",
       "release": "0.72.7",
       "downloads": 503,
-      "last_30_days": 106,
+      "last_30_days": 96,
       "first_seen": "2026-10-07",
       "current": false
     },
@@ -14019,7 +14019,7 @@
       "version": "0.72.6.post4",
       "release": "0.72.6",
       "downloads": 478,
-      "last_30_days": 78,
+      "last_30_days": 73,
       "first_seen": "2026-10-01",
       "current": false
     },
@@ -14027,7 +14027,7 @@
       "version": "0.72.6.post3",
       "release": "0.72.6",
       "downloads": 495,
-      "last_30_days": 67,
+      "last_30_days": 62,
       "first_seen": "2026-09-30",
       "current": false
     },
@@ -14035,7 +14035,7 @@
       "version": "0.72.6.post2",
       "release": "0.72.6",
       "downloads": 487,
-      "last_30_days": 64,
+      "last_30_days": 59,
       "first_seen": "2026-09-27",
       "current": false
     },
@@ -14043,7 +14043,7 @@
       "version": "0.72.6.post1",
       "release": "0.72.6",
       "downloads": 538,
-      "last_30_days": 64,
+      "last_30_days": 59,
       "first_seen": "2026-09-27",
       "current": false
     },
@@ -14051,7 +14051,7 @@
       "version": "0.72.6",
       "release": "0.72.6",
       "downloads": 463,
-      "last_30_days": 63,
+      "last_30_days": 58,
       "first_seen": "2026-09-24",
       "current": false
     },
@@ -14059,7 +14059,7 @@
       "version": "0.72.5.post9",
       "release": "0.72.5",
       "downloads": 419,
-      "last_30_days": 52,
+      "last_30_days": 49,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14067,7 +14067,7 @@
       "version": "0.72.5.post8",
       "release": "0.72.5",
       "downloads": 439,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14075,7 +14075,7 @@
       "version": "0.72.5.post5",
       "release": "0.72.5",
       "downloads": 444,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14083,7 +14083,7 @@
       "version": "0.72.5.post4",
       "release": "0.72.5",
       "downloads": 440,
-      "last_30_days": 49,
+      "last_30_days": 46,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14091,7 +14091,7 @@
       "version": "0.72.5.post3",
       "release": "0.72.5",
       "downloads": 429,
-      "last_30_days": 48,
+      "last_30_days": 45,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14099,7 +14099,7 @@
       "version": "0.72.5.post13",
       "release": "0.72.5",
       "downloads": 522,
-      "last_30_days": 51,
+      "last_30_days": 46,
       "first_seen": "2026-09-17",
       "current": false
     },
@@ -14107,7 +14107,7 @@
       "version": "0.72.5.post12",
       "release": "0.72.5",
       "downloads": 441,
-      "last_30_days": 51,
+      "last_30_days": 46,
       "first_seen": "2026-09-17",
       "current": false
     },
@@ -14115,7 +14115,7 @@
       "version": "0.72.5.post11",
       "release": "0.72.5",
       "downloads": 465,
-      "last_30_days": 51,
+      "last_30_days": 46,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14123,7 +14123,7 @@
       "version": "0.72.5.post10",
       "release": "0.72.5",
       "downloads": 449,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14131,7 +14131,7 @@
       "version": "0.72.5.post1",
       "release": "0.72.5",
       "downloads": 414,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14139,7 +14139,7 @@
       "version": "0.72.5.dev3",
       "release": "0.72.5",
       "downloads": 424,
-      "last_30_days": 48,
+      "last_30_days": 45,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14147,7 +14147,7 @@
       "version": "0.72.5.dev2",
       "release": "0.72.5",
       "downloads": 432,
-      "last_30_days": 48,
+      "last_30_days": 45,
       "first_seen": "2026-09-15",
       "current": false
     },
@@ -14155,7 +14155,7 @@
       "version": "0.72.5.dev1",
       "release": "0.72.5",
       "downloads": 467,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-12",
       "current": false
     },
@@ -14163,7 +14163,7 @@
       "version": "0.72.5",
       "release": "0.72.5",
       "downloads": 451,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-16",
       "current": false
     },
@@ -14171,7 +14171,7 @@
       "version": "0.72.4.post3",
       "release": "0.72.4",
       "downloads": 455,
-      "last_30_days": 46,
+      "last_30_days": 43,
       "first_seen": "2026-09-09",
       "current": false
     },
@@ -14179,7 +14179,7 @@
       "version": "0.72.4.post20",
       "release": "0.72.4",
       "downloads": 523,
-      "last_30_days": 54,
+      "last_30_days": 51,
       "first_seen": "2026-09-11",
       "current": false
     },
@@ -14187,7 +14187,7 @@
       "version": "0.72.4.post18",
       "release": "0.72.4",
       "downloads": 452,
-      "last_30_days": 52,
+      "last_30_days": 49,
       "first_seen": "2026-09-10",
       "current": false
     },
@@ -14195,7 +14195,7 @@
       "version": "0.72.4.post17",
       "release": "0.72.4",
       "downloads": 486,
-      "last_30_days": 54,
+      "last_30_days": 51,
       "first_seen": "2026-09-10",
       "current": false
     },
@@ -14203,7 +14203,7 @@
       "version": "0.72.4.post16",
       "release": "0.72.4",
       "downloads": 494,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-10",
       "current": false
     },
@@ -14211,7 +14211,7 @@
       "version": "0.72.4.post14",
       "release": "0.72.4",
       "downloads": 467,
-      "last_30_days": 51,
+      "last_30_days": 48,
       "first_seen": "2026-09-10",
       "current": false
     },
@@ -14219,7 +14219,7 @@
       "version": "0.72.4.post13",
       "release": "0.72.4",
       "downloads": 470,
-      "last_30_days": 48,
+      "last_30_days": 45,
       "first_seen": "2026-09-10",
       "current": false
     },
@@ -14227,7 +14227,7 @@
       "version": "0.72.4.post12",
       "release": "0.72.4",
       "downloads": 468,
-      "last_30_days": 49,
+      "last_30_days": 46,
       "first_seen": "2026-09-10",
       "current": false
     },
@@ -14235,7 +14235,7 @@
       "version": "0.72.4.post1",
       "release": "0.72.4",
       "downloads": 411,
-      "last_30_days": 46,
+      "last_30_days": 43,
       "first_seen": "2026-09-09",
       "current": false
     },
@@ -14243,7 +14243,7 @@
       "version": "0.72.4",
       "release": "0.72.4",
       "downloads": 457,
-      "last_30_days": 52,
+      "last_30_days": 49,
       "first_seen": "2026-09-09",
       "current": false
     },
@@ -14251,7 +14251,7 @@
       "version": "0.72.3.post8",
       "release": "0.72.3",
       "downloads": 538,
-      "last_30_days": 45,
+      "last_30_days": 40,
       "first_seen": "2026-09-04",
       "current": false
     },
@@ -14259,7 +14259,7 @@
       "version": "0.72.3.post7",
       "release": "0.72.3",
       "downloads": 508,
-      "last_30_days": 46,
+      "last_30_days": 41,
       "first_seen": "2026-09-03",
       "current": false
     },
@@ -14267,7 +14267,7 @@
       "version": "0.72.3.post2",
       "release": "0.72.3",
       "downloads": 495,
-      "last_30_days": 44,
+      "last_30_days": 39,
       "first_seen": "2026-09-03",
       "current": false
     },
@@ -14275,7 +14275,7 @@
       "version": "0.72.3.post1",
       "release": "0.72.3",
       "downloads": 522,
-      "last_30_days": 46,
+      "last_30_days": 41,
       "first_seen": "2026-09-03",
       "current": false
     },
@@ -14283,7 +14283,7 @@
       "version": "0.72.3",
       "release": "0.72.3",
       "downloads": 492,
-      "last_30_days": 44,
+      "last_30_days": 39,
       "first_seen": "2026-09-02",
       "current": false
     },
@@ -14291,7 +14291,7 @@
       "version": "0.72.2.post5",
       "release": "0.72.2",
       "downloads": 577,
-      "last_30_days": 38,
+      "last_30_days": 31,
       "first_seen": "2026-08-27",
       "current": false
     },
@@ -14299,7 +14299,7 @@
       "version": "0.72.2.post3",
       "release": "0.72.2",
       "downloads": 466,
-      "last_30_days": 36,
+      "last_30_days": 29,
       "first_seen": "2026-08-27",
       "current": false
     },
@@ -14307,7 +14307,7 @@
       "version": "0.72.2.post2",
       "release": "0.72.2",
       "downloads": 539,
-      "last_30_days": 38,
+      "last_30_days": 30,
       "first_seen": "2026-08-27",
       "current": false
     },
@@ -14315,7 +14315,7 @@
       "version": "0.72.2",
       "release": "0.72.2",
       "downloads": 512,
-      "last_30_days": 37,
+      "last_30_days": 29,
       "first_seen": "2026-08-26",
       "current": false
     },
@@ -14323,7 +14323,7 @@
       "version": "0.72.1",
       "release": "0.72.1",
       "downloads": 464,
-      "last_30_days": 38,
+      "last_30_days": 30,
       "first_seen": "2026-08-26",
       "current": false
     },
@@ -14331,7 +14331,7 @@
       "version": "0.72.0",
       "release": "0.72.0",
       "downloads": 574,
-      "last_30_days": 37,
+      "last_30_days": 29,
       "first_seen": "2026-08-23",
       "current": false
     },
@@ -14339,7 +14339,7 @@
       "version": "0.71.5",
       "release": "0.71.5",
       "downloads": 555,
-      "last_30_days": 39,
+      "last_30_days": 31,
       "first_seen": "2026-08-22",
       "current": false
     },
@@ -14347,7 +14347,7 @@
       "version": "0.71.4.post5",
       "release": "0.71.4",
       "downloads": 574,
-      "last_30_days": 32,
+      "last_30_days": 29,
       "first_seen": "2026-08-16",
       "current": false
     },
@@ -14355,7 +14355,7 @@
       "version": "0.71.4.post4",
       "release": "0.71.4",
       "downloads": 547,
-      "last_30_days": 34,
+      "last_30_days": 31,
       "first_seen": "2026-08-11",
       "current": false
     },
@@ -14363,7 +14363,7 @@
       "version": "0.71.4.post3",
       "release": "0.71.4",
       "downloads": 557,
-      "last_30_days": 31,
+      "last_30_days": 28,
       "first_seen": "2026-08-09",
       "current": false
     },
@@ -14371,7 +14371,7 @@
       "version": "0.71.4.post2",
       "release": "0.71.4",
       "downloads": 544,
-      "last_30_days": 34,
+      "last_30_days": 31,
       "first_seen": "2026-08-09",
       "current": false
     },
@@ -14379,7 +14379,7 @@
       "version": "0.71.4.post1",
       "release": "0.71.4",
       "downloads": 457,
-      "last_30_days": 32,
+      "last_30_days": 29,
       "first_seen": "2026-08-06",
       "current": false
     },
@@ -14387,7 +14387,7 @@
       "version": "0.71.4",
       "release": "0.71.4",
       "downloads": 528,
-      "last_30_days": 36,
+      "last_30_days": 33,
       "first_seen": "2026-08-05",
       "current": false
     },
@@ -14395,7 +14395,7 @@
       "version": "0.71.3",
       "release": "0.71.3",
       "downloads": 556,
-      "last_30_days": 36,
+      "last_30_days": 33,
       "first_seen": "2026-07-22",
       "current": false
     },
@@ -14403,7 +14403,7 @@
       "version": "0.71.2",
       "release": "0.71.2",
       "downloads": 562,
-      "last_30_days": 31,
+      "last_30_days": 28,
       "first_seen": "2026-07-22",
       "current": false
     },
@@ -14411,7 +14411,7 @@
       "version": "0.71.1",
       "release": "0.71.1",
       "downloads": 545,
-      "last_30_days": 30,
+      "last_30_days": 27,
       "first_seen": "2026-07-21",
       "current": false
     },
@@ -14419,7 +14419,7 @@
       "version": "0.71.0",
       "release": "0.71.0",
       "downloads": 545,
-      "last_30_days": 30,
+      "last_30_days": 27,
       "first_seen": "2026-07-20",
       "current": false
     },
@@ -14427,7 +14427,7 @@
       "version": "0.70.6.post3",
       "release": "0.70.6",
       "downloads": 564,
-      "last_30_days": 28,
+      "last_30_days": 24,
       "first_seen": "2026-07-20",
       "current": false
     },
@@ -14435,7 +14435,7 @@
       "version": "0.70.6.post2",
       "release": "0.70.6",
       "downloads": 612,
-      "last_30_days": 28,
+      "last_30_days": 25,
       "first_seen": "2026-07-19",
       "current": false
     },
@@ -14443,7 +14443,7 @@
       "version": "0.70.6",
       "release": "0.70.6",
       "downloads": 635,
-      "last_30_days": 32,
+      "last_30_days": 29,
       "first_seen": "2026-07-15",
       "current": false
     },
@@ -14451,7 +14451,7 @@
       "version": "0.70.5",
       "release": "0.70.5",
       "downloads": 662,
-      "last_30_days": 34,
+      "last_30_days": 31,
       "first_seen": "2026-07-14",
       "current": false
     },
@@ -14459,7 +14459,7 @@
       "version": "0.70.4",
       "release": "0.70.4",
       "downloads": 1453,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-28",
       "current": false
     },
@@ -14467,7 +14467,7 @@
       "version": "0.70.3",
       "release": "0.70.3",
       "downloads": 831,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-13",
       "current": false
     },
@@ -14475,7 +14475,7 @@
       "version": "0.70.2",
       "release": "0.70.2",
       "downloads": 709,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-11",
       "current": false
     },
@@ -14491,7 +14491,7 @@
       "version": "0.70.0",
       "release": "0.70.0",
       "downloads": 876,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-06",
       "current": false
     },
@@ -14499,7 +14499,7 @@
       "version": "0.61.6",
       "release": "0.61.6",
       "downloads": 734,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-03",
       "current": false
     },
@@ -14507,7 +14507,7 @@
       "version": "0.61.5",
       "release": "0.61.5",
       "downloads": 650,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-03",
       "current": false
     },
@@ -14515,7 +14515,7 @@
       "version": "0.61.4",
       "release": "0.61.4",
       "downloads": 628,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-03",
       "current": false
     },
@@ -14523,7 +14523,7 @@
       "version": "0.61.3",
       "release": "0.61.3",
       "downloads": 683,
-      "last_30_days": 23,
+      "last_30_days": 20,
       "first_seen": "2026-06-03",
       "current": false
     },
@@ -14531,7 +14531,7 @@
       "version": "0.61.2",
       "release": "0.61.2",
       "downloads": 845,
-      "last_30_days": 20,
+      "last_30_days": 17,
       "first_seen": "2026-04-28",
       "current": false
     },
@@ -14539,7 +14539,7 @@
       "version": "0.61.1",
       "release": "0.61.1",
       "downloads": 634,
-      "last_30_days": 19,
+      "last_30_days": 14,
       "first_seen": "2026-04-28",
       "current": false
     },
@@ -14547,7 +14547,7 @@
       "version": "0.61.0",
       "release": "0.61.0",
       "downloads": 638,
-      "last_30_days": 21,
+      "last_30_days": 17,
       "first_seen": "2026-04-28",
       "current": false
     },
@@ -14555,7 +14555,7 @@
       "version": "0.60.0",
       "release": "0.60.0",
       "downloads": 622,
-      "last_30_days": 20,
+      "last_30_days": 17,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14563,7 +14563,7 @@
       "version": "0.52.6",
       "release": "0.52.6",
       "downloads": 587,
-      "last_30_days": 20,
+      "last_30_days": 17,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14571,7 +14571,7 @@
       "version": "0.52.5",
       "release": "0.52.5",
       "downloads": 580,
-      "last_30_days": 21,
+      "last_30_days": 16,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14579,7 +14579,7 @@
       "version": "0.52.4",
       "release": "0.52.4",
       "downloads": 590,
-      "last_30_days": 18,
+      "last_30_days": 15,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14587,7 +14587,7 @@
       "version": "0.52.3",
       "release": "0.52.3",
       "downloads": 554,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14595,7 +14595,7 @@
       "version": "0.51.2",
       "release": "0.51.2",
       "downloads": 601,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14603,7 +14603,7 @@
       "version": "0.51.1",
       "release": "0.51.1",
       "downloads": 597,
-      "last_30_days": 21,
+      "last_30_days": 18,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14611,7 +14611,7 @@
       "version": "0.51.0",
       "release": "0.51.0",
       "downloads": 636,
-      "last_30_days": 18,
+      "last_30_days": 15,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14619,7 +14619,7 @@
       "version": "0.50.0",
       "release": "0.50.0",
       "downloads": 621,
-      "last_30_days": 17,
+      "last_30_days": 14,
       "first_seen": "2026-04-27",
       "current": false
     },
@@ -14627,7 +14627,7 @@
       "version": "0.49.0",
       "release": "0.49.0",
       "downloads": 603,
-      "last_30_days": 20,
+      "last_30_days": 17,
       "first_seen": "2026-04-23",
       "current": false
     },
@@ -14635,7 +14635,7 @@
       "version": "0.47.1",
       "release": "0.47.1",
       "downloads": 613,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-23",
       "current": false
     },
@@ -14643,7 +14643,7 @@
       "version": "0.47.0",
       "release": "0.47.0",
       "downloads": 638,
-      "last_30_days": 17,
+      "last_30_days": 14,
       "first_seen": "2026-04-23",
       "current": false
     },
@@ -14651,7 +14651,7 @@
       "version": "0.46.1",
       "release": "0.46.1",
       "downloads": 655,
-      "last_30_days": 21,
+      "last_30_days": 18,
       "first_seen": "2026-04-23",
       "current": false
     },
@@ -14659,7 +14659,7 @@
       "version": "0.45.3",
       "release": "0.45.3",
       "downloads": 628,
-      "last_30_days": 18,
+      "last_30_days": 15,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14667,7 +14667,7 @@
       "version": "0.45.2",
       "release": "0.45.2",
       "downloads": 570,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14675,7 +14675,7 @@
       "version": "0.45.1",
       "release": "0.45.1",
       "downloads": 558,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14683,7 +14683,7 @@
       "version": "0.45.0",
       "release": "0.45.0",
       "downloads": 613,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14691,7 +14691,7 @@
       "version": "0.43.0",
       "release": "0.43.0",
       "downloads": 647,
-      "last_30_days": 22,
+      "last_30_days": 17,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14699,7 +14699,7 @@
       "version": "0.42.0",
       "release": "0.42.0",
       "downloads": 600,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14707,7 +14707,7 @@
       "version": "0.41.0",
       "release": "0.41.0",
       "downloads": 571,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14715,7 +14715,7 @@
       "version": "0.34.0",
       "release": "0.34.0",
       "downloads": 605,
-      "last_30_days": 19,
+      "last_30_days": 16,
       "first_seen": "2026-04-22",
       "current": false
     },
@@ -14723,7 +14723,7 @@
       "version": "0.32.0",
       "release": "0.32.0",
       "downloads": 732,
-      "last_30_days": 21,
+      "last_30_days": 18,
       "first_seen": "2026-04-21",
       "current": false
     },
@@ -14731,10 +14731,10 @@
       "version": "0.31.1",
       "release": "0.31.1",
       "downloads": 622,
-      "last_30_days": 24,
+      "last_30_days": 21,
       "first_seen": "2026-04-21",
       "current": false
     }
   ],
-  "updated_at": "2026-11-14T01:01:50.795461Z"
+  "updated_at": "2026-11-15T00:16:53.527482Z"
 }
