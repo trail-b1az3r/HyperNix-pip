@@ -304,6 +304,8 @@ def build(*, force: bool = False, compiler: str | None = None,
         return _open(directory)
     directory.mkdir(parents=True, exist_ok=True)
     if os.name == "posix":
+        # Owner only. A directory needs its search bit to be entered at all.
+        # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
         os.chmod(directory, 0o700)
     library = directory / _LIB_NAME
     scratch = directory / (_LIB_NAME + ".tmp")
@@ -342,7 +344,9 @@ def build(*, force: bool = False, compiler: str | None = None,
                           remedy="Strife keeps working on numpy. Try another compiler with CC=.")
     os.replace(scratch, library)
     if os.name == "posix":
-        os.chmod(library, 0o700)
+        # Read and write for the owner, nothing else: a shared library is
+        # mapped, not executed as a file, so it needs no execute bit.
+        os.chmod(library, 0o600)
     manifest = {
         "abi": ABI, "compiler": _compiler_version(cc) or cc, "compiler_path": cc,
         "flags": used, "openmp": "-fopenmp" in used,

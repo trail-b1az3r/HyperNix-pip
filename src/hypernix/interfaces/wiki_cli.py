@@ -266,6 +266,9 @@ def _open_in_browser(module_name: str | None) -> None:
         page_map = {
             "pressure_cooker_v6": "Pressure-Cooker-V6",
             "pressure_cooker_v6v": "Pressure-Cooker-V6",
+            "pressure_cooker_v7": "Pressure-Cooker-V7",
+            "pressure_cooker_v7v": "Pressure-Cooker-V7",
+            "optimizer_framework_v2": "Pressure-Cooker-V7",
             "pressure_cooker_v5": "Pressure-Cooker-V5",
             "pressure_cooker_v4": "Pressure-Cooker-V4",
             "pressure_cooker_v3": "Pressure-Cooker-V3",

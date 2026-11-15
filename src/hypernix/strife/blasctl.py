@@ -8,9 +8,11 @@ when the kernels do the heavy work, BLAS is held to one thread.
 
 ``threadpoolctl`` does this when it is installed. Without it, this module
 finds the OpenBLAS that numpy loaded and calls its own thread setter --
-the same thing, for the one library numpy's wheels ship. Anything else
-(Accelerate, MKL without threadpoolctl) is reported as not controllable
-rather than guessed at.
+the same thing, for the one library numpy's wheels ship. It is found in
+the process's memory map on Linux, and beside the numpy package (where
+the wheels put it) on Windows, macOS and anywhere the map cannot be read.
+Anything else (Accelerate, MKL without threadpoolctl) is reported as not
+controllable rather than guessed at.
 """
 from __future__ import annotations
 
@@ -36,16 +38,7 @@ def _openblas() -> list[tuple[Any, Any]]:
     import numpy as np
 
     np.ones((2, 2), dtype=np.float32) @ np.ones((2, 2), dtype=np.float32)  # make sure it is loaded
-    paths: set[str] = set()
-    if sys.platform.startswith("linux"):
-        try:
-            with open("/proc/self/maps", encoding="utf-8", errors="replace") as handle:
-                for line in handle:
-                    parts = line.split()
-                    if len(parts) >= 6 and re.search(r"openblas", parts[-1], re.I):
-                        paths.add(parts[-1])
-        except OSError:
-            pass
+    paths: set[str] = _mapped() or _beside_numpy(np)
     found: list[tuple[Any, Any]] = []
     for path in sorted(paths):
         try:
@@ -61,6 +54,40 @@ def _openblas() -> list[tuple[Any, Any]]:
             getter.argtypes, getter.restype = [], ctypes.c_int
         found.append((setter, getter))
     _found = found
+    return found
+
+
+def _mapped() -> set[str]:
+    """OpenBLAS libraries in this process's memory map (Linux)."""
+    paths: set[str] = set()
+    if sys.platform.startswith("linux"):
+        try:
+            with open("/proc/self/maps", encoding="utf-8", errors="replace") as handle:
+                for line in handle:
+                    parts = line.split()
+                    if len(parts) >= 6 and re.search(r"openblas", parts[-1], re.I):
+                        paths.add(parts[-1])
+        except OSError:
+            pass
+    return paths
+
+
+def _beside_numpy(np: Any) -> set[str]:
+    """The OpenBLAS a numpy wheel ships: ``numpy.libs`` or ``numpy/.dylibs``.
+
+    Only a file inside numpy's own installation is taken, so loading it by
+    path returns the copy numpy already has loaded rather than another one.
+    """
+    from pathlib import Path
+
+    package = Path(np.__file__).resolve().parent
+    found: set[str] = set()
+    for folder in (package.parent / "numpy.libs", package / ".libs", package / ".dylibs"):
+        if folder.is_dir():
+            found.update(str(p) for p in folder.iterdir()
+                         if re.search(r"openblas", p.name, re.I)
+                         and p.suffix.lower() in (".dll", ".so", ".dylib") or ".so." in p.name
+                         and re.search(r"openblas", p.name, re.I))
     return found
 
 

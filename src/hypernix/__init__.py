@@ -63,7 +63,7 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.73.0a1"
+__version__ = "0.73.0a2"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
 DEFAULT_MODEL = "lfm2.5-2.6b"  # 0.72.8: Liquid AI LFM2.5 2.6B ("lfm2.5-2.7b" works too)
 
@@ -106,6 +106,13 @@ __all__ = [
     "V5SConfig",
     "PressureCookerV6",
     "PressureCookerV6V",
+    "PressureCookerV7",
+    "PressureCookerV7M",
+    "PressureCookerV7Mini",
+    "PressureCookerV7Q",
+    "PressureCookerV7S",
+    "PressureCookerV7V",
+    "OptimizerFrameworkV2",
     "QUANT_CATALOG",
     "QUANT_TYPES",
     "QuantConfig",
@@ -183,6 +190,7 @@ __all__ = [
     "old_oven",
     "old_range",
     "optimizer_framework",
+    "optimizer_framework_v2",
     "outage",
     "pans",
     "pepper_shaker",
@@ -195,6 +203,8 @@ __all__ = [
     "pressurecooker_v5s",
     "pressure_cooker_v6",
     "pressure_cooker_v6v",
+    "pressure_cooker_v7",
+    "pressure_cooker_v7v",
     "preheat",
     "print_models",
     "quant_batch",
@@ -353,6 +363,9 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "pressure_cooker_v5s",
         "pressure_cooker_v6",
         "pressure_cooker_v6v",
+        "pressure_cooker_v7",
+        "pressure_cooker_v7v",
+        "optimizer_framework_v2",
     ),
     # The GGUF pipeline: convert, quantize, fetch tooling and upload.
     "quant": (
@@ -487,6 +500,13 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     'V5SConfig': ('optimizers.pressure_cooker_v5s', 'V5SConfig'),
     'PressureCookerV6': ('optimizers.pressure_cooker_v6', 'PressureCookerV6'),
     'PressureCookerV6V': ('optimizers.pressure_cooker_v6v', 'PressureCookerV6V'),
+    'PressureCookerV7': ('optimizers.pressure_cooker_v7', 'PressureCookerV7'),
+    'PressureCookerV7Mini': ('optimizers.pressure_cooker_v7', 'PressureCookerV7Mini'),
+    'PressureCookerV7Q': ('optimizers.pressure_cooker_v7', 'PressureCookerV7Q'),
+    'PressureCookerV7S': ('optimizers.pressure_cooker_v7', 'PressureCookerV7S'),
+    'PressureCookerV7M': ('optimizers.pressure_cooker_v7', 'PressureCookerV7M'),
+    'PressureCookerV7V': ('optimizers.pressure_cooker_v7v', 'PressureCookerV7V'),
+    'OptimizerFrameworkV2': ('optimizers.optimizer_framework_v2', 'OptimizerFrameworkV2'),
     'QAProcessor': ('data.qa', 'QAProcessor'),
     'QUANT_CATALOG': ('quant.quantize', 'CATALOG'),
     'QUANT_TYPES': ('quant.quantize', 'QUANT_TYPES'),
@@ -596,6 +616,9 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     'pressurecooker_v5s': ('optimizers.pressure_cooker_v5s', None),
     'pressure_cooker_v6': ('optimizers.pressure_cooker_v6', None),
     'pressure_cooker_v6v': ('optimizers.pressure_cooker_v6v', None),
+    'pressure_cooker_v7': ('optimizers.pressure_cooker_v7', None),
+    'pressure_cooker_v7v': ('optimizers.pressure_cooker_v7v', None),
+    'optimizer_framework_v2': ('optimizers.optimizer_framework_v2', None),
     'print_models': ('system.utils', 'print_models'),
     'qa': ('data.qa', None),
     'quant_batch': ('quant.quantize', 'batch_quantize'),
@@ -869,6 +892,7 @@ if TYPE_CHECKING:
     )
     from .optimizers import (
         optimizer_framework,
+        optimizer_framework_v2,
         pressure_cooker,
         pressure_cooker_v3,
         pressure_cooker_v4,
@@ -876,10 +900,13 @@ if TYPE_CHECKING:
         pressure_cooker_v5s,
         pressure_cooker_v6,
         pressure_cooker_v6v,
+        pressure_cooker_v7,
+        pressure_cooker_v7v,
     )
 
     # Historical misspelling kept as a public alias.
     from .optimizers import pressure_cooker_v5s as pressurecooker_v5s
+    from .optimizers.optimizer_framework_v2 import OptimizerFrameworkV2
     from .optimizers.pressure_cooker_v3 import (
         PressureCookerV3,
         PressureCookerV3Plus,
@@ -909,6 +936,14 @@ if TYPE_CHECKING:
     )
     from .optimizers.pressure_cooker_v6 import PressureCookerV6
     from .optimizers.pressure_cooker_v6v import PressureCookerV6V
+    from .optimizers.pressure_cooker_v7 import (
+        PressureCookerV7,
+        PressureCookerV7M,
+        PressureCookerV7Mini,
+        PressureCookerV7Q,
+        PressureCookerV7S,
+    )
+    from .optimizers.pressure_cooker_v7v import PressureCookerV7V
     from .quant.convert import convert_to_gguf
     from .quant.fetcher import fetch_llama_quantize
     from .quant.quantize import CATALOG as QUANT_CATALOG  # noqa: I001

@@ -67,6 +67,7 @@ reachable if you already knew the filename. Fixed.)
 | [Pressure Cooker v4](Pressure-Cooker-V4.md) | Optimized quantization-aware training mechanism and optimizer wrapper. |
 | [Pressure Cooker v5](Pressure-Cooker-V5.md) | Flagship ORCP optimizer — quantized momentum, QAT, MTP support, V5+/V5S variants. |
 | [Pressure Cooker v6](Pressure-Cooker-V6.md) | Speed-first optimizer — single fused momentum buffer, `torch._foreach_*` multi-tensor updates; `PressureCookerV6V` adds CUDA graph capture + optional `torch.compile`. |
+| [Pressure Cooker V7](Pressure-Cooker-V7.md) | The V7 family (Balanced, V7V, Mini, Q, S, M), `OptimizerFrameworkV2` (create any optimizer, explained auto-selection) and `hnx optimizer benchmark`. |
 | [MTP](MTP.md) | Multi-Token Prediction — predict several future tokens at once for sample efficiency + speculative decoding. |
 | [STML](STML.md) | Short Term Memory Loss — `STML` context manager and `calculate_vram_context` VRAM calculator. |
 | [Frameworks](Frameworks.md) | `ComputeFramework` multi-device training and `workshop` TTS/ASR pipelines. |
@@ -144,7 +145,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.2.26.11.0.0** in 0.73.0a1. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.2.26.11.0.0** in 0.73.0a2. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
 | [HyperLink-OnDevice](HyperLink-OnDevice.md) | HyperLink's on-phone models: search Hugging Face, download a GGUF and run it on the iPhone. |
 | [HyperLink-Sync](HyperLink-Sync.md) | HyperLink's sync, push notifications and search — how a phone that sleeps catches up. |

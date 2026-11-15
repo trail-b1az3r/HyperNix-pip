@@ -164,6 +164,29 @@ class TestAgainstThePythonDecoders:
             built.decode(raw, 9999, 256)
 
 
+def test_numpys_openblas_is_found_beside_the_package(monkeypatch):
+    """The route Windows and macOS take: no memory map to read."""
+    import numpy as np
+
+    if not blasctl._beside_numpy(np):
+        pytest.skip("this numpy does not ship its own OpenBLAS")
+    monkeypatch.setattr(blasctl, "_mapped", lambda: set())
+    monkeypatch.setattr(blasctl, "_found", None)
+    before = blasctl.get_threads()
+    assert blasctl._openblas() and before is not None
+    blasctl.set_threads(1)
+    assert blasctl.get_threads() == 1
+    blasctl.set_threads(before)
+
+
+@pytest.fixture
+def blas_control():
+    """The kernels take over matmul only where BLAS can be held to one thread."""
+    if not blasctl.controllable():
+        pytest.skip("BLAS threads cannot be limited here, so the kernels only decode")
+
+
+@pytest.mark.usefixtures("blas_control")
 class TestInTheEngine:
     @pytest.mark.parametrize("arch", ["qwen2", "qwen35", "lfm3", "glm4moe"])
     def test_same_tokens_and_logits_as_numpy(self, built, tmp_path, arch):
@@ -222,6 +245,20 @@ class TestInTheEngine:
             assert "decode only" in engine.kernels_note
             result = engine.generate(prompt_ids=list(range(10, 20)), max_tokens=3)
             assert len(result.tokens) > 0
+
+
+def test_without_blas_control_the_kernels_only_decode(built, tmp_path, monkeypatch):
+    model = make_model(tmp_path / "m.gguf", arch="qwen2", quant="Q4_K", n_embd=256, n_ff=512,
+                       n_layers=1, seed=4)
+    ids = list(range(20, 40))
+    with Engine(model["path"], n_ctx=64, kernels="off") as slow:
+        want = slow.generate(prompt_ids=ids, max_tokens=5, sampling=SamplerConfig(temperature=0))
+    monkeypatch.setattr(blasctl, "controllable", lambda: False)
+    with Engine(model["path"], n_ctx=64) as engine:
+        assert not engine.weights.native_matmul and "decode only" in engine.kernels_note
+        got = engine.generate(prompt_ids=ids, max_tokens=5, sampling=SamplerConfig(temperature=0))
+        assert engine.weights.native_decodes > 0
+    assert got.tokens == want.tokens
 
 
 def test_cli_status_reports_the_build(built, capsys):

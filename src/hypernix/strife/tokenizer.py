@@ -313,8 +313,15 @@ class Tokenizer:
                 from jinja2.exceptions import SecurityError
 
                 env = _template_env()
-            except ImportError:
-                env = None
+            except ImportError as exc:
+                # Never ChatML in its place: a model prompted in the wrong
+                # format answers badly and nothing says why.
+                raise StrifeError(
+                    "strife.chat.no_jinja",
+                    "this model has its own chat template, and rendering it needs Jinja2, "
+                    "which is not installed",
+                    remedy="pip install jinja2 (or pass a plain prompt instead of messages).",
+                ) from exc
             if env is not None:
                 bos = self.tokens[self.bos_id] if self.bos_id is not None else ""
                 eos = self.tokens[self.eos_id] if self.eos_id is not None else ""

@@ -204,7 +204,9 @@ class TestNewestEntry:
         post = re.search(r"\.post(\d+)$", version)
         if post is None:
             return  # a dated release; the test above holds its header
-        patch = re.match(r"^\d+\.\d+\.\d+\.post\d+ — patch (\d+) - \S.*$", header)
+        # A patch can follow a pre-release too (0.73.0a1.post1): PEP 440 allows it.
+        patch = re.match(r"^\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?\.post\d+ — patch (\d+) - \S.*$",
+                         header)
         assert patch, header
         assert int(patch.group(1)) == int(post.group(1)), header
 

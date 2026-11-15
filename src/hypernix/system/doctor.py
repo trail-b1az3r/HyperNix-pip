@@ -41,6 +41,7 @@ _RUNTIME_DEPS: tuple[str, ...] = (
     "tqdm>=4.66.3",
     "rich>14,<=15.0.0",
     "sentencepiece>=0.2.1; python_version < '3.15'",
+    "jinja2>=3.1.4",
 )
 #: The ``train`` extra, plus the tokenizers it pulls in: needed for HF
 #: tokenizers and training, and installed by ``--fix`` as well.
@@ -53,6 +54,7 @@ _OPTIONAL_DEPS: tuple[str, ...] = (
 #: The modules behind each required dependency, by import name.
 _REQUIRED_IMPORTS: tuple[str, ...] = (
     "numpy", "safetensors", "huggingface_hub", "gguf", "tqdm", "rich", "sentencepiece",
+    "jinja2",
 )
 
 #: ``[project.optional-dependencies]`` extra -> the modules it provides.

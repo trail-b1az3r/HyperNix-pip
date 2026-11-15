@@ -1,6 +1,29 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.73.0a2
+
+<details>
+<summary>0.73.0a2 — alpha 2: breaking changes and security</summary>
+
+- **Breaking changes:** none. V1 to V6V optimizers are unchanged; V7 and Optimizer Framework V2 are additions.
+- **Security:** no security changes in this alpha.
+- **FIXED DURING DEVELOPMENT — introduced by this update:** V7 checkpoints did not carry the oscillation reading that gates pressure diffusion, so a resumed run could diffuse differently from an uninterrupted one; caught while writing the resume test, before release.
+- **Not measured:** no CUDA device was available. V7V's compiled and CUDA-graph paths and V6V are implemented and unmeasured.
+
+</details>
+
+## 0.73.0a1.post1
+
+<details>
+<summary>0.73.0a1.post1 — In-development bug-fix log</summary>
+
+- **Security:** Strife's kernel library is written `0600` instead of `0700`.
+- **FIXED DURING DEVELOPMENT — introduced by this update:** the new `ignore_eos` and `timings` options were added to `Engine.stream` but not passed to the decode loop, which broke every generation; caught by the Strife tests before commit.
+- Dependencies reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). `jinja2>=3.1.4` is now declared (PyTorch already required it).
+
+</details>
+
 ## 0.73.0a1
 
 <details>
