@@ -1,14 +1,14 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "8dee1036615a1ba13238eed3617c53ba37ea9334",
+  "commit": "266f4acdfce7c92fdf5b9fc1105ec47b3d52519e",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
     {
       "module": "hypernix",
       "source": "src/hypernix/__init__.py",
-      "line_count": 949,
+      "line_count": 984,
       "summary": "hypernix \u2014 end-to-end toolkit for HyperNix-family PyTorch models.",
       "api": [],
       "errors": [
@@ -17,6 +17,20 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "b8c5ce13",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: hnx optimizer (list, select, benchmark), exports for the V7 family",
+          "api_changes": []
+        },
+        {
+          "sha": "0aaacbeb",
+          "date": "2026-11-14",
+          "author": "Claude",
+          "subject": "0.73.0a1.post1: Strife fixes from alpha 1's CI",
+          "api_changes": []
+        },
         {
           "sha": "de229114",
           "date": "2026-11-12",
@@ -57,20 +71,6 @@
           "date": "2026-10-28",
           "author": "Claude",
           "subject": "0.72.8",
-          "api_changes": []
-        },
-        {
-          "sha": "685653c7",
-          "date": "2026-10-28",
-          "author": "Claude",
-          "subject": "0.72.8rc1",
-          "api_changes": []
-        },
-        {
-          "sha": "1f71cc6f",
-          "date": "2026-10-27",
-          "author": "Claude",
-          "subject": "Security: the scan's high alerts, vulnerable dependency floors; 0.72.8a5",
           "api_changes": []
         }
       ]
@@ -17431,14 +17431,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1776,
+      "line_count": 1782,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1503,
+          "line": 1506,
           "doc": ""
         }
       ],
@@ -17449,6 +17449,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "b8c5ce13",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: hnx optimizer (list, select, benchmark), exports for the V7 family",
+          "api_changes": []
+        },
         {
           "sha": "ad0512d8",
           "date": "2026-11-12",
@@ -17510,18 +17517,6 @@
           "author": "Claude",
           "subject": "scriptgen: a script that runs, a redesigned window, more options",
           "api_changes": []
-        },
-        {
-          "sha": "d2a47609",
-          "date": "2026-10-28",
-          "author": "Claude",
-          "subject": "hnx download --latest; the runner fetches and registers HyperNix releases",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _download_latest(ns: argparse.Namespace) -> int:"
-            }
-          ]
         }
       ]
     },
@@ -21486,6 +21481,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "0aaacbeb",
+          "date": "2026-11-14",
+          "author": "Claude",
+          "subject": "0.73.0a1.post1: Strife fixes from alpha 1's CI",
+          "api_changes": []
+        },
+        {
           "sha": "f0288e97",
           "date": "2026-11-12",
           "author": "Rayla",
@@ -21977,14 +21979,14 @@
     {
       "module": "hypernix.interfaces.wiki_cli",
       "source": "src/hypernix/interfaces/wiki_cli.py",
-      "line_count": 384,
+      "line_count": 387,
       "summary": "hypernix wiki / hnx wiki \u2014 HyperNix CLI wiki and documentation browser.",
       "api": [
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 359,
+          "line": 362,
           "doc": "Entry point for the `hypernix wiki` / `hnx wiki` subcommand."
         }
       ],
@@ -21998,6 +22000,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "266f4acd",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: tests for the V7 family, the framework and the benchmark; V7 docs",
+          "api_changes": []
+        },
         {
           "sha": "e89afd46",
           "date": "2026-10-20",
@@ -22046,70 +22055,6 @@
           "author": "Claude",
           "subject": "VRAM optimizations: hypernix.system.vram",
           "api_changes": []
-        },
-        {
-          "sha": "8c25846c",
-          "date": "2026-08-21",
-          "author": "Claude",
-          "subject": "Group hypernix modules into category packages",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _get_hypernix_root() -> Path:"
-            },
-            {
-              "kind": "added",
-              "text": "def _module_files() -> dict[str, Path]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _get_all_modules() -> list[str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _module_category(module_name: str) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _get_module_doc(module_name: str) -> dict[str, Any] | None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _get_signature_from_ast(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _format_module_doc(doc: dict[str, Any], console: Console, quick: bool = False) -> Iterator[str]:"
-            },
-            {
-              "kind": "added",
-              "text": "cls_header = Text(f\"\\n  class {cls['name']}\", style=\"bold cyan\")"
-            },
-            {
-              "kind": "added",
-              "text": "sig = f\"    def {method['name']}{method['signature']}\""
-            },
-            {
-              "kind": "added",
-              "text": "sig = f\"  def {func['name']}{func['signature']}\""
-            },
-            {
-              "kind": "added",
-              "text": "def _show_toc(console: Console) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _open_in_browser(module_name: str | None) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _search_modules(keyword: str, console: Console | None) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def cli_main(argv: list[str] | None = None) -> int:"
-            }
-          ]
         }
       ]
     },
@@ -31281,7 +31226,7 @@
     {
       "module": "hypernix.optimizers",
       "source": "src/hypernix/optimizers/__init__.py",
-      "line_count": 31,
+      "line_count": 37,
       "summary": "hypernix.optimizers \u2014 The Pressure Cooker optimizer family and optimizer plumbing.",
       "api": [],
       "errors": [
@@ -31290,6 +31235,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "b8c5ce13",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: hnx optimizer (list, select, benchmark), exports for the V7 family",
+          "api_changes": []
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",
@@ -31303,6 +31255,227 @@
             {
               "kind": "added",
               "text": "def __dir__() -> list[str]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.optimizers.benchmark",
+      "source": "src/hypernix/optimizers/benchmark.py",
+      "line_count": 523,
+      "summary": "hypernix.optimizers.benchmark \u2014 measure the optimizers against each other.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "bench_optimizer_only",
+          "signature": "def bench_optimizer_onlykey: str, workload: dict[str, Any], *, steps: int, warmup: int, seed: int, device: str, lr: float -> dict[str, Any]",
+          "line": 222,
+          "doc": "``step()`` alone, on gradients computed once and replayed."
+        },
+        {
+          "kind": "function",
+          "name": "bench_training",
+          "signature": "def bench_trainingkey: str, workload: dict[str, Any], *, steps: int, seed: int, device: str, lr: float, time_budget: float | None=None -> dict[str, Any]",
+          "line": 257,
+          "doc": "A whole training run: forward, backward and step, every step timed."
+        },
+        {
+          "kind": "function",
+          "name": "run_benchmark",
+          "signature": "def run_benchmark*, optimizers: tuple[str, ...]=DEFAULT_OPTIMIZERS, workloads: tuple[str, ...]=QUICK_WORKLOADS, lrs: tuple[float, ...]=DEFAULT_LRS, steps: int=120, optimizer_steps: int=30, warmup: int=5, seed: int=0, device: str='cpu', progress: Any=None -> dict[str, Any]",
+          "line": 336,
+          "doc": "Run the comparison and return the record."
+        },
+        {
+          "kind": "function",
+          "name": "measured_table",
+          "signature": "def measured_tablerecord: dict[str, Any] -> dict[str, dict[str, Any]]",
+          "line": 409,
+          "doc": "The record averaged over its workloads, in the shape :meth:`OptimizerFrameworkV2.table` and ``auto_select`` take."
+        },
+        {
+          "kind": "function",
+          "name": "write_csv",
+          "signature": "def write_csvrecord: dict[str, Any], path: Path -> None",
+          "line": 436,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "render_report",
+          "signature": "def render_reportrecord: dict[str, Any] -> str",
+          "line": 467,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "main",
+          "signature": "def mainargv: list[str] | None=None -> int",
+          "line": 533,
+          "doc": ""
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "266f4acd",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: tests for the V7 family, the framework and the benchmark; V7 docs",
+          "api_changes": []
+        },
+        {
+          "sha": "b8c5ce13",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: hnx optimizer (list, select, benchmark), exports for the V7 family",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class _TinyLM(nn.Module):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, vocab: int, dim: int, layers: int, heads: int, seq: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def forward(self, ids: torch.Tensor) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "class _EmbeddingHeavy(nn.Module):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, vocab: int, dim: int, classes: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def forward(self, ids: torch.Tensor) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Mixed(nn.Module):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, dim: int, classes: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def forward(self, x: torch.Tensor) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def _lm_data(vocab: int, seq: int, batch: int, batches: int, seed: int) -> list[tuple]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _regression_data(dim: int, classes: int, batch: int, batches: int, seed: int) -> list[tuple]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _bag_data(vocab: int, seq: int, classes: int, batch: int, batches: int, seed: int"
+            },
+            {
+              "kind": "added",
+              "text": "def _lm_loss(model: nn.Module, batch: tuple) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def _class_loss(model: nn.Module, batch: tuple) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def _transformer(vocab: int, dim: int, layers: int, heads: int, seq: int, batch: int) -> dict:"
+            },
+            {
+              "kind": "added",
+              "text": "def _make(key: str, params: Any, lr: float) -> torch.optim.Optimizer:"
+            },
+            {
+              "kind": "added",
+              "text": "def _unavailable(key: str, device: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _state_bytes(optimizer: torch.optim.Optimizer) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _sync(device: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def bench_optimizer_only(key: str, workload: dict[str, Any], *, steps: int, warmup: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def bench_training(key: str, workload: dict[str, Any], *, steps: int, seed: int, device: str,"
+            },
+            {
+              "kind": "added",
+              "text": "def _peak_rss() -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def run_benchmark(*, optimizers: tuple[str, ...] = DEFAULT_OPTIMIZERS,"
+            },
+            {
+              "kind": "added",
+              "text": "def measured_table(record: dict[str, Any]) -> dict[str, dict[str, Any]]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.optimizers.cli",
+      "source": "src/hypernix/optimizers/cli.py",
+      "line_count": 108,
+      "summary": "hypernix.optimizers.cli \u2014 ``hnx optimizer``.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "cli_main",
+          "signature": "def cli_mainargv: list[str] -> int",
+          "line": 110,
+          "doc": ""
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "b8c5ce13",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: hnx optimizer (list, select, benchmark), exports for the V7 family",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _list(argv: list[str]) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _select(argv: list[str]) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main(argv: list[str]) -> int:"
             }
           ]
         }
@@ -31627,6 +31800,196 @@
             {
               "kind": "added",
               "text": "def profile_start(self) -> None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.optimizers.optimizer_framework_v2",
+      "source": "src/hypernix/optimizers/optimizer_framework_v2.py",
+      "line_count": 507,
+      "summary": "hypernix.optimizer_framework_v2 \u2014 one interface over every HyperNix optimizer.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "OptimizerSpec",
+          "signature": "class OptimizerSpec",
+          "line": 69,
+          "doc": "One optimizer: where it lives, what it offers, and what it is for.",
+          "methods": [
+            {
+              "name": "load",
+              "signature": "def loadself -> type",
+              "line": 94,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Selection",
+          "signature": "class Selection",
+          "line": 197,
+          "doc": "What :meth:`OptimizerFrameworkV2.auto_select` chose, and why.",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 217,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "OptimizerFrameworkV2",
+          "signature": "class OptimizerFrameworkV2",
+          "line": 247,
+          "doc": "One interface over AdamW, Pressure Cooker V1-V6V and the V7 family.",
+          "methods": [
+            {
+              "name": "names",
+              "signature": "def names*, include_legacy: bool=True -> list[str]",
+              "line": 253,
+              "doc": ""
+            },
+            {
+              "name": "spec",
+              "signature": "def specname: str -> OptimizerSpec",
+              "line": 257,
+              "doc": ""
+            },
+            {
+              "name": "table",
+              "signature": "def tablemeasured: dict[str, dict[str, Any]] | None=None -> list[dict[str, Any]]",
+              "line": 261,
+              "doc": "The comparison matrix, one row per optimizer."
+            },
+            {
+              "name": "create",
+              "signature": "def createname: str, params: Iterable[Any], *, lr: float=0.0003, weight_decay: float | None=None, **options: Any -> torch.optim.Optimizer",
+              "line": 283,
+              "doc": "Construct optimizer *name*."
+            },
+            {
+              "name": "build",
+              "signature": "def buildselection: Selection, params: Iterable[Any], *, lr: float=0.0003, **options: Any -> torch.optim.Optimizer",
+              "line": 314,
+              "doc": "Construct what :meth:`auto_select` chose, with the options it chose."
+            },
+            {
+              "name": "auto_select",
+              "signature": "def auto_selectparams: Iterable[Any] | None=None, *, objective: str='balanced', requested: str | None=None, parameter_count: int | None=None, parameter_count_verified: bool=False, device: str | torch.device | None=None, required_features: Iterable[str]=(), free_memory_bytes: int | None=None, fixed_shapes: bool=False, compile_available: bool | None=None, measured: dict[str, dict[str, Any]] | None=None -> Selection",
+              "line": 326,
+              "doc": "Recommend an optimizer."
+            },
+            {
+              "name": "diagnostics",
+              "signature": "def diagnosticsoptimizer: torch.optim.Optimizer -> dict[str, Any]",
+              "line": 547,
+              "doc": "What *optimizer* is and is doing, in one dictionary."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "TypeError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "b8c5ce13",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: hnx optimizer (list, select, benchmark), exports for the V7 family",
+          "api_changes": []
+        },
+        {
+          "sha": "2b2b423c",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2 (in progress): Pressure Cooker V7 family, V7V, V7M features, OptimizerFrameworkV2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "Nothing here replaces an optimizer's own class or changes its update rule:"
+            },
+            {
+              "kind": "added",
+              "text": "class OptimizerSpec:"
+            },
+            {
+              "kind": "added",
+              "text": "def load(self) -> type:"
+            },
+            {
+              "kind": "added",
+              "text": "class Selection:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _resolve(name: str) -> OptimizerSpec:"
+            },
+            {
+              "kind": "added",
+              "text": "def _count(params: Iterable[Any] | None) -> tuple[int | None, str, torch.dtype | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "class OptimizerFrameworkV2:"
+            },
+            {
+              "kind": "added",
+              "text": "def names(*, include_legacy: bool = True) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def spec(name: str) -> OptimizerSpec:"
+            },
+            {
+              "kind": "added",
+              "text": "def table(measured: dict[str, dict[str, Any]] | None = None) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def create(name: str, params: Iterable[Any], *, lr: float = 3e-4,"
+            },
+            {
+              "kind": "added",
+              "text": "def build(selection: Selection, params: Iterable[Any], *, lr: float = 3e-4,"
+            },
+            {
+              "kind": "added",
+              "text": "def auto_select("
+            },
+            {
+              "kind": "added",
+              "text": "def supports(key: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def choose(key: str, code: str, reason: str, **options: Any) -> Selection:"
+            },
+            {
+              "kind": "added",
+              "text": "def passed(key: str, why: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def diagnostics(optimizer: torch.optim.Optimizer) -> dict[str, Any]:"
             }
           ]
         }
@@ -33108,6 +33471,336 @@
       ]
     },
     {
+      "module": "hypernix.optimizers.pressure_cooker_v7",
+      "source": "src/hypernix/optimizers/pressure_cooker_v7.py",
+      "line_count": 977,
+      "summary": "hypernix.pressure_cooker_v7 \u2014 Pressure Cooker V7: the balanced optimizer.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "resolve_state_dtype",
+          "signature": "def resolve_state_dtypen_params: int, device: torch.device | str, *, param_dtype: torch.dtype=torch.float32, free_bytes: int | None=None -> tuple[str, str]",
+          "line": 152,
+          "doc": "``(state dtype, why)`` for ``state_dtype=\"auto\"``."
+        },
+        {
+          "kind": "class",
+          "name": "PressureCookerV7",
+          "signature": "class PressureCookerV7",
+          "line": 236,
+          "doc": "Pressure Cooker V7 (Balanced): see the module docstring for the design.",
+          "methods": [
+            {
+              "name": "report_loss",
+              "signature": "def report_lossself, loss: float -> None",
+              "line": 426,
+              "doc": "Tell the optimizer the training loss (optional)."
+            },
+            {
+              "name": "step",
+              "signature": "def stepself, closure=None",
+              "line": 760,
+              "doc": ""
+            },
+            {
+              "name": "state_bytes",
+              "signature": "def state_bytesself -> int",
+              "line": 817,
+              "doc": "Bytes of persistent optimizer state, counted from the tensors themselves."
+            },
+            {
+              "name": "ema_parameters",
+              "signature": "def ema_parametersself -> list[torch.Tensor]",
+              "line": 830,
+              "doc": "The EMA shadow, in parameter order (empty without ``ema_decay``)."
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 835,
+              "doc": ""
+            },
+            {
+              "name": "state_dict",
+              "signature": "def state_dictself -> dict[str, Any]",
+              "line": 863,
+              "doc": ""
+            },
+            {
+              "name": "load_state_dict",
+              "signature": "def load_state_dictself, state_dict: dict[str, Any] -> None",
+              "line": 876,
+              "doc": "Load a V7 checkpoint, converting the momentum if its dtype differs."
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "PressureCookerV7Mini",
+          "signature": "class PressureCookerV7Mini",
+          "line": 965,
+          "doc": "V7Mini: for models of more than 39M and fewer than 750M parameters.",
+          "methods": [
+            {
+              "name": "in_band",
+              "signature": "def in_bandself -> bool",
+              "line": 985,
+              "doc": ""
+            },
+            {
+              "name": "band_note",
+              "signature": "def band_noteself -> str",
+              "line": 989,
+              "doc": ""
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 996,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "PressureCookerV7Q",
+          "signature": "class PressureCookerV7Q",
+          "line": 1003,
+          "doc": "V7Q: throughput first.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "PressureCookerV7S",
+          "signature": "class PressureCookerV7S",
+          "line": 1032,
+          "doc": "V7S: the V5S lineage on the V7 engine.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "PressureCookerV7M",
+          "signature": "class PressureCookerV7M",
+          "line": 1080,
+          "doc": "V7M: the V5 and V5+ lineage on the V7 engine.",
+          "methods": []
+        }
+      ],
+      "errors": [
+        "RuntimeError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "266f4acd",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2: tests for the V7 family, the framework and the benchmark; V7 docs",
+          "api_changes": []
+        },
+        {
+          "sha": "2b2b423c",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2 (in progress): Pressure Cooker V7 family, V7V, V7M features, OptimizerFrameworkV2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def resolve_state_dtype(n_params: int, device: torch.device | str, *,"
+            },
+            {
+              "kind": "added",
+              "text": "def _free_bytes(device: torch.device) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Bucket:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, params: list[torch.Tensor], group: dict[str, Any], key: tuple) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class PressureCookerV7(OptimizerBase):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def pick(name: str, given: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _default_preset(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _variant_defaults(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def report_loss(self, loss: float) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _new_momentum(self, p: torch.Tensor) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def _momentum_dtype(self, p: torch.Tensor) -> torch.dtype:"
+            },
+            {
+              "kind": "added",
+              "text": "def _factorable(self, p: torch.Tensor) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _init_state(self, state: dict[str, Any], p: torch.Tensor) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _collect(self) -> list[_Bucket]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _diffuse(self, g: torch.Tensor, strength: float) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def _refresh_factors(self, g: torch.Tensor, state: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _prepare_grads(self, bucket: _Bucket) -> list[torch.Tensor]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _foreach_ok(self, tensors: list[torch.Tensor]) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _norms(self, tensors: list[torch.Tensor]) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def _update_momentum(self, bucket: _Bucket, grads: list[torch.Tensor],"
+            },
+            {
+              "kind": "added",
+              "text": "def _update_momentum_each(self, states: list[dict[str, Any]], grads: list[torch.Tensor],"
+            },
+            {
+              "kind": "added",
+              "text": "def _measure(self, bucket: _Bucket, grads: list[torch.Tensor], moms: list[torch.Tensor],"
+            },
+            {
+              "kind": "added",
+              "text": "def _step_bucket(self, bucket: _Bucket, measure: bool,"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.optimizers.pressure_cooker_v7v",
+      "source": "src/hypernix/optimizers/pressure_cooker_v7v.py",
+      "line_count": 133,
+      "summary": "hypernix.pressure_cooker_v7v \u2014 Pressure Cooker V7V: V7 with the accelerated paths.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "PressureCookerV7V",
+          "signature": "class PressureCookerV7V",
+          "line": 39,
+          "doc": "V7 with ``torch.compile`` and CUDA-graph replay where they are available.",
+          "methods": [
+            {
+              "name": "warmup_graph",
+              "signature": "def warmup_graphself, step_fn: Callable[[], Any] -> None",
+              "line": 95,
+              "doc": "Capture a CUDA graph of one whole training step."
+            },
+            {
+              "name": "replay_graph",
+              "signature": "def replay_graphself -> Any",
+              "line": 136,
+              "doc": "Replay the captured step; returns what ``step_fn`` returned."
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 150,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "RuntimeError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "2b2b423c",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2 (in progress): Pressure Cooker V7 family, V7V, V7M features, OptimizerFrameworkV2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class PressureCookerV7V(PressureCookerV7):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, params: Any, *, compile: bool | str = \"auto\", **kwargs: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _try_compile(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _apply_update(self, buckets: list[_Bucket], measure: bool,"
+            },
+            {
+              "kind": "added",
+              "text": "def warmup_graph(self, step_fn: Callable[[], Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def replay_graph(self) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _kernel_name(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.optimizers.sixbit",
       "source": "src/hypernix/optimizers/sixbit.py",
       "line_count": 156,
@@ -33214,6 +33907,158 @@
             {
               "kind": "added",
               "text": "def roundtrip("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.optimizers.v7m_features",
+      "source": "src/hypernix/optimizers/v7m_features.py",
+      "line_count": 219,
+      "summary": "hypernix.v7m_features \u2014 V7M's optional training features, as explicit calls.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "QATHandle",
+          "signature": "class QATHandle",
+          "line": 86,
+          "doc": "What :func:`attach_qat` did, and how to undo it.",
+          "methods": [
+            {
+              "name": "remove",
+              "signature": "def removeself -> None",
+              "line": 93,
+              "doc": "Take the fake quantisation off again: the model computes with its stored full-precision weights, as before."
+            },
+            {
+              "name": "active",
+              "signature": "def activeself -> bool",
+              "line": 101,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "attach_qat",
+          "signature": "def attach_qatmodel: nn.Module, config: QATConfig | None=None, *, bits: dict[str, int] | None=None, skip: tuple[str, ...]=() -> QATHandle",
+          "line": 105,
+          "doc": "Fake-quantise the weights of *model*'s linear and conv layers."
+        },
+        {
+          "kind": "function",
+          "name": "quantization_sensitivity",
+          "signature": "def quantization_sensitivitymodel: nn.Module, loss_fn: Callable[[], torch.Tensor | float], *, bits: tuple[int, ...]=(4, 6, 8), config: QATConfig | None=None -> dict[str, dict[int, float]]",
+          "line": 153,
+          "doc": "How much the loss rises when one layer alone is quantised."
+        },
+        {
+          "kind": "function",
+          "name": "mixed_precision_plan",
+          "signature": "def mixed_precision_plansensitivity: dict[str, dict[int, float]], *, tolerance: float=0.01, full_precision_above: float | None=None -> dict[str, int]",
+          "line": 185,
+          "doc": "Bits per layer: the narrowest measured width whose loss rise is within *tolerance*; the widest measured one when none is."
+        },
+        {
+          "kind": "function",
+          "name": "make_mtp_head",
+          "signature": "def make_mtp_headhidden_dim: int, vocab_size: int, config: MTPConfig | None=None -> MTPHead",
+          "line": 205,
+          "doc": "A multi-token prediction head. Its parameters are yours to add to the optimizer; V7M does not add them for you."
+        },
+        {
+          "kind": "function",
+          "name": "mtp_loss",
+          "signature": "def mtp_losshead: MTPHead, hidden: torch.Tensor, targets: torch.Tensor, config: MTPConfig | None=None -> torch.Tensor",
+          "line": 213,
+          "doc": "The extra loss term: token ``t + k`` predicted from position ``t``, for ``k = 1 .. num_tokens``, weighted by ``config.lambda_weight``."
+        },
+        {
+          "kind": "function",
+          "name": "ema_weights",
+          "signature": "def ema_weightsoptimizer: Any -> Iterator[None]",
+          "line": 239,
+          "doc": "Evaluate with the optimizer's EMA shadow; put the live weights back after."
+        }
+      ],
+      "errors": [
+        "RuntimeError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "2b2b423c",
+          "date": "2026-11-15",
+          "author": "Claude",
+          "subject": "Alpha 2 (in progress): Pressure Cooker V7 family, V7V, V7M features, OptimizerFrameworkV2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _quantized(weight: torch.Tensor, bits: int, config: QATConfig) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "class QATHandle:"
+            },
+            {
+              "kind": "added",
+              "text": "def remove(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def active(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def attach_qat(model: nn.Module, config: QATConfig | None = None, *,"
+            },
+            {
+              "kind": "added",
+              "text": "class _Fake(nn.Module):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, width: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def forward(self, weight: torch.Tensor) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def undo_for(module: nn.Module) -> Callable[[], None]:"
+            },
+            {
+              "kind": "added",
+              "text": "def undo() -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def quantization_sensitivity(model: nn.Module, loss_fn: Callable[[], torch.Tensor | float], *,"
+            },
+            {
+              "kind": "added",
+              "text": "def mixed_precision_plan(sensitivity: dict[str, dict[int, float]], *,"
+            },
+            {
+              "kind": "added",
+              "text": "def make_mtp_head(hidden_dim: int, vocab_size: int, config: MTPConfig | None = None) -> MTPHead:"
+            },
+            {
+              "kind": "added",
+              "text": "def mtp_loss(head: MTPHead, hidden: torch.Tensor, targets: torch.Tensor,"
+            },
+            {
+              "kind": "added",
+              "text": "def ema_weights(optimizer: Any) -> Iterator[None]:"
             }
           ]
         }
@@ -43560,6 +44405,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "0aaacbeb",
+          "date": "2026-11-14",
+          "author": "Claude",
+          "subject": "0.73.0a1.post1: Strife fixes from alpha 1's CI",
+          "api_changes": []
+        },
+        {
           "sha": "de229114",
           "date": "2026-11-12",
           "author": "Claude",
@@ -43661,6 +44513,22 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0aaacbeb",
+          "date": "2026-11-14",
+          "author": "Claude",
+          "subject": "0.73.0a1.post1: Strife fixes from alpha 1's CI",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _mapped() -> set[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _beside_numpy(np: Any) -> set[str]:"
+            }
+          ]
+        },
         {
           "sha": "93d34cdb",
           "date": "2026-11-11",
@@ -44138,6 +45006,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0aaacbeb",
+          "date": "2026-11-14",
+          "author": "Claude",
+          "subject": "0.73.0a1.post1: Strife fixes from alpha 1's CI",
+          "api_changes": []
+        },
         {
           "sha": "de229114",
           "date": "2026-11-12",
@@ -44922,6 +45797,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0aaacbeb",
+          "date": "2026-11-14",
+          "author": "Claude",
+          "subject": "0.73.0a1.post1: Strife fixes from alpha 1's CI",
+          "api_changes": []
+        },
         {
           "sha": "de229114",
           "date": "2026-11-12",
@@ -45863,6 +46745,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0aaacbeb",
+          "date": "2026-11-14",
+          "author": "Claude",
+          "subject": "0.73.0a1.post1: Strife fixes from alpha 1's CI",
+          "api_changes": []
+        },
         {
           "sha": "d3d6a638",
           "date": "2026-11-10",

@@ -3,6 +3,163 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.73.0a2",
+      "key": "0.73.0a2",
+      "aliases": [
+        "0.73.0a2"
+      ],
+      "kind": "alpha",
+      "heading": "0.73.0a2 \u2014 2026-11-15",
+      "date": "2026-11-15",
+      "title": "",
+      "summary": "Pressure Cooker V7 (hypernix.optimizers.pressure_cooker_v7). One momentum buffer per parameter, stored as fp32, bf16, fp16 or int8; factored row and column statistics for matrices; a stability score from the gradient-momentum cosine at three timescales; Adaptive Pressure; a\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "Pressure Cooker V7 (hypernix.optimizers.pressure_cooker_v7). One momentum buffer per parameter, stored as fp32, bf16, fp16 or int8; factored row and column statistics for matrices; a stability score from the gradient-momentum cosine at three timescales; Adaptive Pressure; a\u2026",
+        "Optimizer Framework V2 (hypernix.optimizers.optimizer_framework_v2). OptimizerFrameworkV2.create(key, params) builds AdamW or any Pressure Cooker from V1 to V7 through one call, using the existing classes unchanged. auto_select(...) returns the choice with a stable reason_code\u2026",
+        "The V7 family, all on the same engine: PressureCookerV7V (torch.compile and CUDA-graph replay where available, the same foreach step everywhere else, with the fallback reasons recorded), PressureCookerV7Mini (for more than 39,000,000 and fewer than 750,000,000 parameters)\u2026",
+        "V7M's training features are explicit calls (hypernix.optimizers.v7m_features): attach_qat, quantization_sensitivity, mixed_precision_plan, make_mtp_head, mtp_loss, ema_weights. None of them runs unless called.",
+        "hnx optimizer benchmark compares AdamW, V5, V5+, V5S, V6, V6V, V7, V7Mini, V7Q, V7S and V7M on the same models, seeds, batches and steps, over one learning-rate grid. It reports the optimizer's step() alone and the whole training step separately, state bytes counted from the\u2026",
+        "hnx optimizer select prints what auto-selection would choose and why, without building anything. hnx optimizer list prints the optimizers with their target ratings, and measured figures when given a benchmark file."
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Pressure Cooker V7 (hypernix.optimizers.pressure_cooker_v7). One momentum buffer per parameter, stored as fp32, bf16, fp16 or int8; factored row and column statistics for matrices; a stability score from the gradient-momentum cosine at three timescales; Adaptive Pressure; a\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Optimizer Framework V2 (hypernix.optimizers.optimizer_framework_v2). OptimizerFrameworkV2.create(key, params) builds AdamW or any Pressure Cooker from V1 to V7 through one call, using the existing classes unchanged. auto_select(...) returns the choice with a stable reason_code\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "The V7 family, all on the same engine: PressureCookerV7V (torch.compile and CUDA-graph replay where available, the same foreach step everywhere else, with the fallback reasons recorded), PressureCookerV7Mini (for more than 39,000,000 and fewer than 750,000,000 parameters)\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "V7M's training features are explicit calls (hypernix.optimizers.v7m_features): attach_qat, quantization_sensitivity, mixed_precision_plan, make_mtp_head, mtp_loss, ema_weights. None of them runs unless called.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "CLI and UX",
+          "text": "hnx optimizer benchmark compares AdamW, V5, V5+, V5S, V6, V6V, V7, V7Mini, V7Q, V7S and V7M on the same models, seeds, batches and steps, over one learning-rate grid. It reports the optimizer's step() alone and the whole training step separately, state bytes counted from the\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "CLI and UX",
+          "text": "hnx optimizer select prints what auto-selection would choose and why, without building anything. hnx optimizer list prints the optimizers with their target ratings, and measured figures when given a benchmark file.",
+          "details": []
+        },
+        {
+          "symbol": "\u26a1",
+          "label": "performance",
+          "category": "Performance",
+          "text": "Measured, averaged over the six workloads: | Optimizer | Step only, ms | Full step, ms | State bytes/param | Final training loss | Held-out loss | |---|---|---|---|---|---| | AdamW | 1.34 | 9.53 | 8.00 | 0.370 | 1.734 | | V5 | 13.26 | 19.76 | 1.12 | 1.953 | 1.991 | | V5+ |\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "Compatibility",
+          "text": "V1 to V6V are unchanged: the same classes, arguments, update rules and checkpoints. V7 checkpoints carry a \"v7\" entry; loading one into a different state_dtype converts the momentum and warns. State from AdamW, V5, V5+, V5S or V6 is refused by V7, not reinterpreted.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "New wiki page: Pressure Cooker V7 and Optimizer Framework V2, with the comparison matrix (ratings labelled as targets) beside the measured tables. Optimizers, CLI and Home link to it.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/optimizers/: V7 (presets, every state dtype, foreach against per-tensor, factored state, diffusion, trust ratio, Adaptive Pressure, non-finite steps, accumulation, GradScaler, mixed dtypes, checkpoint resume, conversion and refusal), V7V fallbacks, V7Mini's strict band\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "Nothing was run on a GPU. V7V's compiled step and CUDA graphs, the automatic choice of compressed momentum on CUDA, and V6V in the comparison are implemented and unmeasured. V7V's CUDA-graph test is skipped without CUDA.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "AdamW reached a lower training loss than every Pressure Cooker on every workload in these 200-step runs. V7 Balanced's held-out loss was better than AdamW's on three workloads and worse on three.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "V7Mini has not been measured inside its band. The largest workload has 2 million parameters. Nothing yet shows Mini beats Balanced between 39 and 750 million.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "V7Q is not faster than V6 in a whole training step on every workload: its step() is cheaper, but on the transformers the optimizer is 6 to 13 percent of the step.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "V6, V7Q, V5, V5+ and V5S did best at the largest learning rate tried (0.01), so the comparison probably understates them.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "On a CPU, V7 Balanced holds as much state as V6 (about 4 bytes per parameter): compressed momentum measured slower there, so auto keeps fp32. Use state_dtype=\"int8\" or the memory preset for about 1.1 bytes per parameter, at more step time.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "V7S does not reproduce V5S's trajectory, and V7M does not read V5 checkpoints. V5, V5+ and V5S remain available.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "V7Q has no gradient clipping and no non-finite check by default.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "Studio controls for the V7 family are not part of this alpha.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.73.0a1.post1",
       "key": "0.73.0a1.post1",
       "aliases": [
@@ -472,25 +629,7 @@
         "Fixed hnx-t1 runner start (a named model or the interactive pick) not loading a model on llama.cpp. The runner started llama-server with its output on a pipe that nothing read until a load had already failed. llama-server logs every tensor it loads -- hundreds of kilobytes for\u2026",
         "tests/hyperlink/test_runner_output_drained.py: a stand-in server that logs 400 KB while loading comes up (it timed out before), and a failed load still reports the server's last words."
       ],
-      "changes": [
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed hnx-t1 runner start (a named model or the interactive pick) not loading a model on llama.cpp. The runner started llama-server with its output on a pipe that nothing read until a load had already failed. llama-server logs every tensor it loads -- hundreds of kilobytes for\u2026",
-          "details": [
-            "The output of every server the runner starts (llama.cpp, a multilama fork, a native HyperNix model) is now read as it is written, keeping the last 400 lines for the error a failed load reports.",
-            "Native HyperNix models were not affected: their server says little."
-          ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/hyperlink/test_runner_output_drained.py: a stand-in server that logs 400 KB while loading comes up (it timed out before), and a failed load still reports the server's last words.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8.post1",

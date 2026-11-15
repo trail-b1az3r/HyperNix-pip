@@ -35,6 +35,137 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.73.0a2 — 2026-11-15
+
+Alpha 2: Optimizer Framework V2 and the Pressure Cooker V7 family. Every
+figure below was measured by `hnx optimizer benchmark` on one CPU machine
+(4 threads, fp32, six small synthetic workloads, 200 steps each). No CUDA
+device was available, so nothing here was measured or run on a GPU.
+
+### Added
+
+๋࣭⭑ **Pressure Cooker V7** (`hypernix.optimizers.pressure_cooker_v7`). One
+  momentum buffer per parameter, stored as fp32, bf16, fp16 or int8;
+  factored row and column statistics for matrices; a stability score from
+  the gradient-momentum cosine at three timescales; Adaptive Pressure; a
+  trust ratio clamped to (0.05, 5.0); optional light pressure diffusion;
+  one host read per step; a step with non-finite gradients is skipped and
+  leaves parameters and state untouched. Presets: `balanced`, `fast`,
+  `memory`, `stable`.
+
+๋࣭⭑ **Optimizer Framework V2** (`hypernix.optimizers.optimizer_framework_v2`).
+  `OptimizerFrameworkV2.create(key, params)` builds AdamW or any Pressure
+  Cooker from V1 to V7 through one call, using the existing classes
+  unchanged. `auto_select(...)` returns the choice with a stable
+  `reason_code`, a sentence, and what it passed over. An explicit choice is
+  honoured or refused with the reason; it is never replaced.
+
+✨ **The V7 family**, all on the same engine: `PressureCookerV7V`
+  (`torch.compile` and CUDA-graph replay where available, the same foreach
+  step everywhere else, with the fallback reasons recorded),
+  `PressureCookerV7Mini` (for more than 39,000,000 and fewer than
+  750,000,000 parameters), `PressureCookerV7Q` (throughput first),
+  `PressureCookerV7S` (the V5S lineage) and `PressureCookerV7M` (the V5/V5+
+  lineage).
+
+✨ **V7M's training features are explicit calls**
+  (`hypernix.optimizers.v7m_features`): `attach_qat`,
+  `quantization_sensitivity`, `mixed_precision_plan`, `make_mtp_head`,
+  `mtp_loss`, `ema_weights`. None of them runs unless called.
+
+### CLI and UX
+
+✨ **`hnx optimizer benchmark`** compares AdamW, V5, V5+, V5S, V6, V6V, V7,
+  V7Mini, V7Q, V7S and V7M on the same models, seeds, batches and steps,
+  over one learning-rate grid. It reports the optimizer's `step()` alone
+  and the whole training step separately, state bytes counted from the
+  tensors, final and held-out loss, and divergence; writes JSON, CSV and
+  Markdown. What it does not measure (CPU and GPU utilisation, kernel
+  launches, synchronisation counts) is listed in the output as not
+  measured. V6V without CUDA is reported as unavailable.
+
+✨ **`hnx optimizer select`** prints what auto-selection would choose and
+  why, without building anything. **`hnx optimizer list`** prints the
+  optimizers with their target ratings, and measured figures when given a
+  benchmark file.
+
+### Performance
+
+⚡ Measured, averaged over the six workloads:
+
+  | Optimizer | Step only, ms | Full step, ms | State bytes/param | Final training loss | Held-out loss |
+  |---|---|---|---|---|---|
+  | AdamW | 1.34 | 9.53 | 8.00 | 0.370 | 1.734 |
+  | V5 | 13.26 | 19.76 | 1.12 | 1.953 | 1.991 |
+  | V5+ | 16.02 | 21.95 | 6.07 | 1.990 | 2.016 |
+  | V5S | 22.09 | 34.04 | 1.12 | 1.952 | 1.989 |
+  | V6 | 1.63 | 9.20 | 4.00 | 3.908 | 3.877 |
+  | V7 Balanced | 1.43 | 10.20 | 4.14 | 0.833 | 1.711 |
+  | V7Mini | 1.46 | 9.63 | 4.14 | 0.852 | 1.952 |
+  | V7Q | 0.37 | 9.06 | 4.01 | 3.907 | 3.877 |
+  | V7S | 4.21 | 11.50 | 1.14 | 0.909 | 1.529 |
+  | V7M | 2.42 | 12.14 | 1.14 | 0.841 | 1.651 |
+
+  V7 Balanced's step costs about what AdamW's does with about half the
+  state. V7Q's step was the cheapest measured. V7S and V7M hold about as
+  little state as V5 and V5S at a fifth to a third of their step time.
+  The per-workload tables are in the wiki's Pressure Cooker V7 page.
+
+### Compatibility
+
+🔗 V1 to V6V are unchanged: the same classes, arguments, update rules and
+  checkpoints. V7 checkpoints carry a `"v7"` entry; loading one into a
+  different `state_dtype` converts the momentum and warns. State from
+  AdamW, V5, V5+, V5S or V6 is refused by V7, not reinterpreted.
+
+### Documentation
+
+📚 New wiki page: Pressure Cooker V7 and Optimizer Framework V2, with the
+  comparison matrix (ratings labelled as targets) beside the measured
+  tables. Optimizers, CLI and Home link to it.
+
+### Tests
+
+🧪 `tests/optimizers/`: V7 (presets, every state dtype, foreach against
+  per-tensor, factored state, diffusion, trust ratio, Adaptive Pressure,
+  non-finite steps, accumulation, GradScaler, mixed dtypes, checkpoint
+  resume, conversion and refusal), V7V fallbacks, V7Mini's strict band,
+  V7Q, V7S, V7M's features, the framework's selection rules, and a short
+  benchmark run.
+
+### Known Issues
+
+❗ **Nothing was run on a GPU.** V7V's compiled step and CUDA graphs, the
+  automatic choice of compressed momentum on CUDA, and V6V in the
+  comparison are implemented and unmeasured. V7V's CUDA-graph test is
+  skipped without CUDA.
+
+❗ **AdamW reached a lower training loss than every Pressure Cooker on
+  every workload** in these 200-step runs. V7 Balanced's held-out loss was
+  better than AdamW's on three workloads and worse on three.
+
+❗ **V7Mini has not been measured inside its band.** The largest workload
+  has 2 million parameters. Nothing yet shows Mini beats Balanced between
+  39 and 750 million.
+
+❗ **V7Q is not faster than V6 in a whole training step on every
+  workload**: its `step()` is cheaper, but on the transformers the
+  optimizer is 6 to 13 percent of the step.
+
+❗ **V6, V7Q, V5, V5+ and V5S did best at the largest learning rate tried**
+  (0.01), so the comparison probably understates them.
+
+### Caveats
+
+🛈 On a CPU, V7 Balanced holds as much state as V6 (about 4 bytes per
+  parameter): compressed momentum measured slower there, so `auto` keeps
+  fp32. Use `state_dtype="int8"` or the `memory` preset for about 1.1
+  bytes per parameter, at more step time.
+🛈 V7S does not reproduce V5S's trajectory, and V7M does not read V5
+  checkpoints. V5, V5+ and V5S remain available.
+🛈 V7Q has no gradient clipping and no non-finite check by default.
+🛈 Studio controls for the V7 family are not part of this alpha.
+
 ## 0.73.0a1.post1 — patch 1 - Strife fixes from alpha 1's CI
 
 Fixes found by alpha 1's own CI: the Strife smoke jobs on Linux and

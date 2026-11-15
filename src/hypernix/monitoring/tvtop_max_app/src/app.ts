@@ -22,7 +22,7 @@ import { bridgeStatus, horizontalView, PANELS, panelForKey, panelTitle, type Pan
 import { theme } from "./theme.ts"
 import type { Frame, Info } from "./types.ts"
 
-export const VERSION = "0.73.0a1.post1"
+export const VERSION = "0.73.0-a2"
 
 export interface AppOptions {
   mode: Mode | "auto"
