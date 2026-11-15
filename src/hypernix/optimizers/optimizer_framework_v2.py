@@ -316,7 +316,8 @@ class OptimizerFrameworkV2:
         """Construct what :meth:`auto_select` chose, with the options it chose."""
         merged = {**selection.options, **options}
         optimizer = OptimizerFrameworkV2.create(selection.key, params, lr=lr, **merged)
-        optimizer._framework_selection = selection       # for diagnostics and run metadata
+        # For diagnostics and run metadata.
+        optimizer._framework_selection = selection  # type: ignore[attr-defined]
         return optimizer
 
     # -- selection -------------------------------------------------------------
@@ -378,6 +379,7 @@ class OptimizerFrameworkV2:
             raise ValueError(f"unknown feature(s) {unknown}. Known: {', '.join(FEATURES)}")
 
         counted, counted_device, _dtype = _count(params)
+        count: int | None
         if counted is not None:
             count, verified, where = counted, True, counted_device
         else:

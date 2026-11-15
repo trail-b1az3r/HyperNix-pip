@@ -134,6 +134,8 @@ _SUBCOMMANDS = {
     "sandbox",
     "sb",
     "strife",
+    # 0.73.0a2
+    "optimizer",
 }
 
 
@@ -262,6 +264,7 @@ _MAIN_MENU: tuple[tuple[str, str], ...] = (
     ("hyprslug-headers", "self-describing GGUF headers + the OpenAI-compatible sub-bit server"),
     ("extra", "more commands: neuron, pipeline, assistant, generate, wiki, prot, oven, ..."),
     ("strife", "Strife: HyperNix's own GGUF runtime (inspect, run, chat, diag)"),
+    ("optimizer", "Optimizers: list, explain auto-selection, benchmark them"),
     ("sandbox", "run a command shut in one directory: no web, no writes outside it (also: sb)"),
     ("list-all", "every command: hnx, hnx extra, hnx-t1, and every other HyperNix command"),
 )
@@ -1632,6 +1635,10 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
         from hypernix.strife.cli import cli_main as _strife_main
 
         return _strife_main(rest)
+    if cmd == "optimizer":
+        from hypernix.optimizers.cli import cli_main as _optimizer_main
+
+        return _optimizer_main(rest)
     if cmd in ("sandbox", "sb"):
         from hypernix.interfaces.sandbox import cli_main as _sandbox_main
 
