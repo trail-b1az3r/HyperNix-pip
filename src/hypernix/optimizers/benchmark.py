@@ -605,9 +605,12 @@ def run_band(*, sizes: tuple[int, ...] = BAND_SIZES,
                     if i >= warmup:
                         times.append(time.perf_counter() - started)
                 state = _state_bytes(optimizer)
+                described = optimizer.describe() if hasattr(optimizer, "describe") else {}
                 entry["optimizers"][name] = {
                     "available": True, **_spread(times), "state_bytes": state,
-                    "state_bytes_per_parameter": round(state / size, 4)}
+                    "state_bytes_per_parameter": round(state / size, 4),
+                    "state_dtype": described.get("state_dtype"),
+                    "state_dtype_reason": described.get("state_dtype_reason")}
             except Exception as exc:  # noqa: BLE001 - one optimizer failing is a result
                 entry["optimizers"][name] = {"available": False,
                                              "reason": f"failed: {type(exc).__name__}: {exc}"}
@@ -768,7 +771,12 @@ def _band_lines(band: dict[str, Any]) -> list[str]:
         cells = []
         for name in names:
             got = entry["optimizers"][name]
-            cells.append(f"{got['ms_per_step']:.1f}" if got.get("available") else "N/A")
+            if not got.get("available"):
+                cells.append("N/A")
+                continue
+            dtype = f" ({got['state_dtype']})" if got.get("state_dtype") not in (None, "fp32") \
+                else ""
+            cells.append(f"{got['ms_per_step']:.1f}{dtype}")
         lines.append(f"| {entry['parameters']:,} | {'yes' if entry['in_band'] else 'no'} | "
                      f"{entry['auto_select']} | " + " | ".join(cells) + " |")
     reasons = sorted({f"{entry['parameters']:,} {name}: {got.get('reason', '')}"

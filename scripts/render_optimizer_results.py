@@ -176,7 +176,10 @@ def _band(*records: dict[str, Any] | None) -> list[str]:
         for name in names:
             got = entry["optimizers"][name]
             if got.get("available"):
-                cells.append(f"{got['ms_per_step']:.1f}")
+                dtype = got.get("state_dtype")
+                cells.append(f"{got['ms_per_step']:.1f} ({got['ms_per_step_p10']:.0f}–"
+                             f"{got['ms_per_step_p90']:.0f})"
+                             + (f", {dtype}" if dtype not in (None, "fp32") else ""))
             else:
                 cells.append("N/A")
                 reasons.append(f"{entry['parameters']:,} {_name(name)}: {got.get('reason', '')}")
@@ -221,8 +224,9 @@ def render() -> str:
                 + _setup(in_band, "Run"), "", *_in_band(in_band), ""]
     out += ["#### Around V7Mini's band: `step()` alone", "",
             "Tensors with a transformer's shapes and exactly the parameter count shown, "
-            "random gradients; median ms per step. This is the optimizer's cost at that size "
-            "and says nothing about training quality.", "",
+            "random gradients; median ms per step, p10–p90 in brackets. A dtype after them is the momentum "
+            "`state_dtype=\"auto\"` chose when it was not fp32. This is the optimizer's cost "
+            "at that size and says nothing about training quality.", "",
             *_band(_load("band"), _load("band-edge")), ""]
     return "\n".join(out)
 

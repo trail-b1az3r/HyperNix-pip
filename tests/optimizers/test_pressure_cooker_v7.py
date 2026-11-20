@@ -329,3 +329,14 @@ def test_describe_is_plain_data():
     assert described["variant"] == "balanced" and described["parameters"] > 0
     assert described["state_bytes"] == optimizer.state_bytes()
     assert described["host_reads_per_step"] in (0, 1)
+
+
+def test_auto_state_dtype_needs_real_pressure_on_a_cpu():
+    gib = 2**30
+    # 749M parameters: 2.8 GiB of fp32 momentum with 9 GiB free.
+    on_cpu, why = resolve_state_dtype(749_000_000, "cpu", free_bytes=9 * gib)
+    assert on_cpu == "fp32", why
+    on_cuda, why = resolve_state_dtype(749_000_000, "cuda", free_bytes=9 * gib)
+    assert on_cuda == "int8" and "a quarter" in why
+    squeezed, why = resolve_state_dtype(749_000_000, "cpu", free_bytes=5 * gib)
+    assert squeezed == "int8" and "half" in why
