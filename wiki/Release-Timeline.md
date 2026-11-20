@@ -1235,3 +1235,26 @@ timeline
         : bd1a7587 - Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime
 ```
 
+## Release v0.73.0 (2026-11-20)
+
+```mermaid
+timeline
+    title Release v0.73.0 Commits
+    0.73.0
+        : c299577d - 0.73.0 changelog- the test count is about 10,900
+        : 7b425992 - 0.73.0- release notes, README section and version
+        : 6091d1f7 - chore- refresh generated docs data and release summaries
+        : caa7d25c - 0.73.0a2 changelog- the re-measured figures and what they overturned
+        : e11e00dc - V7 page- measured tables rendered from the results, and what they show
+        : 327da429 - V7- on a CPU, int8 momentum only when fp32 would take half the free memory
+        : b97e5fe9 - Optimizer benchmark- free each band run's optimizer before the next
+        : 2337c9b9 - Optimizer results- V5, V5+, V5S, V6 and V7Q at rates above the main grid
+        : 97e3b7dd - Optimizer results- V7, V7S and V7M ablations
+        : 376664eb - Optimizer results- all eleven optimizers on six workloads
+        : 4f6bad2d - Optimizer results- training inside V7Mini's band (41.6M parameters)
+        : 53bdee90 - Optimizer results- step() around V7Mini's band (30M to 150M)
+        : 144d8d62 - Optimizer results renderer; V7 page awaits the re-measured figures
+        : 546559b6 - Optimizer benchmark- read MemAvailable for the band's memory check
+        : 2ec1a39d - Optimizer benchmark- ablations, raw observations, V7Mini's band
+```
+
