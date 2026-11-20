@@ -1,0 +1,6 @@
+workload,parameters,optimizer,available,reason,optimizer_only_ms,state_bytes_per_parameter,best_lr,final_loss,validation_loss,full_step_ms,optimizer_share,tokens_per_second,lr_sensitivity,diverged_at
+band-transformer,41636864,adamw,True,,91.7767,8.0,0.001,7.47223,13.677831,251.0378,0.3615,1019.8,1.723,
+band-transformer,41636864,v6,True,,79.9746,4.0,0.01,9.831289,9.831578,223.5476,0.339,1145.2,1.002,
+band-transformer,41636864,v7,True,,52.5983,4.0191,0.003,2.442597,10.048422,215.962,0.2676,1185.4,1.825,
+band-transformer,41636864,v7mini,True,,45.131,4.0191,0.003,0.416376,9.90789,223.0662,0.2573,1147.6,5.425,
+band-transformer,41636864,v7q,True,,19.4496,4.0001,0.01,9.807391,9.830939,158.5735,0.1105,1614.4,1.005,
