@@ -1,0 +1,114 @@
+small-transformer: v7
+small-transformer: v7s
+small-transformer: v7m
+small-transformer: v5
+small-transformer: v5s
+small-transformer: v7-no-factored
+small-transformer: v7-no-stability
+small-transformer: v7-no-pressure
+small-transformer: v7-no-diffusion
+small-transformer: v7-int8
+small-transformer: v7s-no-diffusion
+small-transformer: v7s-no-stability
+small-transformer: v7s-no-factored
+small-transformer: v7s-fp32
+small-transformer: v7m-no-factored
+small-transformer: v7m-fp32
+small-transformer: v7m-ema
+mlp: v7
+mlp: v7s
+mlp: v7m
+mlp: v5
+mlp: v5s
+mlp: v7-no-factored
+mlp: v7-no-stability
+mlp: v7-no-pressure
+mlp: v7-no-diffusion
+mlp: v7-int8
+mlp: v7s-no-diffusion
+mlp: v7s-no-stability
+mlp: v7s-no-factored
+mlp: v7s-fp32
+mlp: v7m-no-factored
+mlp: v7m-fp32
+mlp: v7m-ema
+mixed-1d-2d: v7
+mixed-1d-2d: v7s
+mixed-1d-2d: v7m
+mixed-1d-2d: v5
+mixed-1d-2d: v5s
+mixed-1d-2d: v7-no-factored
+mixed-1d-2d: v7-no-stability
+mixed-1d-2d: v7-no-pressure
+mixed-1d-2d: v7-no-diffusion
+mixed-1d-2d: v7-int8
+mixed-1d-2d: v7s-no-diffusion
+mixed-1d-2d: v7s-no-stability
+mixed-1d-2d: v7s-no-factored
+mixed-1d-2d: v7s-fp32
+mixed-1d-2d: v7m-no-factored
+mixed-1d-2d: v7m-fp32
+mixed-1d-2d: v7m-ema
+
+small-transformer (70,080 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v7                    1.053     4.24     0.01    1.5083    1.6199     5.552    24%
+  v7s                   2.886     1.24     0.01    1.4060    1.5761     6.523    45%
+  v7m                   2.658     1.24     0.01    1.5129    1.6818     6.023    35%
+  v5                    7.793     1.23     0.03    1.5166    1.7172    11.965    68%
+  v5s                   9.783     1.23     0.03    1.5055    1.7185    14.424    74%
+  v7-no-factored        0.694     4.01     0.03    3.7857    3.7403     4.446    17%
+  v7-no-stability       0.989     4.24     0.01    1.5153    1.6466     5.570    25%
+  v7-no-pressure        1.028     4.24     0.01    1.5064    1.6541     5.714    23%
+  v7-no-diffusion       1.547     4.24     0.01    1.5083    1.6199     5.309    24%
+  v7-int8               1.965     1.24     0.01    1.5129    1.6818     5.941    36%
+  v7s-no-diffusion      2.581     1.24     0.01    1.4060    1.5761     6.640    46%
+  v7s-no-stability      2.417     1.24     0.01    1.4163    1.5847     6.059    43%
+  v7s-no-factored       2.075     1.01     0.03    3.7050    3.6581     5.885    40%
+  v7s-fp32              1.495     4.24     0.01    1.4112    1.5661     5.787    34%
+  v7m-no-factored       1.851     1.01     0.03    3.7857    3.7403     5.728    34%
+  v7m-fp32              1.042     4.24     0.01    1.5083    1.6199     4.979    25%
+  v7m-ema               2.334     5.24     0.01    1.5129    1.6818     6.622    35%
+
+mlp (86,544 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v7                    0.563     4.10    0.003    0.2630    0.6925     1.314    48%
+  v7s                   1.217     1.10    0.003    0.2533    0.6919     2.042    65%
+  v7m                   0.821     1.10    0.003    0.2629    0.6944     1.923    59%
+  v5                    2.693     1.09     0.03    0.6208    0.7713     3.639    80%
+  v5s                   4.653     1.09     0.03    0.6140    0.7506     5.136    86%
+  v7-no-factored        0.407     4.00     0.03    2.4109    2.3859     1.149    44%
+  v7-no-stability       0.509     4.10    0.003    0.2620    0.7019     1.234    49%
+  v7-no-pressure        0.451     4.10    0.003    0.2488    0.6996     1.280    47%
+  v7-no-diffusion       0.523     4.10    0.003    0.2630    0.6925     1.378    49%
+  v7-int8               0.878     1.10    0.003    0.2629    0.6944     1.570    59%
+  v7s-no-diffusion      1.031     1.10    0.003    0.2533    0.6919     1.926    68%
+  v7s-no-stability      1.023     1.10    0.003    0.2668    0.6696     1.723    65%
+  v7s-no-factored       0.927     1.00     0.03    2.3687    2.3362     1.593    64%
+  v7s-fp32              0.718     4.10    0.003    0.2532    0.6922     1.635    62%
+  v7m-no-factored       0.765     1.00     0.03    2.4108    2.3858     1.786    59%
+  v7m-fp32              0.710     4.10    0.003    0.2630    0.6925     1.690    53%
+  v7m-ema               0.885     5.10    0.003    0.2629    0.6944     2.327    61%
+
+mixed-1d-2d (38,280 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v7                    0.959     4.17    0.003    0.4725    0.9898     2.076    38%
+  v7s                   1.377     1.18    0.003    0.4630    0.9558     2.556    58%
+  v7m                   1.020     1.18    0.003    0.4727    0.9911     2.329    50%
+  v5                    3.281     1.13     0.03    0.6805    1.0402     4.725    77%
+  v5s                   4.797     1.13     0.03    0.6563    1.0297     6.132    82%
+  v7-no-factored        0.363     4.01     0.03    1.9915    1.9600     1.602    33%
+  v7-no-stability       0.578     4.17    0.003    0.4768    0.9780     1.778    38%
+  v7-no-pressure        0.507     4.17    0.003    0.4702    0.9788     1.800    37%
+  v7-no-diffusion       0.591     4.17    0.003    0.4725    0.9898     1.846    40%
+  v7-int8               1.175     1.18    0.003    0.4727    0.9911     2.270    50%
+  v7s-no-diffusion      1.174     1.18    0.003    0.4630    0.9558     2.688    58%
+  v7s-no-stability      1.136     1.18    0.003    0.4818    0.9579     2.452    55%
+  v7s-no-factored       1.098     1.01     0.03    1.9007    1.8802     2.594    53%
+  v7s-fp32              0.760     4.17    0.003    0.4634    0.9575     2.115    51%
+  v7m-no-factored       0.905     1.01     0.03    1.9915    1.9596     2.235    49%
+  v7m-fp32              0.650     4.17    0.003    0.4725    0.9898     1.839    39%
+  v7m-ema               1.537     5.18    0.003    0.4727    0.9911     2.656    48%
+json: benchmarks/results/optimizers-0.73.0a2/ablations/optimizer-bench.json
+csv: benchmarks/results/optimizers-0.73.0a2/ablations/optimizer-bench.csv
+report: benchmarks/results/optimizers-0.73.0a2/ablations/optimizer-bench.md
