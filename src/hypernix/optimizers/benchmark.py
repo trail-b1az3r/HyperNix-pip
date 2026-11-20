@@ -534,6 +534,15 @@ def _band_shapes(target: int) -> list[tuple[int, ...]]:
 
 
 def _available_bytes() -> int | None:
+    """Memory a new allocation can have: Linux's ``MemAvailable``, which
+    counts reclaimable cache, or else free pages; ``None`` if unknown."""
+    try:
+        with open("/proc/meminfo", encoding="ascii") as handle:
+            for line in handle:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
     try:
         import os
 
