@@ -88,7 +88,7 @@ T1 v1.2.26.11.0.0, a new generation because `/web/v1` is gone. Bugs fixed:
 
 #### Testing
 
-🧪 About 9,500 tests, including the V7 family, the framework's selection
+🧪 About 10,900 tests, including the V7 family, the framework's selection
   rules, the optimizer benchmark, and a test that holds the V7 wiki page
   to the committed benchmark results.
 

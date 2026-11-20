@@ -133,7 +133,7 @@
           "symbol": "\ud83e\uddea",
           "label": "tests",
           "category": "Beta / Dev \u2192 Release Summary",
-          "text": "About 9,500 tests, including the V7 family, the framework's selection rules, the optimizer benchmark, and a test that holds the V7 wiki page to the committed benchmark results.",
+          "text": "About 10,900 tests, including the V7 family, the framework's selection rules, the optimizer benchmark, and a test that holds the V7 wiki page to the committed benchmark results.",
           "details": []
         },
         {

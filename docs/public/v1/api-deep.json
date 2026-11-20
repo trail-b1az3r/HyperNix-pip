@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "dfab3a1ef47335edfc2dfee79059e52fbf3d0c7e",
+  "commit": "7b4259925652b1bb7df67a7cecf462d3fcfc27d8",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "7b425992",
+          "date": "2026-11-20",
+          "author": "Claude",
+          "subject": "0.73.0: release notes, README section and version",
+          "api_changes": []
+        },
         {
           "sha": "5d1dbfcc",
           "date": "2026-11-15",
