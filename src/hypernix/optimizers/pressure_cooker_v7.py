@@ -159,8 +159,8 @@ def resolve_state_dtype(n_params: int, device: torch.device | str, *,
     1. Parameters that are themselves half precision keep their own dtype.
     2. If fp32 momentum would take more than a quarter of the free memory
        on CUDA, or more than half of it on a CPU, int8 (one byte per
-       parameter). A CPU gets the higher bar because int8 costs it about
-       four times the step time; measured at 749M parameters, a quarter
+       parameter). A CPU gets the higher bar because int8 costs it step
+       time: about 2.5 times at 749M parameters, where a quarter had
        switched a CPU with 9 GiB free to int8 for 3 GiB of momentum.
     3. On CUDA, bf16 where the device has it, else fp16: half the bytes of
        fp32, in arithmetic a GPU does natively.

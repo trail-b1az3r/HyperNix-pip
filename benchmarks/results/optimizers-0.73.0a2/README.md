@@ -21,6 +21,14 @@ optimizer on speed.
 | `high-lr/` | `--optimizers v5,v5plus,v5s,v6,v7q --lrs 0.03,0.1,0.3,1.0 --workloads all --steps 200` | The optimizers whose best rate in `main/` was the grid's largest, at higher rates |
 | `band-edge/` | `--optimizers v7 --workloads mlp --lrs 1e-2 --steps 8 --optimizer-steps 2 --band 749000000,750000000` | `step()` alone just inside and exactly at the band's upper edge |
 
+`band-edge/` was run last, after two fixes its first attempt exposed: the
+band run now frees each optimizer before building the next (the first
+attempt skipped every optimizer after AdamW at 749M as not fitting), and on
+a CPU `state_dtype="auto"` now switches to int8 only when fp32 momentum
+would take more than half the free memory (at a quarter it had picked int8
+for V7 Balanced at 749M). Neither change affects the other folders: their
+models are small enough that every V7 ran fp32 either way.
+
 Not measured anywhere here: anything on a GPU (V6V is recorded as
 unavailable, and V7V ran its CPU fallback), CPU and GPU utilisation, kernel
 launches and host-device synchronisation counts.
