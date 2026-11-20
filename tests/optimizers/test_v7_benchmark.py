@@ -183,3 +183,22 @@ def test_command_line_band_and_ablations(tmp_path, capsys):
     assert main(["optimizer", "benchmark", "--optimizers", "v7", "--workloads", "mlp",
                  "--lrs", "1e-2", "--steps", "6", "--optimizer-steps", "2",
                  "--band", "lots"]) == 2
+
+
+def test_band_frees_each_optimizer_before_the_next(monkeypatch):
+    import weakref
+
+    made: list[weakref.ref] = []
+    alive_at_creation: list[bool] = []
+    real = benchmark._make
+
+    def tracking(name, params, lr):
+        alive_at_creation.append(any(ref() is not None for ref in made))
+        optimizer = real(name, params, lr)
+        made.append(weakref.ref(optimizer))
+        return optimizer
+
+    monkeypatch.setattr(benchmark, "_make", tracking)
+    benchmark.run_band(sizes=(100_000,), optimizers=("adamw", "v7", "v7q"), steps=1, warmup=0)
+    # Otherwise the next optimizer measures memory the last one still holds.
+    assert alive_at_creation == [False, False, False]

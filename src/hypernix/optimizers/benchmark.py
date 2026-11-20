@@ -48,6 +48,7 @@ The numbers are this machine's. Compare runs from one machine only.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import math
 import platform
@@ -590,6 +591,7 @@ def run_band(*, sizes: tuple[int, ...] = BAND_SIZES,
                       for shape in _band_shapes(size)]
             for p in params:
                 p.grad = torch.empty_like(p)
+            optimizer: torch.optim.Optimizer | None = None
             try:
                 optimizer = _make(name, params, 1e-3)
                 times = []
@@ -609,7 +611,12 @@ def run_band(*, sizes: tuple[int, ...] = BAND_SIZES,
             except Exception as exc:  # noqa: BLE001 - one optimizer failing is a result
                 entry["optimizers"][name] = {"available": False,
                                              "reason": f"failed: {type(exc).__name__}: {exc}"}
+            # Free this size's tensors before the next optimizer measures
+            # what memory is left: the optimizer holds the parameters and
+            # its state, so it has to go too.
+            optimizer = None
             del params
+            gc.collect()
         entry["parameters"] = size
         out["sizes"][str(size)] = entry
     return out
