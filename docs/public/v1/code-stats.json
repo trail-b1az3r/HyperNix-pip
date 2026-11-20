@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 270995,
-  "code_files": 917,
+  "total_lines": 271596,
+  "code_files": 919,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -120,85 +120,31 @@
       "lines": 984
     },
     {
-      "path": "src/hypernix/runtime/relay.py",
-      "lines": 980
+      "path": "src/hypernix/optimizers/pressure_cooker_v7.py",
+      "lines": 981
     }
   ],
   "contributors": [
     {
       "author": "Claude",
-      "additions": 266393,
-      "deletions": 19411,
-      "net": 246982,
-      "changes": 285804,
-      "commits": 327,
-      "files": 1796
-    },
-    {
-      "author": "Ray0ffire",
-      "additions": 65144,
-      "deletions": 393,
-      "net": 64751,
-      "changes": 65537,
-      "commits": 9,
-      "files": 399
-    },
-    {
-      "author": "minerofthesoal",
-      "additions": 28558,
-      "deletions": 10843,
-      "net": 17715,
-      "changes": 39401,
-      "commits": 26,
-      "files": 139
-    },
-    {
-      "author": "t",
-      "additions": 12090,
-      "deletions": 568,
-      "net": 11522,
-      "changes": 12658,
-      "commits": 16,
-      "files": 123
-    },
-    {
-      "author": "Mason",
-      "additions": 11658,
-      "deletions": 216,
-      "net": 11442,
-      "changes": 11874,
-      "commits": 7,
-      "files": 48
+      "additions": 354868,
+      "deletions": 263,
+      "net": 354605,
+      "changes": 355131,
+      "commits": 22,
+      "files": 983
     },
     {
       "author": "Rayla",
-      "additions": 4261,
-      "deletions": 1373,
-      "net": 2888,
-      "changes": 5634,
-      "commits": 100,
-      "files": 48
-    },
-    {
-      "author": "github-actions[bot]",
-      "additions": 95,
-      "deletions": 58,
-      "net": 37,
-      "changes": 153,
-      "commits": 50,
-      "files": 9
-    },
-    {
-      "author": "qwen.ai[bot]",
-      "additions": 50,
-      "deletions": 23,
-      "net": 27,
-      "changes": 73,
-      "commits": 2,
-      "files": 303
+      "additions": 1478,
+      "deletions": 126,
+      "net": 1352,
+      "changes": 1604,
+      "commits": 8,
+      "files": 13
     }
   ],
   "history_available": true,
-  "commit": "5d1dbfcc8ab866a5ae691b2d1b37e1bcc54297c8",
+  "commit": "e11e00dc42993a7f19ae88d5d4924e2d79ee97fd",
   "generated_at": null
 }

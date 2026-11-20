@@ -35,12 +35,14 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## 0.73.0a2 — 2026-11-15
+## 0.73.0a2 — 2026-11-20
 
 Alpha 2: Optimizer Framework V2 and the Pressure Cooker V7 family. Every
 figure below was measured by `hnx optimizer benchmark` on one CPU machine
-(4 threads, fp32, six small synthetic workloads, 200 steps each). No CUDA
-device was available, so nothing here was measured or run on a GPU.
+(4 threads, torch 2.15.0, fp32, seed 0) and is in
+`benchmarks/results/optimizers-0.73.0a2/`, raw per-step times and losses
+included. No CUDA device was available, so nothing here was measured or
+run on a GPU.
 
 ### Added
 
@@ -82,7 +84,17 @@ device was available, so nothing here was measured or run on a GPU.
   tensors, final and held-out loss, and divergence; writes JSON, CSV and
   Markdown. What it does not measure (CPU and GPU utilisation, kernel
   launches, synchronisation counts) is listed in the output as not
-  measured. V6V without CUDA is reported as unavailable.
+  measured. V6V without CUDA is reported as unavailable. Each record keeps
+  every raw step time with p10 and p90, the loss at every step, the
+  gradient norm's median and peak, what saving and loading the state
+  costs, and whether an optimizer's best rate sat at the edge of the grid.
+
+✨ **`--ablations`** adds V7, V7S and V7M with one mechanism changed at a
+  time. **`--band`** times `step()` alone at parameter counts around
+  V7Mini's band (by default 30M, 39M, 39.1M and 150M), skipping a size
+  that would not fit in available memory and saying so. The
+  `band-transformer` workload (41.6M parameters) trains inside the band
+  and runs only when named.
 
 ✨ **`hnx optimizer select`** prints what auto-selection would choose and
   why, without building anything. **`hnx optimizer list`** prints the
@@ -91,25 +103,31 @@ device was available, so nothing here was measured or run on a GPU.
 
 ### Performance
 
-⚡ Measured, averaged over the six workloads:
+⚡ Measured, averaged over six workloads (200 steps each, at each
+  optimizer's best rate from 3e-4 to 3e-2):
 
   | Optimizer | Step only, ms | Full step, ms | State bytes/param | Final training loss | Held-out loss |
   |---|---|---|---|---|---|
-  | AdamW | 1.34 | 9.53 | 8.00 | 0.370 | 1.734 |
-  | V5 | 13.26 | 19.76 | 1.12 | 1.953 | 1.991 |
-  | V5+ | 16.02 | 21.95 | 6.07 | 1.990 | 2.016 |
-  | V5S | 22.09 | 34.04 | 1.12 | 1.952 | 1.989 |
-  | V6 | 1.63 | 9.20 | 4.00 | 3.908 | 3.877 |
-  | V7 Balanced | 1.43 | 10.20 | 4.14 | 0.833 | 1.711 |
-  | V7Mini | 1.46 | 9.63 | 4.14 | 0.852 | 1.952 |
-  | V7Q | 0.37 | 9.06 | 4.01 | 3.907 | 3.877 |
-  | V7S | 4.21 | 11.50 | 1.14 | 0.909 | 1.529 |
-  | V7M | 2.42 | 12.14 | 1.14 | 0.841 | 1.651 |
+  | AdamW | 1.58 | 10.07 | 8.00 | 0.370 | 1.734 |
+  | V5 | 13.05 | 20.56 | 1.12 | 0.973 | 1.509 |
+  | V5+ | 16.43 | 25.47 | 6.07 | 1.142 | 1.486 |
+  | V5S | 25.94 | 34.33 | 1.12 | 0.969 | 1.499 |
+  | V6 | 1.25 | 10.08 | 4.00 | 3.303 | 3.229 |
+  | V7 Balanced | 1.66 | 10.02 | 4.14 | 0.833 | 1.711 |
+  | V7Mini | 1.35 | 9.62 | 4.14 | 0.852 | 1.952 |
+  | V7Q | 0.40 | 8.50 | 4.00 | 3.299 | 3.223 |
+  | V7S | 3.48 | 12.74 | 1.14 | 0.909 | 1.529 |
+  | V7M | 2.97 | 11.72 | 1.14 | 0.841 | 1.651 |
 
-  V7 Balanced's step costs about what AdamW's does with about half the
-  state. V7Q's step was the cheapest measured. V7S and V7M hold about as
-  little state as V5 and V5S at a fifth to a third of their step time.
-  The per-workload tables are in the wiki's Pressure Cooker V7 page.
+  V6, V7Q, V5, V5+ and V5S want larger rates than that grid holds, so they
+  were run again up to 1.0; the wiki compares every optimizer at its own
+  best rate across both grids.
+
+⚡ V7 Balanced's training step costs what AdamW's and V6's do, with half
+  of AdamW's state, and it reached a lower loss than V6 on every workload.
+  V7Q has the cheapest `step()` and the fastest training step on every
+  workload. V7S's `step()` is about seven times cheaper than V5S's at the
+  same state; V7M's is four to six times cheaper than V5's and V5+'s.
 
 ### Compatibility
 
@@ -124,6 +142,10 @@ device was available, so nothing here was measured or run on a GPU.
   comparison matrix (ratings labelled as targets) beside the measured
   tables. Optimizers, CLI and Home link to it.
 
+📚 The measured tables are rendered from the committed results by
+  `scripts/render_optimizer_results.py`; the commands that produced each
+  result are in that folder's README.
+
 ### Tests
 
 🧪 `tests/optimizers/`: V7 (presets, every state dtype, foreach against
@@ -131,7 +153,10 @@ device was available, so nothing here was measured or run on a GPU.
   non-finite steps, accumulation, GradScaler, mixed dtypes, checkpoint
   resume, conversion and refusal), V7V fallbacks, V7Mini's strict band,
   V7Q, V7S, V7M's features, the framework's selection rules, and a short
-  benchmark run.
+  benchmark run, its ablations and band mode.
+
+🧪 `tests/docs/test_optimizer_results.py` fails when the V7 page's tables
+  and the result files disagree.
 
 ### Known Issues
 
@@ -140,27 +165,42 @@ device was available, so nothing here was measured or run on a GPU.
   comparison are implemented and unmeasured. V7V's CUDA-graph test is
   skipped without CUDA.
 
-❗ **AdamW reached a lower training loss than every Pressure Cooker on
-  every workload** in these 200-step runs. V7 Balanced's held-out loss was
-  better than AdamW's on three workloads and worse on three.
+❗ **AdamW reached the lowest training loss on every workload**, and the
+  lowest held-out loss on all three transformers. The V7 family had the
+  lowest held-out loss only on the MLP and the mixed model.
 
-❗ **V7Mini has not been measured inside its band.** The largest workload
-  has 2 million parameters. Nothing yet shows Mini beats Balanced between
-  39 and 750 million.
+❗ **V7S and V7M do not beat their V5 lineage on training loss
+  everywhere.** Each at its best rate, they had a lower held-out loss than
+  V5S, V5 and V5+ on five of six workloads, but a lower training loss on
+  three.
 
-❗ **V7Q is not faster than V6 in a whole training step on every
-  workload**: its `step()` is cheaper, but on the transformers the
-  optimizer is 6 to 13 percent of the step.
+❗ **V7Q trades quality for speed.** At each one's best rate its final
+  loss was worse than V6's on five workloads and equal on the sixth.
 
-❗ **V6, V7Q, V5, V5+ and V5S did best at the largest learning rate tried**
-  (0.01), so the comparison probably understates them.
+❗ **V7Mini's advantage is not shown to be specific to its band.** Its
+  `step()` was cheaper than Balanced's at every size measured, below the
+  band as well as inside it, and at 749M and 750M the spreads overlap. In
+  the 41.6M training run its full step was not faster. That run (30 steps
+  over 8 repeated batches) measures memorisation: every held-out loss sat
+  at or above a uniform guess.
+
+❗ **Pressure diffusion is untested by these runs.** Its gate opens only on
+  oscillation, and on these tasks it never opened: turning diffusion off
+  changed nothing to four decimals in V7 or V7S.
+
+❗ **V6's and V7Q's best rate on the transformers was still the largest
+  tried (1.0)**, so their rows may understate them.
 
 ### Caveats
 
 🛈 On a CPU, V7 Balanced holds as much state as V6 (about 4 bytes per
-  parameter): compressed momentum measured slower there, so `auto` keeps
-  fp32. Use `state_dtype="int8"` or the `memory` preset for about 1.1
-  bytes per parameter, at more step time.
+  parameter): int8 momentum measured 1.6 to 1.8 times slower there, so
+  `auto` keeps fp32 unless fp32 would take more than half the available
+  memory (a quarter on CUDA). Use `state_dtype="int8"` or the `memory`
+  preset for about 1.1 bytes per parameter, at more step time.
+🛈 The optimizers do not share a learning-rate scale: AdamW and the V7
+  family did best at 1e-3 to 1e-2, V5, V5+ and V5S at 3e-2 to 1e-1, V6 and
+  V7Q at 1e-1 to 1.0.
 🛈 V7S does not reproduce V5S's trajectory, and V7M does not read V5
   checkpoints. V5, V5+ and V5S remain available.
 🛈 V7Q has no gradient clipping and no non-finite check by default.

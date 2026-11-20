@@ -9,6 +9,8 @@
 - **Breaking changes:** none. V1 to V6V optimizers are unchanged; V7 and Optimizer Framework V2 are additions.
 - **Security:** no security changes in this alpha.
 - **FIXED DURING DEVELOPMENT — introduced by this update:** V7 checkpoints did not carry the oscillation reading that gates pressure diffusion, so a resumed run could diffuse differently from an uninterrupted one; caught while writing the resume test, before release.
+- **FIXED DURING DEVELOPMENT — introduced by this update:** on a CPU, `state_dtype="auto"` switched V7 to int8 momentum when fp32 would take a quarter of free memory, which at 749M parameters made a step about 2.5 times slower with 9 GiB free; a CPU now needs fp32 to take more than half. The benchmark's band mode also kept each optimizer alive into the next one's run and skipped them as not fitting. Both caught by the benchmark's own runs, before release.
+- **Superseded during development:** this entry's first draft said V7S and V7M trained to a lower loss than V5, V5+ and V5S on every workload. With a learning-rate grid wide enough for V5's rates, that holds for held-out loss on five of six workloads and for training loss on three.
 - **Not measured:** no CUDA device was available. V7V's compiled and CUDA-graph paths and V6V are implemented and unmeasured.
 
 </details>
