@@ -1,0 +1,81 @@
+small-transformer: v5
+small-transformer: v5plus
+small-transformer: v5s
+small-transformer: v6
+small-transformer: v7q
+medium-transformer: v5
+medium-transformer: v5plus
+medium-transformer: v5s
+medium-transformer: v6
+medium-transformer: v7q
+large-transformer: v5
+large-transformer: v5plus
+large-transformer: v5s
+large-transformer: v6
+large-transformer: v7q
+mlp: v5
+mlp: v5plus
+mlp: v5s
+mlp: v6
+mlp: v7q
+embedding-heavy: v5
+embedding-heavy: v5plus
+embedding-heavy: v5s
+embedding-heavy: v6
+embedding-heavy: v7q
+mixed-1d-2d: v5
+mixed-1d-2d: v5plus
+mixed-1d-2d: v5s
+mixed-1d-2d: v6
+mixed-1d-2d: v7q
+
+small-transformer (70,080 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v5                    7.652     1.23     0.03    1.5166    1.7172    13.848    68%
+  v5plus               13.118     6.13     0.03    1.5471    1.7386    16.034    74%
+  v5s                  10.254     1.23      0.1    1.4965    1.7090    15.266    74%
+  v6                    0.608     4.00        1    1.8122    1.7749     4.429    17%
+  v7q                   0.233     4.01        1    1.9599    2.0113     3.903     8%
+
+medium-transformer (387,936 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v5                   14.957     1.12     0.03    1.0368    1.4706    24.468    63%
+  v5plus               22.422     6.07     0.03    1.0909    1.4624    31.000    70%
+  v5s                  24.173     1.12     0.03    1.0231    1.4596    32.855    74%
+  v6                    1.448     4.00        1    1.6687    1.8948     9.476    17%
+  v7q                   0.640     4.00        1    1.7314    2.0790     9.622     7%
+
+large-transformer (1,985,664 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v5                   30.407     1.06     0.03    0.6796    1.1643    62.390    46%
+  v5plus               36.855     6.03     0.03    0.7160    1.1353    75.248    53%
+  v5s                  65.514     1.06     0.03    0.6641    1.1585   100.436    62%
+  v6                    3.232     4.00        1    1.5963    1.6170    37.412    12%
+  v7q                   0.850     4.00        1    1.6132    1.6462    32.023     5%
+
+mlp (86,544 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v5                    2.673     1.09     0.03    0.6208    0.7713     3.444    81%
+  v5plus                3.635     6.05     0.03    0.6196    0.7620     4.530    85%
+  v5s                   4.059     1.09     0.03    0.6140    0.7506     4.947    86%
+  v6                    0.344     4.00      0.3    0.6830    0.9441     1.059    43%
+  v7q                   0.128     4.00      0.3    0.8315    1.2530     0.865    27%
+
+embedding-heavy (1,285,200 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v5                   17.982     1.08      0.1    0.0929    9.8285    10.510    93%
+  v5plus               22.537     6.05      0.1    0.1071    6.7804    21.717    96%
+  v5s                  66.346     1.08      0.1    0.0697    7.5505    58.839    98%
+  v6                    1.603     4.00      0.1    2.6855    2.7567     2.192    71%
+  v7q                   0.398     4.00      0.1    2.6854    2.7567     1.028    42%
+
+mixed-1d-2d (38,280 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v5                    3.358     1.13     0.03    0.6805    1.0402     4.866    77%
+  v5plus                4.975     6.07     0.03    0.6921    1.0507     6.486    83%
+  v5s                   5.106     1.13     0.03    0.6563    1.0297     8.802    85%
+  v6                    0.394     4.00      0.1    0.8687    1.0993     1.739    30%
+  v7q                   0.129     4.01      0.1    1.2099    1.3305     1.313    19%
+json: benchmarks/results/optimizers-0.73.0a2/high-lr/optimizer-bench.json
+csv: benchmarks/results/optimizers-0.73.0a2/high-lr/optimizer-bench.csv
+report: benchmarks/results/optimizers-0.73.0a2/high-lr/optimizer-bench.md

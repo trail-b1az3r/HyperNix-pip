@@ -1,0 +1,528 @@
+{
+  "hypernix_version": "0.73.0a2",
+  "torch": "2.15.0+cpu",
+  "when": "2026-11-20T08:20:23Z",
+  "machine": {
+    "os": "Linux 6.18.44-fc-v726",
+    "cpu": "x86_64",
+    "threads": 4,
+    "python": "3.12.3",
+    "device": "cpu",
+    "gpu": null
+  },
+  "settings": {
+    "optimizers": [
+      "v7"
+    ],
+    "workloads": [
+      "mlp"
+    ],
+    "lrs": [
+      0.01
+    ],
+    "steps": 8,
+    "optimizer_steps": 2,
+    "warmup": 5,
+    "seed": 0,
+    "precision": "fp32"
+  },
+  "not_measured": [
+    "cpu_utilization",
+    "gpu_utilization",
+    "kernel_launches",
+    "host_device_synchronization_count"
+  ],
+  "workloads": {
+    "mlp": {
+      "parameters": 86544,
+      "optimizers": {
+        "v7": {
+          "available": true,
+          "label": "Pressure Cooker V7 Balanced",
+          "optimizer_only": {
+            "ms_per_step": 0.5476,
+            "ms_per_step_mean": 0.5476,
+            "ms_per_step_p10": 0.4566,
+            "ms_per_step_p90": 0.4566,
+            "ms_raw": [
+              0.6386,
+              0.4566
+            ],
+            "checkpoint": {
+              "bytes": 362709,
+              "save_ms": 2.04,
+              "load_ms": 1.583
+            },
+            "state_bytes": 355200,
+            "parameters": 86544,
+            "state_bytes_per_parameter": 4.1043,
+            "kernel": "foreach",
+            "state_dtype": "fp32",
+            "host_reads_per_step": 1
+          },
+          "runs": [
+            {
+              "lr": 0.01,
+              "steps": 8,
+              "diverged": false,
+              "final_loss": 2.750973,
+              "validation_loss": 2.754827,
+              "loss_at_step": {
+                "step": 4,
+                "loss": 2.774025
+              },
+              "loss_at_seconds": null,
+              "ms_per_step": 1.3187,
+              "steps_per_second": 758.342,
+              "tokens_per_second": 48533.9,
+              "optimizer_ms_per_step": 0.627,
+              "optimizer_share": 0.4754,
+              "ms_per_step_p10": 1.2274,
+              "ms_per_step_p90": 1.798,
+              "losses": [
+                2.764052,
+                2.776458,
+                2.763986,
+                2.774025,
+                2.765282,
+                2.751271,
+                2.743416,
+                2.750973
+              ],
+              "grad_norm_median": 0.359916,
+              "grad_norm_peak_ratio": 1.115,
+              "state_bytes": 355200,
+              "peak_device_bytes": null
+            }
+          ],
+          "best": {
+            "lr": 0.01,
+            "steps": 8,
+            "diverged": false,
+            "final_loss": 2.750973,
+            "validation_loss": 2.754827,
+            "loss_at_step": {
+              "step": 4,
+              "loss": 2.774025
+            },
+            "loss_at_seconds": null,
+            "ms_per_step": 1.3187,
+            "steps_per_second": 758.342,
+            "tokens_per_second": 48533.9,
+            "optimizer_ms_per_step": 0.627,
+            "optimizer_share": 0.4754,
+            "ms_per_step_p10": 1.2274,
+            "ms_per_step_p90": 1.798,
+            "losses": [
+              2.764052,
+              2.776458,
+              2.763986,
+              2.774025,
+              2.765282,
+              2.751271,
+              2.743416,
+              2.750973
+            ],
+            "grad_norm_median": 0.359916,
+            "grad_norm_peak_ratio": 1.115,
+            "state_bytes": 355200,
+            "peak_device_bytes": null
+          },
+          "diverged_at": [],
+          "best_at_grid_edge": false,
+          "lr_sensitivity": null
+        }
+      },
+      "wall_clock_checkpoint_seconds": 0.0035
+    }
+  },
+  "peak_rss_bytes": 375263232,
+  "measured": {
+    "v7": {
+      "ms_per_step": 0.5476,
+      "full_step_ms": 1.3187,
+      "state_bytes_per_parameter": 4.1043,
+      "final_loss": 2.750973,
+      "validation_loss": 2.754827,
+      "workloads": 1,
+      "device": "cpu"
+    }
+  },
+  "band": {
+    "lower": 39000000,
+    "upper": 750000000,
+    "steps": 6,
+    "warmup": 2,
+    "gradients": "random, redrawn each step",
+    "sizes": {
+      "30000000": {
+        "in_band": false,
+        "auto_select": "v7",
+        "optimizers": {
+          "adamw": {
+            "available": true,
+            "ms_per_step": 58.7932,
+            "ms_per_step_mean": 59.5628,
+            "ms_per_step_p10": 51.9487,
+            "ms_per_step_p90": 60.8296,
+            "ms_raw": [
+              51.9487,
+              60.5008,
+              60.8296,
+              53.8281,
+              73.184,
+              57.0855
+            ],
+            "state_bytes": 240000324,
+            "state_bytes_per_parameter": 8.0
+          },
+          "v6": {
+            "available": true,
+            "ms_per_step": 65.5269,
+            "ms_per_step_mean": 66.021,
+            "ms_per_step_p10": 58.0667,
+            "ms_per_step_p90": 72.3277,
+            "ms_raw": [
+              58.0667,
+              61.8919,
+              75.0779,
+              69.162,
+              72.3277,
+              59.6001
+            ],
+            "state_bytes": 120000000,
+            "state_bytes_per_parameter": 4.0
+          },
+          "v7": {
+            "available": true,
+            "ms_per_step": 36.9182,
+            "ms_per_step_mean": 50.1703,
+            "ms_per_step_p10": 33.0201,
+            "ms_per_step_p90": 56.7191,
+            "ms_raw": [
+              34.1156,
+              33.0201,
+              103.3304,
+              56.7191,
+              34.866,
+              38.9705
+            ],
+            "state_bytes": 120626504,
+            "state_bytes_per_parameter": 4.0209
+          },
+          "v7mini": {
+            "available": true,
+            "ms_per_step": 36.3888,
+            "ms_per_step_mean": 36.8148,
+            "ms_per_step_p10": 32.5247,
+            "ms_per_step_p90": 39.028,
+            "ms_raw": [
+              36.6398,
+              39.028,
+              32.5247,
+              35.9014,
+              40.657,
+              36.1378
+            ],
+            "state_bytes": 120626504,
+            "state_bytes_per_parameter": 4.0209
+          },
+          "v7q": {
+            "available": true,
+            "ms_per_step": 15.3678,
+            "ms_per_step_mean": 15.5471,
+            "ms_per_step_p10": 13.3808,
+            "ms_per_step_p90": 17.644,
+            "ms_raw": [
+              14.3803,
+              13.3808,
+              13.5976,
+              16.3554,
+              17.9245,
+              17.644
+            ],
+            "state_bytes": 120002592,
+            "state_bytes_per_parameter": 4.0001
+          }
+        },
+        "parameters": 30000000
+      },
+      "39000000": {
+        "in_band": false,
+        "auto_select": "v7",
+        "optimizers": {
+          "adamw": {
+            "available": true,
+            "ms_per_step": 53.7903,
+            "ms_per_step_mean": 54.1258,
+            "ms_per_step_p10": 52.5145,
+            "ms_per_step_p90": 54.6739,
+            "ms_raw": [
+              56.5669,
+              52.5145,
+              53.4189,
+              54.6739,
+              54.0177,
+              53.5629
+            ],
+            "state_bytes": 312000480,
+            "state_bytes_per_parameter": 8.0
+          },
+          "v6": {
+            "available": true,
+            "ms_per_step": 75.0267,
+            "ms_per_step_mean": 77.0462,
+            "ms_per_step_p10": 71.2869,
+            "ms_per_step_p90": 79.0099,
+            "ms_raw": [
+              79.0099,
+              73.4128,
+              75.3481,
+              74.7053,
+              88.514,
+              71.2869
+            ],
+            "state_bytes": 156000000,
+            "state_bytes_per_parameter": 4.0
+          },
+          "v7": {
+            "available": true,
+            "ms_per_step": 53.5563,
+            "ms_per_step_mean": 63.0681,
+            "ms_per_step_p10": 47.3599,
+            "ms_per_step_p90": 73.296,
+            "ms_raw": [
+              48.3412,
+              54.1511,
+              102.2987,
+              73.296,
+              52.9616,
+              47.3599
+            ],
+            "state_bytes": 156841864,
+            "state_bytes_per_parameter": 4.0216
+          },
+          "v7mini": {
+            "available": true,
+            "ms_per_step": 43.6735,
+            "ms_per_step_mean": 45.2233,
+            "ms_per_step_p10": 39.5154,
+            "ms_per_step_p90": 49.3535,
+            "ms_raw": [
+              39.5154,
+              49.3535,
+              45.5896,
+              40.6358,
+              54.4882,
+              41.7574
+            ],
+            "state_bytes": 156841864,
+            "state_bytes_per_parameter": 4.0216
+          },
+          "v7q": {
+            "available": true,
+            "ms_per_step": 19.8888,
+            "ms_per_step_mean": 20.9655,
+            "ms_per_step_p10": 16.9245,
+            "ms_per_step_p90": 24.2833,
+            "ms_raw": [
+              16.9245,
+              17.7742,
+              20.7699,
+              24.2833,
+              27.0336,
+              19.0078
+            ],
+            "state_bytes": 156003840,
+            "state_bytes_per_parameter": 4.0001
+          }
+        },
+        "parameters": 39000000
+      },
+      "39100000": {
+        "in_band": true,
+        "auto_select": "v7mini",
+        "optimizers": {
+          "adamw": {
+            "available": true,
+            "ms_per_step": 52.2617,
+            "ms_per_step_mean": 53.4543,
+            "ms_per_step_p10": 50.1724,
+            "ms_per_step_p90": 56.3359,
+            "ms_raw": [
+              51.5357,
+              52.9877,
+              59.1438,
+              50.5501,
+              56.3359,
+              50.1724
+            ],
+            "state_bytes": 312800480,
+            "state_bytes_per_parameter": 8.0
+          },
+          "v6": {
+            "available": true,
+            "ms_per_step": 88.292,
+            "ms_per_step_mean": 87.0831,
+            "ms_per_step_p10": 71.4335,
+            "ms_per_step_p90": 95.5402,
+            "ms_raw": [
+              82.9907,
+              83.2821,
+              95.9504,
+              95.5402,
+              93.3018,
+              71.4335
+            ],
+            "state_bytes": 156400000,
+            "state_bytes_per_parameter": 4.0
+          },
+          "v7": {
+            "available": true,
+            "ms_per_step": 53.3888,
+            "ms_per_step_mean": 61.6574,
+            "ms_per_step_p10": 48.8738,
+            "ms_per_step_p90": 62.5177,
+            "ms_raw": [
+              48.8738,
+              62.5177,
+              100.7783,
+              50.9972,
+              52.1105,
+              54.6672
+            ],
+            "state_bytes": 157243432,
+            "state_bytes_per_parameter": 4.0216
+          },
+          "v7mini": {
+            "available": true,
+            "ms_per_step": 41.4226,
+            "ms_per_step_mean": 42.3235,
+            "ms_per_step_p10": 40.5552,
+            "ms_per_step_p90": 43.1943,
+            "ms_raw": [
+              41.6598,
+              40.5552,
+              41.1854,
+              43.1943,
+              40.9463,
+              46.3997
+            ],
+            "state_bytes": 157243432,
+            "state_bytes_per_parameter": 4.0216
+          },
+          "v7q": {
+            "available": true,
+            "ms_per_step": 23.8024,
+            "ms_per_step_mean": 22.7032,
+            "ms_per_step_p10": 16.6434,
+            "ms_per_step_p90": 26.8819,
+            "ms_raw": [
+              27.5621,
+              26.0423,
+              26.8819,
+              17.5269,
+              21.5625,
+              16.6434
+            ],
+            "state_bytes": 156403840,
+            "state_bytes_per_parameter": 4.0001
+          }
+        },
+        "parameters": 39100000
+      },
+      "150000000": {
+        "in_band": true,
+        "auto_select": "v7mini",
+        "optimizers": {
+          "adamw": {
+            "available": true,
+            "ms_per_step": 226.5667,
+            "ms_per_step_mean": 231.4003,
+            "ms_per_step_p10": 217.341,
+            "ms_per_step_p90": 234.1892,
+            "ms_raw": [
+              234.1892,
+              226.9193,
+              217.341,
+              260.088,
+              223.6501,
+              226.2142
+            ],
+            "state_bytes": 1200000896,
+            "state_bytes_per_parameter": 8.0
+          },
+          "v6": {
+            "available": true,
+            "ms_per_step": 291.4658,
+            "ms_per_step_mean": 288.8211,
+            "ms_per_step_p10": 269.7979,
+            "ms_per_step_p90": 298.5069,
+            "ms_raw": [
+              298.5069,
+              292.4635,
+              290.468,
+              301.5268,
+              280.1634,
+              269.7979
+            ],
+            "state_bytes": 600000000,
+            "state_bytes_per_parameter": 4.0
+          },
+          "v7": {
+            "available": true,
+            "ms_per_step": 193.411,
+            "ms_per_step_mean": 228.1551,
+            "ms_per_step_p10": 177.7677,
+            "ms_per_step_p90": 216.6909,
+            "ms_raw": [
+              177.7677,
+              191.8187,
+              404.4353,
+              216.6909,
+              195.0032,
+              183.2147
+            ],
+            "state_bytes": 602207280,
+            "state_bytes_per_parameter": 4.0147
+          },
+          "v7mini": {
+            "available": true,
+            "ms_per_step": 173.0312,
+            "ms_per_step_mean": 374.675,
+            "ms_per_step_p10": 163.4575,
+            "ms_per_step_p90": 177.9357,
+            "ms_raw": [
+              1394.1739,
+              169.1431,
+              166.4208,
+              176.9192,
+              163.4575,
+              177.9357
+            ],
+            "state_bytes": 602207280,
+            "state_bytes_per_parameter": 4.0147
+          },
+          "v7q": {
+            "available": true,
+            "ms_per_step": 67.9462,
+            "ms_per_step_mean": 69.7271,
+            "ms_per_step_p10": 61.9509,
+            "ms_per_step_p90": 76.6245,
+            "ms_raw": [
+              64.8336,
+              76.6245,
+              79.061,
+              61.9509,
+              70.8815,
+              65.011
+            ],
+            "state_bytes": 600007168,
+            "state_bytes_per_parameter": 4.0
+          }
+        },
+        "parameters": 150000000
+      }
+    }
+  }
+}

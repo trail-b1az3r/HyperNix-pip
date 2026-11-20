@@ -35,11 +35,20 @@ where it states one). An optimizer that cannot run here (V6V without
 CUDA) is recorded as unavailable with the reason, and is not counted as a
 loss for anybody.
 
+``--ablations`` adds V7, V7S and V7M with one mechanism changed at a time,
+so a difference can be put down to that mechanism. ``--band`` times
+``step()`` alone at parameter counts around V7Mini's band (39M to 750M),
+where a whole training run on a CPU is impractical; ``band-transformer``
+(41.6M parameters) is a real training workload inside the band, run only
+when named. Raw per-step times and the loss at every step are kept in the
+JSON.
+
 The numbers are this machine's. Compare runs from one machine only.
 """
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import math
 import platform
@@ -54,12 +63,30 @@ import torch.nn as nn
 
 from hypernix.optimizers.optimizer_framework_v2 import OPTIMIZERS, OptimizerFrameworkV2
 
-__all__ = ["WORKLOADS", "DEFAULT_OPTIMIZERS", "run_benchmark", "render_report", "write_csv",
+__all__ = ["WORKLOADS", "OPT_IN_WORKLOADS", "ABLATIONS", "BAND_SIZES", "run_band",
+           "DEFAULT_OPTIMIZERS", "run_benchmark", "render_report", "write_csv",
            "measured_table", "main"]
 
 DEFAULT_OPTIMIZERS = ("adamw", "v5", "v5plus", "v5s", "v6", "v6v", "v7", "v7mini", "v7q",
                       "v7s", "v7m")
-DEFAULT_LRS = (3e-4, 1e-3, 3e-3, 1e-2)
+DEFAULT_LRS = (3e-4, 1e-3, 3e-3, 1e-2, 3e-2)
+
+#: One mechanism turned off (or on) at a time, so a difference can be put
+#: down to that mechanism. name -> (optimizer, the options that differ).
+ABLATIONS: dict[str, tuple[str, dict[str, Any]]] = {
+    "v7-no-factored": ("v7", {"factored": False}),
+    "v7-no-stability": ("v7", {"stability": False}),
+    "v7-no-pressure": ("v7", {"adaptive_pressure": False}),
+    "v7-no-diffusion": ("v7", {"diffusion": False}),
+    "v7-int8": ("v7", {"state_dtype": "int8"}),
+    "v7s-no-diffusion": ("v7s", {"diffusion": False}),
+    "v7s-no-stability": ("v7s", {"stability": False}),
+    "v7s-no-factored": ("v7s", {"factored": False}),
+    "v7s-fp32": ("v7s", {"state_dtype": "fp32"}),
+    "v7m-no-factored": ("v7m", {"factored": False}),
+    "v7m-fp32": ("v7m", {"state_dtype": "fp32"}),
+    "v7m-ema": ("v7m", {"ema_decay": 0.999}),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -193,18 +220,62 @@ WORKLOADS: dict[str, dict[str, Any]] = {
                     "loss": _class_loss, "tokens_per_batch": 64},
 }
 QUICK_WORKLOADS = ("small-transformer", "mlp", "mixed-1d-2d")
+#: Named explicitly or not run: ``--workloads all`` leaves these out.
+#: ``band-transformer`` has 41.6M parameters, inside V7Mini's band, and a
+#: step of it takes a fraction of a second on a CPU.
+OPT_IN_WORKLOADS = ("band-transformer",)
+WORKLOADS["band-transformer"] = _transformer(16_000, 512, 8, 8, 64, 4)
 
 
 # ---------------------------------------------------------------------------
 # Measuring
 # ---------------------------------------------------------------------------
 
+def _base(name: str) -> tuple[str, dict[str, Any]]:
+    """The registry key behind *name*, and the options an ablation adds."""
+    if name in ABLATIONS:
+        return ABLATIONS[name]
+    return OptimizerFrameworkV2.spec(name).key, {}
+
+
+def _label(name: str) -> str:
+    key, options = _base(name)
+    if not options:
+        return OPTIMIZERS[key].label
+    return OPTIMIZERS[key].label + " with " + ", ".join(f"{k}={v}" for k, v in options.items())
+
+
 def _make(key: str, params: Any, lr: float) -> torch.optim.Optimizer:
-    return OptimizerFrameworkV2.create(key, params, lr=lr)
+    base, options = _base(key)
+    return OptimizerFrameworkV2.create(base, params, lr=lr, **options)
+
+
+def _checkpoint_cost(optimizer: torch.optim.Optimizer) -> dict[str, Any]:
+    """What saving and loading this optimizer's state costs."""
+    import io
+
+    buffer = io.BytesIO()
+    started = time.perf_counter()
+    torch.save(optimizer.state_dict(), buffer)
+    saved = time.perf_counter()
+    buffer.seek(0)
+    optimizer.load_state_dict(torch.load(buffer, weights_only=False))
+    return {"bytes": buffer.getbuffer().nbytes,
+            "save_ms": round(1e3 * (saved - started), 3),
+            "load_ms": round(1e3 * (time.perf_counter() - saved), 3)}
+
+
+def _spread(times: list[float]) -> dict[str, Any]:
+    ordered = sorted(times)
+    return {"ms_per_step": round(1e3 * statistics.median(ordered), 4),
+            "ms_per_step_mean": round(1e3 * statistics.fmean(ordered), 4),
+            "ms_per_step_p10": round(1e3 * ordered[int(0.1 * (len(ordered) - 1))], 4),
+            "ms_per_step_p90": round(1e3 * ordered[int(0.9 * (len(ordered) - 1))], 4),
+            "ms_raw": [round(1e3 * t, 4) for t in times]}
 
 
 def _unavailable(key: str, device: str) -> str:
-    spec = OPTIMIZERS[key]
+    spec = OPTIMIZERS[_base(key)[0]]
     if spec.requires_cuda and not device.startswith("cuda"):
         return f"{spec.label} needs CUDA; this run is on {device}"
     return ""
@@ -245,9 +316,11 @@ def bench_optimizer_only(key: str, workload: dict[str, Any], *, steps: int, warm
     n_params = sum(p.numel() for p in params)
     state = _state_bytes(optimizer)
     described = optimizer.describe() if hasattr(optimizer, "describe") else {}
-    return {"ms_per_step": round(1e3 * statistics.median(times), 4),
-            "ms_per_step_mean": round(1e3 * statistics.fmean(times), 4),
-            "ms_per_step_p90": round(1e3 * sorted(times)[int(0.9 * (len(times) - 1))], 4),
+    try:
+        checkpoint: dict[str, Any] | None = _checkpoint_cost(optimizer)
+    except Exception as exc:  # noqa: BLE001 - recorded, not fatal to the timing
+        checkpoint = {"error": f"{type(exc).__name__}: {exc}"}
+    return {**_spread(times), "checkpoint": checkpoint,
             "state_bytes": state, "parameters": n_params,
             "state_bytes_per_parameter": round(state / max(1, n_params), 4),
             "kernel": described.get("kernel"), "state_dtype": described.get("state_dtype"),
@@ -269,6 +342,7 @@ def bench_training(key: str, workload: dict[str, Any], *, steps: int, seed: int,
     losses: list[float] = []
     step_seconds: list[float] = []
     opt_seconds: list[float] = []
+    grad_norms: list[float] = []
     loss_at_time: float | None = None
     elapsed = 0.0
     diverged = False
@@ -282,6 +356,11 @@ def bench_training(key: str, workload: dict[str, Any], *, steps: int, seed: int,
         loss = workload["loss"](model, batch)
         loss.backward()
         _sync(device)
+        backward_done = time.perf_counter()
+        # Outside the timed regions: the size of the gradient this step.
+        grad_norms.append(float(torch.stack(
+            [p.grad.detach().float().norm() for p in params if p.grad is not None]).norm()))
+        _sync(device)
         before = time.perf_counter()
         optimizer.step()
         _sync(device)
@@ -289,9 +368,9 @@ def bench_training(key: str, workload: dict[str, Any], *, steps: int, seed: int,
         value = loss.item()
         if hasattr(optimizer, "report_loss"):
             optimizer.report_loss(value)
-        step_seconds.append(ended - started)
+        step_seconds.append((backward_done - started) + (ended - before))
         opt_seconds.append(ended - before)
-        elapsed += ended - started
+        elapsed += step_seconds[-1]
         losses.append(value)
         if time_budget is not None and loss_at_time is None and elapsed >= time_budget:
             loss_at_time = value
@@ -306,6 +385,7 @@ def bench_training(key: str, workload: dict[str, Any], *, steps: int, seed: int,
     ms = 1e3 * statistics.median(step_seconds[skip:] or step_seconds)
     opt_ms = 1e3 * statistics.median(opt_seconds[skip:] or opt_seconds)
     fixed = min(len(losses), max(1, steps // 2)) - 1
+    finite_norms = [g for g in grad_norms if math.isfinite(g)]
     return {
         "lr": lr, "steps": len(losses), "diverged": diverged or not math.isfinite(validation),
         "final_loss": round(statistics.fmean(tail), 6) if not diverged else None,
@@ -317,6 +397,17 @@ def bench_training(key: str, workload: dict[str, Any], *, steps: int, seed: int,
         "tokens_per_second": round(workload["tokens_per_batch"] * 1e3 / ms, 1) if ms else None,
         "optimizer_ms_per_step": round(opt_ms, 4),
         "optimizer_share": round(opt_ms / ms, 4) if ms else None,
+        "ms_per_step_p10": round(1e3 * sorted(step_seconds)[int(0.1 * (len(step_seconds) - 1))],
+                                 4),
+        "ms_per_step_p90": round(1e3 * sorted(step_seconds)[int(0.9 * (len(step_seconds) - 1))],
+                                 4),
+        "losses": [round(v, 6) for v in losses],
+        # Gradient stability: the typical gradient norm, and how far the
+        # largest one stood above it (1.0 is perfectly even).
+        "grad_norm_median": round(statistics.median(finite_norms), 6) if finite_norms else None,
+        "grad_norm_peak_ratio": round(max(finite_norms) / max(statistics.median(finite_norms),
+                                                              1e-30), 3)
+        if finite_norms else None,
         "state_bytes": _state_bytes(optimizer),
         "peak_device_bytes": int(torch.cuda.max_memory_allocated())
         if device.startswith("cuda") else None,
@@ -344,7 +435,8 @@ def run_benchmark(*, optimizers: tuple[str, ...] = DEFAULT_OPTIMIZERS,
     for name in workloads:
         if name not in WORKLOADS:
             raise ValueError(f"unknown workload {name!r}. Known: {', '.join(WORKLOADS)}")
-    keys = tuple(OptimizerFrameworkV2.spec(name).key for name in optimizers)
+    keys = tuple(name if name in ABLATIONS else OptimizerFrameworkV2.spec(name).key
+                 for name in optimizers)
     record: dict[str, Any] = {
         "hypernix_version": __version__, "torch": torch.__version__,
         "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -392,10 +484,14 @@ def run_benchmark(*, optimizers: tuple[str, ...] = DEFAULT_OPTIMIZERS,
             best = min(good, key=lambda r: r["final_loss"]) if good else None
             finals = [r["final_loss"] for r in good]
             entry["optimizers"][key] = {
-                "available": True, "label": OPTIMIZERS[key].label,
+                "available": True, "label": _label(key),
                 "optimizer_only": only, "runs": runs,
                 "best": best,
                 "diverged_at": [r["lr"] for r in runs if r["diverged"]],
+                # Its best rate is the largest or smallest tried: the real
+                # best may lie outside the grid, and this row understates it.
+                "best_at_grid_edge": bool(best is not None and len(lrs) > 1
+                                          and best["lr"] in (min(lrs), max(lrs))),
                 # How far the final loss moves across the grid: max / min.
                 "lr_sensitivity": round(max(finals) / max(min(finals), 1e-12), 3)
                 if len(finals) > 1 else None,
@@ -404,6 +500,129 @@ def run_benchmark(*, optimizers: tuple[str, ...] = DEFAULT_OPTIMIZERS,
         record["workloads"][name] = entry
     record["peak_rss_bytes"] = _peak_rss()
     return record
+
+
+# ---------------------------------------------------------------------------
+# V7Mini's band: optimizer-only, at the sizes that matter
+# ---------------------------------------------------------------------------
+
+#: Below the band, exactly at its lower edge, just inside it, and well inside
+#: it. The upper edge (749M, 750M) needs about 10 GiB and is run by naming it.
+BAND_SIZES = (30_000_000, 39_000_000, 39_100_000, 150_000_000)
+BAND_OPTIMIZERS = ("adamw", "v6", "v7", "v7mini", "v7q")
+
+
+def _band_shapes(target: int) -> list[tuple[int, ...]]:
+    """Transformer-shaped tensors that add up to exactly *target* parameters."""
+    dim = 512 if target < 60_000_000 else 768 if target < 300_000_000 else 1024
+    vocab = 16_000 if target < 60_000_000 else 32_000
+    per_layer = 4 * dim * dim + 2 * 4 * dim * dim + 4 * dim + 4 * dim + 4 * dim
+    layers = max(1, (target - vocab * dim) // per_layer)
+    shapes: list[tuple[int, ...]] = [(vocab, dim)]
+    for _ in range(layers):
+        shapes += [(dim, dim)] * 4 + [(4 * dim, dim), (dim, 4 * dim)]
+        shapes += [(dim,)] * 4 + [(4 * dim,), (dim,), (dim,)]
+    left = target - sum(math.prod(shape) for shape in shapes)
+    while left < 0:                              # one layer too many
+        del shapes[-13:]
+        left = target - sum(math.prod(shape) for shape in shapes)
+    if left >= dim:
+        shapes.append((left // dim, dim))
+        left -= (left // dim) * dim
+    if left:
+        shapes.append((left,))
+    return shapes
+
+
+def _available_bytes() -> int | None:
+    """Memory a new allocation can have: Linux's ``MemAvailable``, which
+    counts reclaimable cache, or else free pages; ``None`` if unknown."""
+    try:
+        with open("/proc/meminfo", encoding="ascii") as handle:
+            for line in handle:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        import os
+
+        return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+def run_band(*, sizes: tuple[int, ...] = BAND_SIZES,
+             optimizers: tuple[str, ...] = BAND_OPTIMIZERS, steps: int = 6, warmup: int = 2,
+             seed: int = 0, device: str = "cpu", progress: Any = None) -> dict[str, Any]:
+    """``step()`` alone on models sized around V7Mini's band.
+
+    The tensors have a transformer's shapes and exactly the parameter count
+    asked for; the gradients are random and redrawn each step (outside the
+    timed region), so this measures the optimizer's cost at that size and
+    nothing about training quality.
+    """
+    from hypernix.optimizers.pressure_cooker_v7 import MINI_MAX_PARAMS, MINI_MIN_PARAMS
+
+    out: dict[str, Any] = {"lower": MINI_MIN_PARAMS, "upper": MINI_MAX_PARAMS, "steps": steps,
+                           "warmup": warmup, "gradients": "random, redrawn each step",
+                           "sizes": {}}
+    for size in sizes:
+        chosen = OptimizerFrameworkV2.auto_select(parameter_count=size,
+                                                  parameter_count_verified=True)
+        entry: dict[str, Any] = {"in_band": MINI_MIN_PARAMS < size < MINI_MAX_PARAMS,
+                                 "auto_select": chosen.key, "optimizers": {}}
+        for name in optimizers:
+            if progress is not None:
+                progress(f"band {size:,}: {name}")
+            why = _unavailable(name, device)
+            # Parameters and gradients, plus the state: two fp32 copies for
+            # AdamW, at most one for the others here; a tenth over for slack.
+            copies = 4 if _base(name)[0] == "adamw" else 3
+            need = int(size * 4 * copies * 1.1)
+            free = _available_bytes()
+            if not why and free is not None and need > free:
+                why = f"needs about {need / 2**30:.1f} GiB; {free / 2**30:.1f} GiB is free"
+            if why:
+                entry["optimizers"][name] = {"available": False, "reason": why}
+                continue
+            torch.manual_seed(seed)
+            params = [torch.nn.Parameter(torch.randn(shape, device=device) * 0.02)
+                      for shape in _band_shapes(size)]
+            for p in params:
+                p.grad = torch.empty_like(p)
+            optimizer: torch.optim.Optimizer | None = None
+            try:
+                optimizer = _make(name, params, 1e-3)
+                times = []
+                for i in range(steps + warmup):
+                    for p in params:
+                        p.grad.normal_(0.0, 0.01)      # type: ignore[union-attr]
+                    _sync(device)
+                    started = time.perf_counter()
+                    optimizer.step()
+                    _sync(device)
+                    if i >= warmup:
+                        times.append(time.perf_counter() - started)
+                state = _state_bytes(optimizer)
+                described = optimizer.describe() if hasattr(optimizer, "describe") else {}
+                entry["optimizers"][name] = {
+                    "available": True, **_spread(times), "state_bytes": state,
+                    "state_bytes_per_parameter": round(state / size, 4),
+                    "state_dtype": described.get("state_dtype"),
+                    "state_dtype_reason": described.get("state_dtype_reason")}
+            except Exception as exc:  # noqa: BLE001 - one optimizer failing is a result
+                entry["optimizers"][name] = {"available": False,
+                                             "reason": f"failed: {type(exc).__name__}: {exc}"}
+            # Free this size's tensors before the next optimizer measures
+            # what memory is left: the optimizer holds the parameters and
+            # its state, so it has to go too.
+            optimizer = None
+            del params
+            gc.collect()
+        entry["parameters"] = size
+        out["sizes"][str(size)] = entry
+    return out
 
 
 def measured_table(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -499,6 +718,19 @@ def render_report(record: dict[str, Any]) -> str:
                 + (f" (diverged at {', '.join(f'{v:g}' for v in got['diverged_at'])})"
                    if got["diverged_at"] else "") + " |")
         lines.append("")
+    if record.get("band"):
+        band = record["band"]
+        lines += [f"## V7Mini's band ({band['lower']:,} < n < {band['upper']:,})", "",
+                  f"`step()` alone, median ms over {band['steps']} steps, on tensors with a "
+                  "transformer's shapes and random gradients. This is the optimizer's cost "
+                  "at that size; it says nothing about training quality.", "",
+                  *_band_lines(band), ""]
+    edge = sorted({key for entry in record["workloads"].values()
+                   for key, got in entry["optimizers"].items() if got.get("best_at_grid_edge")})
+    if edge:
+        lines += ["**Best rate at the edge of the grid** on at least one workload: "
+                  + ", ".join(edge) + ". Their real best may lie outside the grid, so those "
+                  "rows may understate them.", ""]
     lines += ["`Step only` is the optimizer's `step()` on fixed gradients. `Full step` is "
               "forward, backward and step. `lr sensitivity` is the largest final loss over "
               "the smallest across the learning-rate grid: closer to 1 is less sensitive.",
@@ -513,21 +745,53 @@ def render_report(record: dict[str, Any]) -> str:
 def _print_table(record: dict[str, Any]) -> None:
     for name, entry in record["workloads"].items():
         print(f"\n{name} ({entry['parameters']:,} parameters)")
-        print(f"  {'optimizer':<9} {'step ms':>9} {'B/param':>8} {'best lr':>8} {'final':>9} "
+        print(f"  {'optimizer':<17} {'step ms':>9} {'B/param':>8} {'best lr':>8} {'final':>9} "
               f"{'held-out':>9} {'full ms':>9} {'opt %':>6}")
         for key, got in entry["optimizers"].items():
             if not got.get("available"):
-                print(f"  {key:<9} N/A: {got.get('reason', '')}")
+                print(f"  {key:<17} N/A: {got.get('reason', '')}")
                 continue
             only, best = got["optimizer_only"], got.get("best")
             if best is None:
-                print(f"  {key:<9} {only['ms_per_step']:>9.3f} "
+                print(f"  {key:<17} {only['ms_per_step']:>9.3f} "
                       f"{only['state_bytes_per_parameter']:>8.2f}  diverged at every rate")
                 continue
-            print(f"  {key:<9} {only['ms_per_step']:>9.3f} "
+            print(f"  {key:<17} {only['ms_per_step']:>9.3f} "
                   f"{only['state_bytes_per_parameter']:>8.2f} {best['lr']:>8g} "
                   f"{best['final_loss']:>9.4f} {best['validation_loss']:>9.4f} "
                   f"{best['ms_per_step']:>9.3f} {100 * best['optimizer_share']:>5.0f}%")
+
+
+def _band_lines(band: dict[str, Any]) -> list[str]:
+    names = list(next(iter(band["sizes"].values()))["optimizers"]) if band["sizes"] else []
+    lines = ["| Parameters | In band | Auto-selects | "
+             + " | ".join(f"{n}, ms" for n in names) + " |",
+             "|---|---|---|" + "---|" * len(names)]
+    for entry in band["sizes"].values():
+        cells = []
+        for name in names:
+            got = entry["optimizers"][name]
+            if not got.get("available"):
+                cells.append("N/A")
+                continue
+            dtype = f" ({got['state_dtype']})" if got.get("state_dtype") not in (None, "fp32") \
+                else ""
+            cells.append(f"{got['ms_per_step']:.1f}{dtype}")
+        lines.append(f"| {entry['parameters']:,} | {'yes' if entry['in_band'] else 'no'} | "
+                     f"{entry['auto_select']} | " + " | ".join(cells) + " |")
+    reasons = sorted({f"{entry['parameters']:,} {name}: {got.get('reason', '')}"
+                      for entry in band["sizes"].values()
+                      for name, got in entry["optimizers"].items() if not got.get("available")})
+    if reasons:
+        lines += ["", "N/A: " + "; ".join(reasons)]
+    return lines
+
+
+def _print_band(band: dict[str, Any]) -> None:
+    print(f"\nstep() alone around V7Mini's band ({band['lower']:,} < n < {band['upper']:,}), "
+          "random gradients")
+    for line in _band_lines(band):
+        print("  " + line)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -548,6 +812,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--ablations", action="store_true",
+                        help="also run V7, V7S and V7M with one mechanism changed at a time: "
+                             + ", ".join(ABLATIONS))
+    parser.add_argument("--band", nargs="?", const=",".join(str(v) for v in BAND_SIZES),
+                        default=None, metavar="SIZES",
+                        help="also time step() alone at these parameter counts around "
+                             "V7Mini's band (default: %(const)s)")
     parser.add_argument("--json", metavar="OUT", default=None)
     parser.add_argument("--csv", metavar="OUT", default=None)
     parser.add_argument("--report", metavar="OUT", default=None)
@@ -559,11 +830,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         print("optimizer benchmark: there is no CUDA device here", file=sys.stderr)
         return 2
-    workloads = tuple(WORKLOADS) if args.workloads == "all" else tuple(
+    workloads = tuple(w for w in WORKLOADS if w not in OPT_IN_WORKLOADS) \
+        if args.workloads == "all" else tuple(
         w.strip() for w in args.workloads.split(",") if w.strip())
+    sizes: tuple[int, ...] = ()
+    if args.band:
+        try:
+            sizes = tuple(int(v.replace("_", "")) for v in args.band.split(",") if v.strip())
+        except ValueError:
+            print("optimizer benchmark: --band takes parameter counts, e.g. "
+                  "30000000,39100000", file=sys.stderr)
+            return 2
+    chosen = tuple(o.strip() for o in args.optimizers.split(",") if o.strip())
+    if args.ablations:
+        chosen += tuple(name for name in ABLATIONS if name not in chosen)
     try:
         record = run_benchmark(
-            optimizers=tuple(o.strip() for o in args.optimizers.split(",") if o.strip()),
+            optimizers=chosen,
             workloads=workloads, lrs=tuple(float(v) for v in args.lrs.split(",")),
             steps=args.steps, optimizer_steps=args.optimizer_steps, warmup=args.warmup,
             seed=args.seed, device=args.device,
@@ -573,6 +856,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     record["measured"] = measured_table(record)
     _print_table(record)
+    if sizes:
+        record["band"] = run_band(
+            sizes=sizes, seed=args.seed, device=args.device,
+            progress=lambda text: print(text, file=sys.stderr, flush=True))
+        _print_band(record["band"])
     outputs = {"json": args.json, "csv": args.csv, "report": args.report}
     if args.out_dir:
         folder = Path(args.out_dir)

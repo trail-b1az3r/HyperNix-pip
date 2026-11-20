@@ -157,8 +157,11 @@ def resolve_state_dtype(n_params: int, device: torch.device | str, *,
     The rule, in order:
 
     1. Parameters that are themselves half precision keep their own dtype.
-    2. If fp32 momentum would take more than a quarter of the free memory,
-       int8 (one byte per parameter).
+    2. If fp32 momentum would take more than a quarter of the free memory
+       on CUDA, or more than half of it on a CPU, int8 (one byte per
+       parameter). A CPU gets the higher bar because int8 costs it step
+       time: about 2.5 times at 749M parameters, where a quarter had
+       switched a CPU with 9 GiB free to int8 for 3 GiB of momentum.
     3. On CUDA, bf16 where the device has it, else fp16: half the bytes of
        fp32, in arithmetic a GPU does natively.
     4. On a CPU, fp32: half precision and int8 arithmetic measure 4-5x
@@ -172,9 +175,10 @@ def resolve_state_dtype(n_params: int, device: torch.device | str, *,
     fp32_bytes = int(n_params) * 4
     if free_bytes is None:
         free_bytes = _free_bytes(device)
-    if free_bytes and fp32_bytes > free_bytes // 4:
-        return "int8", (f"fp32 momentum ({fp32_bytes / 2**30:.2f} GiB) would take more than a "
-                        f"quarter of the {free_bytes / 2**30:.2f} GiB free, so int8 momentum")
+    share, words = (4, "a quarter") if device.type == "cuda" else (2, "half")
+    if free_bytes and fp32_bytes > free_bytes // share:
+        return "int8", (f"fp32 momentum ({fp32_bytes / 2**30:.2f} GiB) would take more than "
+                        f"{words} of the {free_bytes / 2**30:.2f} GiB free, so int8 momentum")
     if device.type == "cuda":
         try:
             bf16 = bool(torch.cuda.is_bf16_supported())

@@ -1,0 +1,24 @@
+mlp: v7
+
+mlp (86,544 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  v7                    0.581     4.10     0.01    2.7510    2.7548     1.402    44%
+band 749,000,000: adamw
+band 749,000,000: v6
+band 749,000,000: v7
+band 749,000,000: v7mini
+band 749,000,000: v7q
+band 750,000,000: adamw
+band 750,000,000: v6
+band 750,000,000: v7
+band 750,000,000: v7mini
+band 750,000,000: v7q
+
+step() alone around V7Mini's band (39,000,000 < n < 750,000,000), random gradients
+  | Parameters | In band | Auto-selects | adamw, ms | v6, ms | v7, ms | v7mini, ms | v7q, ms |
+  |---|---|---|---|---|---|---|---|
+  | 749,000,000 | yes | v7mini | 2075.2 | 1500.9 | 1633.7 | 1420.6 | 372.9 |
+  | 750,000,000 | no | v7 | 1942.9 | 1436.3 | 1489.1 | 1414.5 | 386.2 |
+json: benchmarks/results/optimizers-0.73.0a2/band-edge/optimizer-bench.json
+csv: benchmarks/results/optimizers-0.73.0a2/band-edge/optimizer-bench.csv
+report: benchmarks/results/optimizers-0.73.0a2/band-edge/optimizer-bench.md

@@ -15,6 +15,7 @@ lives in [`.github/scripts/`](#githubscripts) instead.
 | `ci/wait_for_http.py` | Waits for a server to answer, and says why when it never does | same |
 | `ci/resolve_docs_conflicts.py` | Merges the base branch into a PR; when every conflict is in `docs/public/v1`, each file takes the version from whichever branch changed it last. Any other conflict is left untouched and reported | `resolve-docs-conflicts.yml` (every PR) |
 | `benchmark_v5.py`, `benchmark_v5s.py`, `benchmark_v6.py` | Pressure Cooker V5 / V5S / V6 against AdamW, each on its own identically seeded model. CUDA when there is one | you |
+| `render_optimizer_results.py` | Renders the measured tables on `wiki/Pressure-Cooker-V7.md` from `benchmarks/results/optimizers-0.73.0a2/`; `--check` fails when the page and the results disagree | you, after a new `hnx optimizer benchmark` run |
 | `measure_optimizer_memory.py` | Exact optimizer-state bytes per parameter for AdamW and Pressure Cooker V5 / V5S / V6 | you |
 | `install_deps.sh` | Cross-distro bootstrap into `./.venv`, preferring Python 3.12 | you |
 | `install_macos_legacy.sh` | Intel Macs on Catalina / Big Sur that cannot run PyTorch 2.x: torch 1.13 and `hypernix[legacy-torch]` | you |

@@ -9,8 +9,8 @@
         "0.73.0a2"
       ],
       "kind": "alpha",
-      "heading": "0.73.0a2 \u2014 2026-11-15",
-      "date": "2026-11-15",
+      "heading": "0.73.0a2 \u2014 2026-11-20",
+      "date": "2026-11-20",
       "title": "",
       "summary": "Pressure Cooker V7 (hypernix.optimizers.pressure_cooker_v7). One momentum buffer per parameter, stored as fp32, bf16, fp16 or int8; factored row and column statistics for matrices; a stability score from the gradient-momentum cosine at three timescales; Adaptive Pressure; a\u2026",
       "patch": null,
@@ -21,7 +21,7 @@
         "The V7 family, all on the same engine: PressureCookerV7V (torch.compile and CUDA-graph replay where available, the same foreach step everywhere else, with the fallback reasons recorded), PressureCookerV7Mini (for more than 39,000,000 and fewer than 750,000,000 parameters)\u2026",
         "V7M's training features are explicit calls (hypernix.optimizers.v7m_features): attach_qat, quantization_sensitivity, mixed_precision_plan, make_mtp_head, mtp_loss, ema_weights. None of them runs unless called.",
         "hnx optimizer benchmark compares AdamW, V5, V5+, V5S, V6, V6V, V7, V7Mini, V7Q, V7S and V7M on the same models, seeds, batches and steps, over one learning-rate grid. It reports the optimizer's step() alone and the whole training step separately, state bytes counted from the\u2026",
-        "hnx optimizer select prints what auto-selection would choose and why, without building anything. hnx optimizer list prints the optimizers with their target ratings, and measured figures when given a benchmark file."
+        "--ablations adds V7, V7S and V7M with one mechanism changed at a time. --band times step() alone at parameter counts around V7Mini's band (by default 30M, 39M, 39.1M and 150M), skipping a size that would not fit in available memory and saying so. The band-transformer workload\u2026"
       ],
       "changes": [
         {
@@ -63,6 +63,13 @@
           "symbol": "\u2728",
           "label": "feature",
           "category": "CLI and UX",
+          "text": "--ablations adds V7, V7S and V7M with one mechanism changed at a time. --band times step() alone at parameter counts around V7Mini's band (by default 30M, 39M, 39.1M and 150M), skipping a size that would not fit in available memory and saying so. The band-transformer workload\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "CLI and UX",
           "text": "hnx optimizer select prints what auto-selection would choose and why, without building anything. hnx optimizer list prints the optimizers with their target ratings, and measured figures when given a benchmark file.",
           "details": []
         },
@@ -70,7 +77,14 @@
           "symbol": "\u26a1",
           "label": "performance",
           "category": "Performance",
-          "text": "Measured, averaged over the six workloads: | Optimizer | Step only, ms | Full step, ms | State bytes/param | Final training loss | Held-out loss | |---|---|---|---|---|---| | AdamW | 1.34 | 9.53 | 8.00 | 0.370 | 1.734 | | V5 | 13.26 | 19.76 | 1.12 | 1.953 | 1.991 | | V5+ |\u2026",
+          "text": "Measured, averaged over six workloads (200 steps each, at each optimizer's best rate from 3e-4 to 3e-2): | Optimizer | Step only, ms | Full step, ms | State bytes/param | Final training loss | Held-out loss | |---|---|---|---|---|---| | AdamW | 1.58 | 10.07 | 8.00 | 0.370 |\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u26a1",
+          "label": "performance",
+          "category": "Performance",
+          "text": "V7 Balanced's training step costs what AdamW's and V6's do, with half of AdamW's state, and it reached a lower loss than V6 on every workload. V7Q has the cheapest step() and the fastest training step on every workload. V7S's step() is about seven times cheaper than V5S's at\u2026",
           "details": []
         },
         {
@@ -88,10 +102,24 @@
           "details": []
         },
         {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "The measured tables are rendered from the committed results by scripts/render_optimizer_results.py; the commands that produced each result are in that folder's README.",
+          "details": []
+        },
+        {
           "symbol": "\ud83e\uddea",
           "label": "tests",
           "category": "Tests",
           "text": "tests/optimizers/: V7 (presets, every state dtype, foreach against per-tensor, factored state, diffusion, trust ratio, Adaptive Pressure, non-finite steps, accumulation, GradScaler, mixed dtypes, checkpoint resume, conversion and refusal), V7V fallbacks, V7Mini's strict band\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/docs/test_optimizer_results.py fails when the V7 page's tables and the result files disagree.",
           "details": []
         },
         {
@@ -105,35 +133,56 @@
           "symbol": "\u2757",
           "label": "known issue",
           "category": "Known Issues",
-          "text": "AdamW reached a lower training loss than every Pressure Cooker on every workload in these 200-step runs. V7 Balanced's held-out loss was better than AdamW's on three workloads and worse on three.",
+          "text": "AdamW reached the lowest training loss on every workload, and the lowest held-out loss on all three transformers. The V7 family had the lowest held-out loss only on the MLP and the mixed model.",
           "details": []
         },
         {
           "symbol": "\u2757",
           "label": "known issue",
           "category": "Known Issues",
-          "text": "V7Mini has not been measured inside its band. The largest workload has 2 million parameters. Nothing yet shows Mini beats Balanced between 39 and 750 million.",
+          "text": "V7S and V7M do not beat their V5 lineage on training loss everywhere. Each at its best rate, they had a lower held-out loss than V5S, V5 and V5+ on five of six workloads, but a lower training loss on three.",
           "details": []
         },
         {
           "symbol": "\u2757",
           "label": "known issue",
           "category": "Known Issues",
-          "text": "V7Q is not faster than V6 in a whole training step on every workload: its step() is cheaper, but on the transformers the optimizer is 6 to 13 percent of the step.",
+          "text": "V7Q trades quality for speed. At each one's best rate its final loss was worse than V6's on five workloads and equal on the sixth.",
           "details": []
         },
         {
           "symbol": "\u2757",
           "label": "known issue",
           "category": "Known Issues",
-          "text": "V6, V7Q, V5, V5+ and V5S did best at the largest learning rate tried (0.01), so the comparison probably understates them.",
+          "text": "V7Mini's advantage is not shown to be specific to its band. Its step() was cheaper than Balanced's at every size measured, below the band as well as inside it, and at 749M and 750M the spreads overlap. In the 41.6M training run its full step was not faster. That run (30 steps\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "Pressure diffusion is untested by these runs. Its gate opens only on oscillation, and on these tasks it never opened: turning diffusion off changed nothing to four decimals in V7 or V7S.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "V6's and V7Q's best rate on the transformers was still the largest tried (1.0), so their rows may understate them.",
           "details": []
         },
         {
           "symbol": "\ud83d\udec8",
           "label": "caveat",
           "category": "Caveats",
-          "text": "On a CPU, V7 Balanced holds as much state as V6 (about 4 bytes per parameter): compressed momentum measured slower there, so auto keeps fp32. Use state_dtype=\"int8\" or the memory preset for about 1.1 bytes per parameter, at more step time.",
+          "text": "On a CPU, V7 Balanced holds as much state as V6 (about 4 bytes per parameter): int8 momentum measured 1.6 to 1.8 times slower there, so auto keeps fp32 unless fp32 would take more than half the available memory (a quarter on CUDA). Use state_dtype=\"int8\" or the memory preset\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The optimizers do not share a learning-rate scale: AdamW and the V7 family did best at 1e-3 to 1e-2, V5, V5+ and V5S at 3e-2 to 1e-1, V6 and V7Q at 1e-1 to 1.0.",
           "details": []
         },
         {

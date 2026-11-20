@@ -1,0 +1,16 @@
+band-transformer: adamw
+band-transformer: v6
+band-transformer: v7
+band-transformer: v7mini
+band-transformer: v7q
+
+band-transformer (41,636,864 parameters)
+  optimizer           step ms  B/param  best lr     final  held-out   full ms  opt %
+  adamw                91.777     8.00    0.001    7.4722   13.6778   251.038    36%
+  v6                   79.975     4.00     0.01    9.8313    9.8316   223.548    34%
+  v7                   52.598     4.02    0.003    2.4426   10.0484   215.962    27%
+  v7mini               45.131     4.02    0.003    0.4164    9.9079   223.066    26%
+  v7q                  19.450     4.00     0.01    9.8074    9.8309   158.573    11%
+json: benchmarks/results/optimizers-0.73.0a2/in-band/optimizer-bench.json
+csv: benchmarks/results/optimizers-0.73.0a2/in-band/optimizer-bench.csv
+report: benchmarks/results/optimizers-0.73.0a2/in-band/optimizer-bench.md

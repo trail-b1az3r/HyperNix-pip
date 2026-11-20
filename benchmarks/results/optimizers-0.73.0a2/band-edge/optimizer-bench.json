@@ -1,0 +1,364 @@
+{
+  "hypernix_version": "0.73.0a2",
+  "torch": "2.15.0+cpu",
+  "when": "2026-11-20T09:05:06Z",
+  "machine": {
+    "os": "Linux 6.18.44-fc-v726",
+    "cpu": "x86_64",
+    "threads": 4,
+    "python": "3.12.3",
+    "device": "cpu",
+    "gpu": null
+  },
+  "settings": {
+    "optimizers": [
+      "v7"
+    ],
+    "workloads": [
+      "mlp"
+    ],
+    "lrs": [
+      0.01
+    ],
+    "steps": 8,
+    "optimizer_steps": 2,
+    "warmup": 5,
+    "seed": 0,
+    "precision": "fp32"
+  },
+  "not_measured": [
+    "cpu_utilization",
+    "gpu_utilization",
+    "kernel_launches",
+    "host_device_synchronization_count"
+  ],
+  "workloads": {
+    "mlp": {
+      "parameters": 86544,
+      "optimizers": {
+        "v7": {
+          "available": true,
+          "label": "Pressure Cooker V7 Balanced",
+          "optimizer_only": {
+            "ms_per_step": 0.5812,
+            "ms_per_step_mean": 0.5812,
+            "ms_per_step_p10": 0.5724,
+            "ms_per_step_p90": 0.5724,
+            "ms_raw": [
+              0.5899,
+              0.5724
+            ],
+            "checkpoint": {
+              "bytes": 362709,
+              "save_ms": 2.134,
+              "load_ms": 1.506
+            },
+            "state_bytes": 355200,
+            "parameters": 86544,
+            "state_bytes_per_parameter": 4.1043,
+            "kernel": "foreach",
+            "state_dtype": "fp32",
+            "host_reads_per_step": 1
+          },
+          "runs": [
+            {
+              "lr": 0.01,
+              "steps": 8,
+              "diverged": false,
+              "final_loss": 2.750973,
+              "validation_loss": 2.754827,
+              "loss_at_step": {
+                "step": 4,
+                "loss": 2.774025
+              },
+              "loss_at_seconds": null,
+              "ms_per_step": 1.4019,
+              "steps_per_second": 713.33,
+              "tokens_per_second": 45653.1,
+              "optimizer_ms_per_step": 0.6225,
+              "optimizer_share": 0.444,
+              "ms_per_step_p10": 1.2912,
+              "ms_per_step_p90": 1.9308,
+              "losses": [
+                2.764052,
+                2.776458,
+                2.763986,
+                2.774025,
+                2.765282,
+                2.751271,
+                2.743416,
+                2.750973
+              ],
+              "grad_norm_median": 0.359916,
+              "grad_norm_peak_ratio": 1.115,
+              "state_bytes": 355200,
+              "peak_device_bytes": null
+            }
+          ],
+          "best": {
+            "lr": 0.01,
+            "steps": 8,
+            "diverged": false,
+            "final_loss": 2.750973,
+            "validation_loss": 2.754827,
+            "loss_at_step": {
+              "step": 4,
+              "loss": 2.774025
+            },
+            "loss_at_seconds": null,
+            "ms_per_step": 1.4019,
+            "steps_per_second": 713.33,
+            "tokens_per_second": 45653.1,
+            "optimizer_ms_per_step": 0.6225,
+            "optimizer_share": 0.444,
+            "ms_per_step_p10": 1.2912,
+            "ms_per_step_p90": 1.9308,
+            "losses": [
+              2.764052,
+              2.776458,
+              2.763986,
+              2.774025,
+              2.765282,
+              2.751271,
+              2.743416,
+              2.750973
+            ],
+            "grad_norm_median": 0.359916,
+            "grad_norm_peak_ratio": 1.115,
+            "state_bytes": 355200,
+            "peak_device_bytes": null
+          },
+          "diverged_at": [],
+          "best_at_grid_edge": false,
+          "lr_sensitivity": null
+        }
+      },
+      "wall_clock_checkpoint_seconds": 0.0037
+    }
+  },
+  "peak_rss_bytes": 375209984,
+  "measured": {
+    "v7": {
+      "ms_per_step": 0.5812,
+      "full_step_ms": 1.4019,
+      "state_bytes_per_parameter": 4.1043,
+      "final_loss": 2.750973,
+      "validation_loss": 2.754827,
+      "workloads": 1,
+      "device": "cpu"
+    }
+  },
+  "band": {
+    "lower": 39000000,
+    "upper": 750000000,
+    "steps": 6,
+    "warmup": 2,
+    "gradients": "random, redrawn each step",
+    "sizes": {
+      "749000000": {
+        "in_band": true,
+        "auto_select": "v7mini",
+        "optimizers": {
+          "adamw": {
+            "available": true,
+            "ms_per_step": 2075.2444,
+            "ms_per_step_mean": 2134.1386,
+            "ms_per_step_p10": 1815.3076,
+            "ms_per_step_p90": 2236.6719,
+            "ms_raw": [
+              2691.06,
+              1815.3076,
+              1911.3037,
+              2236.6719,
+              1943.3694,
+              2207.1194
+            ],
+            "state_bytes": 5992002924,
+            "state_bytes_per_parameter": 8.0,
+            "state_dtype": null,
+            "state_dtype_reason": null
+          },
+          "v6": {
+            "available": true,
+            "ms_per_step": 1500.9194,
+            "ms_per_step_mean": 1512.0166,
+            "ms_per_step_p10": 1472.7363,
+            "ms_per_step_p90": 1549.1444,
+            "ms_raw": [
+              1512.0637,
+              1549.1444,
+              1560.4641,
+              1489.7751,
+              1472.7363,
+              1487.9162
+            ],
+            "state_bytes": 2996000000,
+            "state_bytes_per_parameter": 4.0,
+            "state_dtype": null,
+            "state_dtype_reason": null
+          },
+          "v7": {
+            "available": true,
+            "ms_per_step": 1633.7038,
+            "ms_per_step_mean": 1858.1897,
+            "ms_per_step_p10": 1378.0026,
+            "ms_per_step_p90": 1896.8553,
+            "ms_raw": [
+              1448.522,
+              1397.7742,
+              3209.0986,
+              1818.8856,
+              1378.0026,
+              1896.8553
+            ],
+            "state_bytes": 3004639368,
+            "state_bytes_per_parameter": 4.0115,
+            "state_dtype": "fp32",
+            "state_dtype_reason": "a CPU with memory to spare: half precision and int8 arithmetic are 4-5x slower than fp32 here"
+          },
+          "v7mini": {
+            "available": true,
+            "ms_per_step": 1420.5748,
+            "ms_per_step_mean": 1458.1073,
+            "ms_per_step_p10": 1142.2113,
+            "ms_per_step_p90": 1704.2807,
+            "ms_raw": [
+              1763.534,
+              1142.2113,
+              1387.738,
+              1297.4685,
+              1453.4115,
+              1704.2807
+            ],
+            "state_bytes": 3004639368,
+            "state_bytes_per_parameter": 4.0115,
+            "state_dtype": "fp32",
+            "state_dtype_reason": "a CPU with memory to spare: half precision and int8 arithmetic are 4-5x slower than fp32 here"
+          },
+          "v7q": {
+            "available": true,
+            "ms_per_step": 372.922,
+            "ms_per_step_mean": 376.5541,
+            "ms_per_step_p10": 358.8298,
+            "ms_per_step_p90": 377.5588,
+            "ms_raw": [
+              377.5588,
+              371.3076,
+              374.5364,
+              365.7272,
+              411.3647,
+              358.8298
+            ],
+            "state_bytes": 2996023392,
+            "state_bytes_per_parameter": 4.0,
+            "state_dtype": "fp32",
+            "state_dtype_reason": "asked for"
+          }
+        },
+        "parameters": 749000000
+      },
+      "750000000": {
+        "in_band": false,
+        "auto_select": "v7",
+        "optimizers": {
+          "adamw": {
+            "available": true,
+            "ms_per_step": 1942.9296,
+            "ms_per_step_mean": 1895.1433,
+            "ms_per_step_p10": 1519.6177,
+            "ms_per_step_p90": 2117.9446,
+            "ms_raw": [
+              1635.6685,
+              1979.9358,
+              2117.9446,
+              1519.6177,
+              1905.9234,
+              2211.7698
+            ],
+            "state_bytes": 6000002924,
+            "state_bytes_per_parameter": 8.0,
+            "state_dtype": null,
+            "state_dtype_reason": null
+          },
+          "v6": {
+            "available": true,
+            "ms_per_step": 1436.2665,
+            "ms_per_step_mean": 1443.5999,
+            "ms_per_step_p10": 1385.0777,
+            "ms_per_step_p90": 1451.7195,
+            "ms_raw": [
+              1548.4627,
+              1385.0777,
+              1422.341,
+              1451.7195,
+              1450.1921,
+              1403.8065
+            ],
+            "state_bytes": 3000000000,
+            "state_bytes_per_parameter": 4.0,
+            "state_dtype": null,
+            "state_dtype_reason": null
+          },
+          "v7": {
+            "available": true,
+            "ms_per_step": 1489.0819,
+            "ms_per_step_mean": 1620.6957,
+            "ms_per_step_p10": 1340.4634,
+            "ms_per_step_p90": 1573.1765,
+            "ms_raw": [
+              1448.2649,
+              1340.4634,
+              2434.976,
+              1397.3943,
+              1573.1765,
+              1529.8989
+            ],
+            "state_bytes": 3008647176,
+            "state_bytes_per_parameter": 4.0115,
+            "state_dtype": "fp32",
+            "state_dtype_reason": "a CPU with memory to spare: half precision and int8 arithmetic are 4-5x slower than fp32 here"
+          },
+          "v7mini": {
+            "available": true,
+            "ms_per_step": 1414.5278,
+            "ms_per_step_mean": 1424.7513,
+            "ms_per_step_p10": 1202.3573,
+            "ms_per_step_p90": 1567.1767,
+            "ms_raw": [
+              1518.9624,
+              1210.3317,
+              1202.3573,
+              1310.0933,
+              1739.5863,
+              1567.1767
+            ],
+            "state_bytes": 3008647176,
+            "state_bytes_per_parameter": 4.0115,
+            "state_dtype": "fp32",
+            "state_dtype_reason": "a CPU with memory to spare: half precision and int8 arithmetic are 4-5x slower than fp32 here"
+          },
+          "v7q": {
+            "available": true,
+            "ms_per_step": 386.2031,
+            "ms_per_step_mean": 394.6722,
+            "ms_per_step_p10": 338.6355,
+            "ms_per_step_p90": 400.204,
+            "ms_raw": [
+              388.7029,
+              338.6355,
+              400.204,
+              351.3288,
+              505.4588,
+              383.7032
+            ],
+            "state_bytes": 3000023392,
+            "state_bytes_per_parameter": 4.0,
+            "state_dtype": "fp32",
+            "state_dtype_reason": "asked for"
+          }
+        },
+        "parameters": 750000000
+      }
+    }
+  }
+}
