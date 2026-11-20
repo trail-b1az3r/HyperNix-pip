@@ -1,6 +1,17 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.73.0
+
+<details>
+<summary>0.73.0 — release: breaking changes and security</summary>
+
+- **Breaking:** T1 `/web/v1` answers `410 Gone` (T1 v1.2.26.11.0.0). `hnx chat` never downloads a model unless one is named with `-r HF_ID`.
+- **Security:** the six fixes of 0.73.0.dev1 to 0.73.0a1.post1, listed in their entries below. Nothing new since 0.73.0a2.
+- **Not included:** the HyperLink DMGs for the Mac, paused until 0.73.2.
+
+</details>
+
 ## 0.73.0a2
 
 <details>

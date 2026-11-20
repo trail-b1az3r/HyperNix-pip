@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8.post1-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.73.0-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-HOS--1.1%20/%20Apache--2.0-00c853?style=for-the-badge" />
   <a href="https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/T1-API.md#the-public-server-counter"><img alt="Public T1 servers" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftrail-b1az3r%2FHyperNix-pip%2Fmain%2Fdocs%2Fpublic%2Fv1%2Ft1-counter-badge.json&style=for-the-badge" /></a>
@@ -15,11 +15,38 @@
 
 ## What's fixed in this update
 
-The first section below covers 0.72.8 (published as `0.72.8a0` to
-`a5`, `0.72.8rc1`, then `0.72.8`); the ones after it cover 0.72.6 and
-0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
+The first section below covers 0.73.0 (published as `0.73.0a1`, then
+`0.73.0`; `0.73.0.dev1`, `.dev2` and `0.73.0a2` were development
+builds); the ones after it cover 0.72.8, 0.72.6 and 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
 per-release history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what
 is next.
+
+## What's new: 0.73.0 — Strife, Pressure Cooker V7, and ATC
+
+T1 is now **T1 v1.2.26.11.0.0**, a new generation because `/web/v1` is
+gone: every route under it answers `410 Gone` and names its `/web/v2`
+successor.
+
+- **Strife, HyperNix's own GGUF runtime.** `hnx strife inspect | run |
+  chat | diag | benchmark MODEL`: native quantized kernels
+  (`hnx strife kernels build`), GPU offload with `--gpu-layers`, and the
+  qwen35, qwen35moe, lfm3 and glm4moe architectures. It is a runner
+  backend on T1 and in HyperLink. See [Strife](wiki/Strife.md).
+- **Pressure Cooker V7 and Optimizer Framework V2.** Six V7 variants
+  (Balanced, V7V, Mini, Q, S, M), one call that creates any HyperNix
+  optimizer, auto-selection that says why, and `hnx optimizer benchmark`.
+  The measured results, including where AdamW still wins, are on the
+  [Pressure Cooker V7](wiki/Pressure-Cooker-V7.md) page.
+- **ATC, API traffic control**: the outermost layer of the T1 API, with
+  end-to-end encryption (`hypernix-atc/1`).
+- **`hnx sandbox DIR`** (`hnx sb`): a command, or your shell, shut inside
+  one folder.
+- **`hnx chat` never downloads a model on its own.** `-r HF_ID` downloads
+  one from Hugging Face; `-M PATH` runs a folder or a `.gguf` file.
+- **Relay continuations in HyperLink**: an answer the context cut off
+  carries on.
+
+The HyperLink DMGs for the Mac are paused until 0.73.2.
 
 ## What's new: 0.72.8 — Claude Code, relays, image models, and Python 3.15
 
@@ -64,6 +91,7 @@ every route.
 ## Table of contents
 
 - [What's fixed in this update](#whats-fixed-in-this-update)
+- [What's new: 0.73.0 — Strife, Pressure Cooker V7, and ATC](#whats-new-0730--strife-pressure-cooker-v7-and-atc)
 - [What's new: 0.72.8 — Claude Code, relays, image models, and Python 3.15](#whats-new-0728--claude-code-relays-image-models-and-python-315)
 - [What's new: 0.72.6 — daily keys, conceal, and a quicker waiter](#whats-new-0726--daily-keys-conceal-and-a-quicker-waiter)
 - [What's new: 0.72.5 — drafts, bundles, accounts, and a car](#whats-new-0725--drafts-bundles-accounts-and-a-car)
