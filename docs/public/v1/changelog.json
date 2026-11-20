@@ -3,6 +3,170 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.73.0",
+      "key": "0.73.0",
+      "aliases": [
+        "0.73.0"
+      ],
+      "kind": "stable",
+      "heading": "0.73.0 \u2014 2026-11-20",
+      "date": "2026-11-20",
+      "title": "",
+      "summary": "Strife, HyperNix's own GGUF inference runtime: inspect, run, chat (a",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "Strife, HyperNix's own GGUF inference runtime: inspect, run, chat (a terminal screen with saved chats), diagnose and benchmark a GGUF, with native quantized kernels, GPU offload through PyTorch, and the qwen35, qwen35moe, lfm3 and glm4moe architectures. It is a runner backend\u2026",
+        "Optimizer Framework V2 and the Pressure Cooker V7 family (Balanced, V7V, Mini, Q, S, M): one interface that creates any HyperNix optimizer and explains which it would choose, and hnx optimizer benchmark, whose results are committed with the raw observations.",
+        "ATC (API traffic control), the outermost layer of the T1 API, with end-to-end encryption (hypernix-atc/1).",
+        "hnx sandbox DIR (hnx sb): a command or your shell, shut inside one folder.",
+        "HyperNix0xV3 (experimental), behind brew new --preset NAME -E.",
+        "Relay continuations in HyperLink: an answer the model's context cut off carries on, and the relay works with a 1,024-token context and a 2,200-token prompt."
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Strife, HyperNix's own GGUF inference runtime: inspect, run, chat (a terminal screen with saved chats), diagnose and benchmark a GGUF, with native quantized kernels, GPU offload through PyTorch, and the qwen35, qwen35moe, lfm3 and glm4moe architectures. It is a runner backend\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Optimizer Framework V2 and the Pressure Cooker V7 family (Balanced, V7V, Mini, Q, S, M): one interface that creates any HyperNix optimizer and explains which it would choose, and hnx optimizer benchmark, whose results are committed with the raw observations.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "ATC (API traffic control), the outermost layer of the T1 API, with end-to-end encryption (hypernix-atc/1).",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "hnx sandbox DIR (hnx sb): a command or your shell, shut inside one folder.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "HyperNix0xV3 (experimental), behind brew new --preset NAME -E.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Relay continuations in HyperLink: an answer the model's context cut off carries on, and the relay works with a 1,024-token context and a 2,200-token prompt.",
+          "details": []
+        },
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "T1 /web/v1 answers 410 Gone and names its /web/v2 successor.",
+          "details": []
+        },
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "hnx chat never downloads a model on its own: -r HF_ID downloads one from Hugging Face, -M PATH runs a folder or a .gguf file.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Optimizers V1 to V6V are unchanged; V7 is an addition.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL and T1_ACCOUNTS_DEFAULT_PERMISSIONS set what a key may do.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "The relay refused long prompts in a 512-token context.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Strife ignored a model's chat template when Jinja2 was not installed.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "hnx strife benchmark could report a decode speed of zero, and on Windows and macOS the native kernels only decoded.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "A refusal from the runner was blamed on LM Studio, and get_origin failed on an app without a T1 config.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "A T2 key's stated access level is held to the level the server granted; the GGUF reader checks every length against the bytes left; Strife's chat templates refuse private attributes; the build registry and the native kernel library are written owner-only.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "About 9,500 tests, including the V7 family, the framework's selection rules, the optimizer benchmark, and a test that holds the V7 wiki page to the committed benchmark results.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Wiki pages for Strife, Pressure Cooker V7 and Optimizer Framework V2, and the T1 API's v1.2.26.11.0.0 generation.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "The HyperLink DMGs for the Mac are not attached to this release. Their build is paused until 0.73.2.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "Nothing in the optimizer work was run on a GPU. V7V's compiled and CUDA-graph paths and V6V are implemented and unmeasured.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "Everything listed under 0.73.0a2's Known Issues still holds.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.73.0a2",
       "key": "0.73.0a2",
       "aliases": [
@@ -559,106 +723,7 @@
         "ATC (API traffic control), hypernix.atc: the outermost layer of the T1 API, on by default (T1_ATC_ENABLED). It jails addresses that probe for /.env, /wp-admin and similar, guess keys or map the API, with times that double on each repeat. It also enforces a body limit (413) and\u2026",
         "End-to-end encryption, hypernix-atc/1: POST /atc/handshake, an X25519 exchange signed by the server's T2C identity key, then POST /atc/tunnel. The request (route, key, body) and the reply are sealed with ChaCha20-Poly1305, so they stay private past wherever TLS ends: a proxy, a\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\u274c",
-          "label": "breaking",
-          "category": "Breaking Changes",
-          "text": "T1 /web/v1. Every route under it answers 410 Gone with details.successor, the /web/v2 route that replaced it (/web/v1/search \u2192 /web/v2/I, /web/v1/summarize \u2192 /web/v2/summarize, /web/v1/ai/config \u2192 /web/v2/ai/config). The waiter's tools and the Firefox extension now call\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "HyperLink for the Mac, as DMGs: HyperLink-<version>-macos-apple-silicon.dmg (arm64) and HyperLink-<version>-macos-intel.dmg (x86_64), built by Mac Catalyst (ios/scripts/make_macos_dmg.sh). They are attached to every public release with SHA256SUMS.macos. They are signed ad hoc\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL: an administrator grants a key an access level, 1-9, and gets back the key spelled at that level. With -Pro, -L takes the level; on its own it is still --local-only. Server side: POST /auth/t1/admin/access-level (admin only), recorded\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "T1_ACCOUNTS_DEFAULT_PERMISSIONS: what keys minted from a T1 account page may do, as comma-separated scopes (read, write, plugin, service). Unset is read,write, as before; read makes every account read-only. admin is never given whatever it says, unknown names are left out with\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "ATC (API traffic control), hypernix.atc: the outermost layer of the T1 API, on by default (T1_ATC_ENABLED). It jails addresses that probe for /.env, /wp-admin and similar, guess keys or map the API, with times that double on each repeat. It also enforces a body limit (413) and\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "End-to-end encryption, hypernix-atc/1: POST /atc/handshake, an X25519 exchange signed by the server's T2C identity key, then POST /atc/tunnel. The request (route, key, body) and the reply are sealed with ChaCha20-Poly1305, so they stay private past wherever TLS ends: a proxy, a\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx sandbox DIR (or hnx sb): runs a command, or your shell, shut inside one directory. -s changes the settings and keeps them for that directory (-s alone asks for each one):",
-          "details": [
-            "web access (no-web);",
-            "file editing and creation: only in the directory, or nowhere with no-write;",
-            "a private /tmp;",
-            "a hidden home folder;",
-            "secret-looking environment variables left out;",
-            "a timeout, memory, CPU and file-size limits. Enforced by Linux namespaces (unshare) or macOS sandbox-exec. Where neither exists, those settings are refused, never skipped. See wiki/CLI.md#sandbox--sb."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "A T2 key's stated access level is now held to the level the server granted it. The level is the key's last character and the server took it at its word, so a holder could rewrite -1 as -9. The grant is the key's recorded access_level (gkey already wrote it); a key with none\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udce6",
-          "label": "packaging",
-          "category": "Dependencies and Packaging",
-          "text": "Building hypernix no longer warns, and keeps building after 2027-02-18. project.license is a PEP 639 SPDX string (LicenseRef-HOS-1.1 OR Apache-2.0) with license-files, instead of the TOML table setuptools has deprecated. setup.cfg no longer repeats the dependencies, extras\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/t1api/test_key_promotion.py: the command line, a rewritten suffix buying nothing, promotion and its new spelling, admin-only, undo, and waiter serv -Pro end to end.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/t1api/test_t1_accounts.py: account keys get the variable's scopes (the server's record, not only the reply), admin is refused, and bad values are left out or fall back.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/interfaces/test_sandbox.py: settings and saving, the macOS profile, refusing without a sandbox, the timeout, hnx sb dispatch. Where the machine allows user namespaces, real runs check four things: writes go only into the directory, no-write changes nothing, no-web has no\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/atc/: the shield, traffic limits, settings, the handshake and its signature, sealing, replays, tampered and truncated replies, and ATC in front of a real app: the jail, probes, 413, gzip, the admin routes, and requests through ATCTunnel that leave no key on the wire.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8.post2",

@@ -35,6 +35,76 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.73.0 — 2026-11-20
+
+### Beta / Dev → Release Summary
+
+This release is the finished work of `0.73.0.dev1`, `0.73.0.dev2`,
+`0.73.0a1`, `0.73.0a1.post1` and `0.73.0a2`. The T1 contract is
+T1 v1.2.26.11.0.0, a new generation because `/web/v1` is gone. Bugs fixed:
+7; security issues fixed: 6.
+
+#### Major Changes
+
+๋࣭⭑ Strife, HyperNix's own GGUF inference runtime: inspect, run, chat (a
+  terminal screen with saved chats), diagnose and benchmark a GGUF, with
+  native quantized kernels, GPU offload through PyTorch, and the qwen35,
+  qwen35moe, lfm3 and glm4moe architectures. It is a runner backend on T1
+  and in HyperLink, and your own Strife build can be a T1 runner.
+๋࣭⭑ Optimizer Framework V2 and the Pressure Cooker V7 family (Balanced, V7V,
+  Mini, Q, S, M): one interface that creates any HyperNix optimizer and
+  explains which it would choose, and `hnx optimizer benchmark`, whose
+  results are committed with the raw observations.
+๋࣭⭑ ATC (API traffic control), the outermost layer of the T1 API, with
+  end-to-end encryption (`hypernix-atc/1`).
+๋࣭⭑ `hnx sandbox DIR` (`hnx sb`): a command or your shell, shut inside one
+  folder.
+๋࣭⭑ HyperNix0xV3 (experimental), behind `brew new --preset NAME -E`.
+✨ Relay continuations in HyperLink: an answer the model's context cut off
+  carries on, and the relay works with a 1,024-token context and a
+  2,200-token prompt.
+
+#### API and Compatibility
+
+❌ T1 `/web/v1` answers `410 Gone` and names its `/web/v2` successor.
+❌ `hnx chat` never downloads a model on its own: `-r HF_ID` downloads one
+  from Hugging Face, `-M PATH` runs a folder or a `.gguf` file.
+🔗 Optimizers V1 to V6V are unchanged; V7 is an addition.
+🔗 `waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL` and
+  `T1_ACCOUNTS_DEFAULT_PERMISSIONS` set what a key may do.
+
+#### Fixes Carried Into Release
+
+𖢥 The relay refused long prompts in a 512-token context.
+𖢥 Strife ignored a model's chat template when Jinja2 was not installed.
+🐛 `hnx strife benchmark` could report a decode speed of zero, and on
+  Windows and macOS the native kernels only decoded.
+🐛 A refusal from the runner was blamed on LM Studio, and `get_origin`
+  failed on an app without a T1 config.
+🔒 A T2 key's stated access level is held to the level the server granted;
+  the GGUF reader checks every length against the bytes left; Strife's
+  chat templates refuse private attributes; the build registry and the
+  native kernel library are written owner-only.
+
+#### Testing
+
+🧪 About 9,500 tests, including the V7 family, the framework's selection
+  rules, the optimizer benchmark, and a test that holds the V7 wiki page
+  to the committed benchmark results.
+
+#### Documentation and Site
+
+📚 Wiki pages for Strife, Pressure Cooker V7 and Optimizer Framework V2,
+  and the T1 API's v1.2.26.11.0.0 generation.
+
+### Known Issues
+
+❗ **The HyperLink DMGs for the Mac are not attached to this release.**
+  Their build is paused until 0.73.2.
+❗ **Nothing in the optimizer work was run on a GPU.** V7V's compiled and
+  CUDA-graph paths and V6V are implemented and unmeasured.
+❗ Everything listed under 0.73.0a2's Known Issues still holds.
+
 ## 0.73.0a2 — 2026-11-20
 
 Alpha 2: Optimizer Framework V2 and the Pressure Cooker V7 family. Every
