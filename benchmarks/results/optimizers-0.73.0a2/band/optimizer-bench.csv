@@ -1,0 +1,2 @@
+workload,parameters,optimizer,available,reason,optimizer_only_ms,state_bytes_per_parameter,best_lr,final_loss,validation_loss,full_step_ms,optimizer_share,tokens_per_second,lr_sensitivity,diverged_at
+mlp,86544,v7,True,,0.5476,4.1043,0.01,2.750973,2.754827,1.3187,0.4754,48533.9,,
