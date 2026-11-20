@@ -10,7 +10,7 @@ import torch
 from hypernix.optimizers import benchmark
 from hypernix.optimizers.optimizer_framework_v2 import OptimizerFrameworkV2
 
-FAST = dict(workloads=("mlp",), lrs=(1e-3, 1e-2), steps=12, optimizer_steps=4, warmup=1)
+FAST: dict = dict(workloads=("mlp",), lrs=(1e-3, 1e-2), steps=12, optimizer_steps=4, warmup=1)
 
 
 @pytest.fixture(scope="module")
@@ -107,3 +107,79 @@ def test_command_line(tmp_path, capsys):
     assert capsys.readouterr().out.startswith("v7:")
     assert main(["optimizer", "benchmark", "--workloads", "nope"]) == 2
     assert main(["optimizer", "frobnicate"]) == 2
+
+
+def test_raw_observations_and_spread_are_kept(record):
+    got = record["workloads"]["mlp"]["optimizers"]["v7"]
+    only = got["optimizer_only"]
+    assert len(only["ms_raw"]) == 4
+    assert only["ms_per_step_p10"] <= only["ms_per_step"] <= only["ms_per_step_p90"]
+    assert only["checkpoint"]["bytes"] > 0 and only["checkpoint"]["save_ms"] >= 0
+    run = got["runs"][0]
+    assert len(run["losses"]) == 12
+    assert run["grad_norm_median"] > 0 and run["grad_norm_peak_ratio"] >= 1
+    # Two rates were tried, so whichever was best is at an edge, and says so.
+    assert got["best_at_grid_edge"] is True
+    assert "edge of the grid" in benchmark.render_report(record)
+
+
+def test_ablations_change_one_thing_and_are_labelled():
+    assert benchmark.ABLATIONS["v7s-no-diffusion"] == ("v7s", {"diffusion": False})
+    out = benchmark.run_benchmark(optimizers=("v7", "v7-no-factored", "v7m-ema"), **FAST)
+    got = out["workloads"]["mlp"]["optimizers"]
+    assert set(got) == {"v7", "v7-no-factored", "v7m-ema"}
+    assert "factored=False" in got["v7-no-factored"]["label"]
+    assert got["v7-no-factored"]["optimizer_only"]["state_bytes"] < \
+        got["v7"]["optimizer_only"]["state_bytes"]
+    assert got["v7m-ema"]["optimizer_only"]["state_bytes_per_parameter"] > 5
+    with pytest.raises(ValueError, match="unknown optimizer"):
+        benchmark.run_benchmark(optimizers=("v7-no-such-thing",), **FAST)
+
+
+def test_band_shapes_add_up_exactly():
+    import math
+
+    for target in (1_000_000, 39_000_000, 39_100_000, 749_000_000):
+        shapes = benchmark._band_shapes(target)
+        assert sum(math.prod(shape) for shape in shapes) == target
+        assert any(len(shape) == 2 for shape in shapes)
+
+
+def test_band_run_marks_the_band_and_what_selection_does(monkeypatch):
+    band = benchmark.run_band(sizes=(200_000, 300_000), optimizers=("v6", "v7mini"),
+                              steps=2, warmup=1)
+    json.dumps(band)
+    assert band["lower"] == 39_000_000 and band["upper"] == 750_000_000
+    for entry in band["sizes"].values():
+        assert entry["in_band"] is False and entry["auto_select"] == "v7"
+        for got in entry["optimizers"].values():
+            assert got["available"] and got["ms_per_step"] > 0 and len(got["ms_raw"]) == 2
+    assert benchmark.BAND_SIZES[1] == 39_000_000 and benchmark.BAND_SIZES[2] > 39_000_000
+    # A size that does not fit in memory is not available, with the reason.
+    monkeypatch.setattr(benchmark, "_available_bytes", lambda: 1024)
+    tight = benchmark.run_band(sizes=(200_000,), optimizers=("v7",), steps=1, warmup=0)
+    got = tight["sizes"]["200000"]["optimizers"]["v7"]
+    assert got["available"] is False and "GiB" in got["reason"]
+    assert "N/A" in "\n".join(benchmark._band_lines(tight))
+
+
+def test_the_in_band_workload_is_opt_in():
+    assert "band-transformer" in benchmark.WORKLOADS
+    assert benchmark.OPT_IN_WORKLOADS == ("band-transformer",)
+    assert "band-transformer" not in benchmark.QUICK_WORKLOADS
+
+
+def test_command_line_band_and_ablations(tmp_path, capsys):
+    from hypernix.interfaces.cli import main
+
+    code = main(["optimizer", "benchmark", "--optimizers", "v7", "--workloads", "mlp",
+                 "--lrs", "1e-2", "--steps", "6", "--optimizer-steps", "2", "--warmup", "1",
+                 "--band", "150000,250000", "--out-dir", str(tmp_path)])
+    assert code == 0
+    assert "V7Mini's band" in capsys.readouterr().out
+    saved = json.loads((tmp_path / "optimizer-bench.json").read_text())
+    assert set(saved["band"]["sizes"]) == {"150000", "250000"}
+    assert "V7Mini's band" in (tmp_path / "optimizer-bench.md").read_text()
+    assert main(["optimizer", "benchmark", "--optimizers", "v7", "--workloads", "mlp",
+                 "--lrs", "1e-2", "--steps", "6", "--optimizer-steps", "2",
+                 "--band", "lots"]) == 2
