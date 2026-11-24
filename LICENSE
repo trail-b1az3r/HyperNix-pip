@@ -7,7 +7,7 @@ Copyright 2026 HyperNix and Trail Blazer contributors
 This software ("the Software") is made available to You under the terms of
 either of the following licenses, at Your option:
 
-  (A) HyperNix Open Source License, Version 1.2.1 (HOS-1.2.1)
+  (A) HyperNix Open Source License, Version 1.2.2 (HOS-1.2.2)
       — an open-source license derived from the Apache License 2.0, integrating
         the cohesive multi-license harmonization of the Trail Blazer Repository
         License (TBRL) and modern CC-BY-4.0 attribution standards, with no
@@ -18,13 +18,16 @@ either of the following licenses, at Your option:
 
 You may choose and use either license option independently. Your choice may be
 indicated by a license notice, distribution documentation, or other clear written
-statement accompanying the Software. If You do not make an explicit choice, You
-are deemed to accept Option (A), HOS-1.2.1. You may not combine, merge, or
-cherry-pick terms from the two license options. The choice applies to the
-recipient’s use of the Software and does not alter the license under which any
-separate component is provided.
+statement accompanying the Software. If You do not expressly identify an option,
+Option (A), HOS-1.2.2, is the default license option governing Your exercise of
+permissions for the Software. This default is a licensing rule and does not by
+itself create a requirement to affirmatively assent, sign, or accept this License.
+Option (B) may be selected by an express written or accompanying notice. You may
+not combine, merge, or cherry-pick terms from the two license options. The choice
+applies to the recipient’s use of the Software and does not alter the license
+under which any separate component is provided.
 
-This dual license applies from version 1.2.1 of the Software. Releases
+This dual license applies from version 1.2.2 of the Software. Releases
 published before it remain available under the licenses they were published
 with, unless the copyright holder expressly relicenses a specific release.
 
@@ -38,16 +41,17 @@ grant. Contributions marked “Not a Contribution” or otherwise excluded in
 writing are not covered by this paragraph.
 
 ================================================================================
-OPTION (A): HYPERNIX OPEN SOURCE LICENSE v1.2.1 (HOS-1.2.1)
+OPTION (A): HYPERNIX OPEN SOURCE LICENSE v1.2.2 (HOS-1.2.2)
 ================================================================================
 
 Copyright 2026 HyperNix and Trail Blazer contributors
 
 This License is derived from the Apache License, Version 2.0. It is a custom
 license and has not been approved by the Open Source Initiative (OSI). Version
-1.2.1 retains the grants, conditions, and AI-specific guidance of version 1.1
-and version 1.2, while clarifying the dual-license choice, contribution grant,
-fork definition, and source-link requirement. It also retains the cohesive
+1.2.2 retains the grants, conditions, and AI-specific guidance of version 1.1
+and version 1.2, while clarifying default license selection and adding project
+change-approval guidance alongside the contribution grant, fork definition, and
+source-link requirement. It also retains the cohesive
 multi-license harmonization and modern CC-BY-4.0 attribution standards of the
 Trail Blazer Repository License (TBRL). This document is self-contained: nothing
 in it is incorporated by reference from any other license.
@@ -252,6 +256,29 @@ Contribution. Notwithstanding the above, nothing herein shall supersede
 or modify the terms of any separate license agreement You may have executed
 with the Licensor regarding such Contributions.
 
+### 5.1 Approval of Commits and Other Changes
+
+Submitting, proposing, committing, uploading, or otherwise providing a change does
+not mean that the change is approved, accepted, or incorporated into the Software.
+All proposed changes—including commits, pull requests, patches, merge requests,
+issue-linked changes, generated files, documentation, assets, and other
+modifications—are subject to review and approval by the project’s authorized
+maintainers, using the project’s designated contribution process.
+
+Only an authorized maintainer may approve or accept a proposed change on behalf
+of the project. Approval may be expressed through the project’s designated review
+mechanism or other clear written confirmation. A commit existing in a repository,
+a review comment, automated check, or submission alone is not approval unless
+the project’s designated process explicitly treats it as such. Maintainers may
+request revisions, decline, close, revert, or omit proposed changes at their
+discretion, subject to applicable law and the rights granted under this License.
+
+Approval or acceptance of a change does not transfer ownership from its
+Contributor. The contribution license grant in this License applies to intentionally
+submitted Contributions as stated above, whether or not the project ultimately
+accepts or merges them; this approval section governs project inclusion and does
+not withdraw or narrow that grant.
+
 ### [extra] Contributions
 
 The following contribution practices are supplementary guidance and do not create
@@ -378,7 +405,7 @@ warranty or additional liability.
     License shall not constitute a waiver of future enforcement of that or
     any other provision.
 
-(c) Versioning. This is version 1.2.1 of the HyperNix Open Source
+(c) Versioning. This is version 1.2.2 of the HyperNix Open Source
     License. The Licensor may publish revised versions from time to time,
     each with a distinguishing version number. Software already distributed
     under HOS-1.0, HOS-1.1, or HOS-1.2 continues to be governed by those
@@ -582,13 +609,15 @@ replacing the bracketed fields with your own identifying information:
 
     This software is available under your choice of:
 
-      (A) the HyperNix Open Source License, Version 1.2.1 (HOS-1.2.1); or
+      (A) the HyperNix Open Source License, Version 1.2.2 (HOS-1.2.2); or
 
       (B) the Apache License, Version 2.0 (Apache-2.0).
 
     You may choose and use either license option independently. If You do not
-    make an explicit choice, Option (A), HOS-1.2.1, applies by default.
-    You may not combine terms from both license options.
+    expressly identify an option, Option (A), HOS-1.2.2, governs Your exercise
+    of permissions by default. This default does not itself require
+    affirmative assent, signing, or acceptance. You may not combine terms from
+    both license options.
 
     You may obtain a copy of both licenses at:
 
