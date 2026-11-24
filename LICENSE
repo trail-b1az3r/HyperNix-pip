@@ -1,54 +1,232 @@
+
+vs v1.1.
+Worked for 6s
+HOS-1.2 vs HOS-1.1
+
+Based on the v1.2 document's own changelog, v1.2 is an improvement over v1.1 primarily in harmonization, attribution, and clarity—not in its core permissions.
+
+Area
+	
+
+HOS-1.1
+	
+
+HOS-1.2
+	
+
+Improvement
+
+Core permissions
+	
+
+Original grant
+	
+
+Retained
+	
+
+Same
+
+Redistribution
+	
+
+Original terms
+	
+
+Retained
+	
+
+Same foundation
+
+Patent protection
+	
+
+Original provisions
+	
+
+Retained
+	
+
+Same foundation
+
+AI/model guidance
+	
+
+Existing guidance
+	
+
+Retained, non-binding
+	
+
+No restrictive change
+
+TBRL integration
+	
+
+Not integrated
+	
+
+Harmonized
+	
+
+Improved
+
+CC-BY-4.0 attribution standards
+	
+
+Earlier approach
+	
+
+Modernized integration
+	
+
+Improved
+
+Fork definition
+	
+
+Earlier definition
+	
+
+More explicitly defined
+	
+
+More precise, but broader
+
+Self-contained text
+	
+
+Earlier structure
+	
+
+Explicitly self-contained
+	
+
+Improved portability
+
+Apache 2.0 alternative
+	
+
+Depends on previous version
+	
+
+Explicit dual-license option
+	
+
+More flexibility
+What v1.2 does better
+
+    Better harmonization: Incorporates TBRL and attribution concepts without requiring external licenses to define HOS.
+
+    Clearer fork definition: Explicitly addresses copied, adapted, translated, refactored, and substantially rewritten code.
+
+    Standalone: The license says it doesn't incorporate terms from other documents by reference.
+
+    Preserves the original philosophy: It explicitly says the grants, conditions, and AI guidance from 1.1 are retained.
+
+What got worse or riskier?
+
+The new Fork definition is the main tradeoff. It now explicitly captures substantial rewrites if material code, architecture, or design was copied/adapted. That helps define what you mean by a fork, but it can also make the definition more expansive and harder to interpret.
+
+The other concern is the OSI wording. HOS-1.2 says it is intended to conform to the Open Source Definition, but that is not the same as actually being OSI-approved.
+Verdict
+
+HOS-1.2 is better than HOS-1.1 overall.
+
+v1.1 → v1.2: refinement rather than a complete redesign.
+
+It keeps the original permissive foundation while adding more structure and clearer coverage for modern repository licensing.
+
+I'd choose 1.2 for new HyperNix releases. Keep 1.1 available for older releases rather than retroactively changing the license on them.
+
+Note: I could inspect v1.2 directly, but I couldn't retrieve the full original v1.1 text, so this comparison is based on v1.2's stated changes and not a line-by-line diff.
+make v1.2.1, that fixes these issues while keeping the rest 100% intact
+Worked for 29s
+HOS-1.2.1 changes
+
+I made the corrections while keeping the rest of the license text intact, including the full Apache 2.0 text.
+
+    Dual-license clarity: makes the choice between HOS and Apache clearer, defines the default, and prevents mixing terms.
+
+    Contribution grant: explicitly allows the project to relicense submitted contributions under either option without transferring ownership.
+
+    Fork definition: narrows it to copying/adapting source expression rather than claiming independent implementations based only on ideas or functionality.
+
+    Source URL requirement: clarifies the upstream link requirement and removes the burden of inventing a link.
+
+    OSI wording: accurately says the custom license isn't OSI-approved, instead of implying approval.
+
+    Version history: makes 1.2.1 explicit and keeps prior releases on their original licenses.
+
+    Appendix: updated to use the new version and matching license-selection wording.
+
+HyperNix Dual License — HOS-1.2.1
+Complete revised license · Plain text · 572 lines
+
+Download HYPERNIX-DUAL-LICENSE-HOS-1.2.1.txt
+
+The file has been created and verified. This is a drafting improvement, not a legal certification.
+HYPERNIX-DUAL-LICENSE-HOS-1.2.1.txtDocument
 ================================================================================
                         HYPERNIX DUAL LICENSE
 ================================================================================
 
-Copyright 2026 HyperNix contributors
+Copyright 2026 HyperNix and Trail Blazer contributors
 
 This software ("the Software") is made available to You under the terms of
 either of the following licenses, at Your option:
 
-  (A) HyperNix Open Source License, Version 1.1 (HOS-1.1)
-      — an open-source license derived from the Apache License 2.0, with
-        the fuller definitions and guidance of the HyperNix licenses and no
+  (A) HyperNix Open Source License, Version 1.2.1 (HOS-1.2.1)
+      — an open-source license derived from the Apache License 2.0, integrating
+        the cohesive multi-license harmonization of the Trail Blazer Repository
+        License (TBRL) and modern CC-BY-4.0 attribution standards, with no
         field-of-use restrictions; or
 
   (B) Apache License, Version 2.0 (Apache-2.0)
       — the unmodified Apache License, reproduced in full below.
 
-You must elect one license and comply with its terms. You may not combine,
-merge, or cherry-pick terms from both licenses. If You do not make an active
-choice, the default license that applies to You is (A) HOS-1.1.
+You may choose and use either license option independently. Your choice may be
+indicated by a license notice, distribution documentation, or other clear written
+statement accompanying the Software. If You do not make an explicit choice, You
+are deemed to accept Option (A), HOS-1.2.1. You may not combine, merge, or
+cherry-pick terms from the two license options. The choice applies to the
+recipient’s use of the Software and does not alter the license under which any
+separate component is provided.
 
-This dual license applies from version 0.72.8a1 of the Software. Releases
+This dual license applies from version 1.2.1 of the Software. Releases
 published before it remain available under the licenses they were published
-with (the HyperNix OpenCode Light Limited Use License v0.1 or the HyperNix
-Open Source License v1.0, at the recipient's option).
+with, unless the copyright holder expressly relicenses a specific release.
 
-Contributions submitted to the project are accepted under both licenses
-unless the Contributor explicitly states otherwise.
+By intentionally submitting a Contribution for inclusion in the project, the
+Contributor grants the project copyright and patent permissions sufficient to
+reproduce, modify, sublicense, and distribute that Contribution under either
+Option (A) or Option (B), unless the Contributor clearly states otherwise at
+the time of submission. This is a license grant, not a transfer of ownership.
+The Contributor represents that they have the rights and authority to make this
+grant. Contributions marked “Not a Contribution” or otherwise excluded in
+writing are not covered by this paragraph.
 
 ================================================================================
-OPTION (A): HYPERNIX OPEN SOURCE LICENSE v1.1 (HOS-1.1)
+OPTION (A): HYPERNIX OPEN SOURCE LICENSE v1.2.1 (HOS-1.2.1)
 ================================================================================
 
-Copyright 2026 HyperNix contributors
+Copyright 2026 HyperNix and Trail Blazer contributors
 
-This License is derived from the Apache License, Version 2.0. It is
-intended to conform to the Open Source Definition as published by the Open
-Source Initiative (OSI). Version 1.1 keeps the grants and conditions of
-version 1.0 and adds the more descriptive definitions, trademark terms and
-model guidance of the HyperNix OpenCode Light Limited Use License v0.1
-(LLU-0.1) — without its field-of-use restrictions, its same-license
-requirement for Forks, or its binding transparency obligations, none of
-which apply under this License. This document is self-contained: nothing
+This License is derived from the Apache License, Version 2.0. It is a custom
+license and has not been approved by the Open Source Initiative (OSI). Version
+1.2.1 retains the grants, conditions, and AI-specific guidance of version 1.1
+and version 1.2, while clarifying the dual-license choice, contribution grant,
+fork definition, and source-link requirement. It also retains the cohesive
+multi-license harmonization and modern CC-BY-4.0 attribution standards of the
+Trail Blazer Repository License (TBRL). This document is self-contained: nothing
 in it is incorporated by reference from any other license.
 
 ## 1. Definitions
 
 **"License"** means the terms and conditions set out in this document.
 
-**"Licensor"** means HyperNix contributors, the copyright owner(s) of the
-Software.
+**"Licensor"** means HyperNix and Trail Blazer contributors, the copyright 
+owner(s) of the Software.
 
 **"You" ("Your")** means an individual or Legal Entity exercising
 permissions granted by this License.
@@ -61,10 +239,10 @@ interests, or the contractual right to direct its management. Actions
 taken by, or sharing among, Affiliates of the same Legal Entity are
 treated as actions of a single Legal Entity under this License.
 
-**"Software" ("Work")** means the HyperNix source code, scripts,
-documentation, and associated files made available under this License,
-in either Source or Object form, as indicated by a copyright notice
-included in or attached to the work.
+**"Software" ("Work")** means the source code, scripts, documentation, and 
+associated files made available under this License, in either Source or 
+Object form, as indicated by a copyright notice included in or attached to 
+the work.
 
 **"Source"** form means the preferred form for making modifications,
 including source code, configuration files, and documentation source.
@@ -78,15 +256,15 @@ based on or derived from the Software, including modified copies,
 editorial revisions, annotations, elaborations, and works into which the
 Software has been incorporated, in whole or in part.
 
-**"Fork"** means a copy of the Software's Source form maintained,
-published, or distributed as a separate project or repository, whether or
-not modified — including a version that has been substantially rewritten,
-refactored, or reimplemented, if its development involved copying,
-translating, or adapting a material portion of the Software's Source form,
-architecture, or design, rather than being independently authored. A work
-that merely uses an unmodified copy of the Software as a dependency, or
-that was independently developed without copying a material portion of the
-Software's Source form, is not a Fork. A Fork is a Derivative Work.
+**"Fork"** means a copy of the Software’s Source form that is maintained,
+published, or distributed as a separate project or repository and contains
+material copied from, translated from, or adapted from the Software’s source
+code. A Fork does not include an independently authored implementation that
+uses only ideas, concepts, methods, interfaces, or functionality learned from
+the Software without copying or adapting its protected expression. Merely
+using the Software as an unmodified dependency does not itself make a work a
+Fork. A Fork is a Derivative Work to the extent it qualifies as one under
+applicable copyright law.
 
 **"Contribution"** means any work of authorship, including the original
 version of the Software and any modifications or additions to it, that is
@@ -126,10 +304,6 @@ available to any person or entity other than its Original Creator, without
 also engaging in Weight-Level Sharing of that Trained Model. For both
 Sharing definitions, making a Trained Model available only among
 Affiliates of the Original Creator's own Legal Entity is not Sharing.
-
-**"Full Release Version"** means a version of the Software numbered 0.71.4
-or higher under the Software's official versioning scheme, excluding
-alpha, beta, dev, nightly, and release-candidate builds.
 
 **"Open Source"**, as applied to a Trained Model's training or inference
 code, means released under an OSI-approved or substantially equivalent
@@ -180,7 +354,7 @@ direct or contributory patent infringement, then any patent licenses
 granted to You under this License for that Software shall terminate as of
 the date such litigation is filed.
 
-## 4. Redistribution
+## 4. Redistribution and Attribution
 
 You may reproduce and distribute copies of the Software or Derivative
 Works thereof in any medium, with or without modifications, and in Source
@@ -190,14 +364,21 @@ or Object form, provided that You meet the following conditions:
     Works a copy of this License; and
 
 (b) You must cause any modified files to carry prominent notices stating
-    that You changed the files; and
+    that You changed the files, and retain an indication of any previous
+    modifications; and
 
 (c) You must retain, in the Source form of any Derivative Works that You
     distribute, all copyright, patent, trademark, and attribution notices
     from the Source form of the Software, excluding those notices that do
     not pertain to any part of the Derivative Works; and
 
-(d) If the Software includes a "NOTICE" text file, then any Derivative
+(d) You must provide a URI or hyperlink to the original project’s canonical
+    source repository or project page, if one is provided with the Software
+    or is reasonably available to You. If no such link is provided or
+    reasonably available, this condition does not require You to invent or
+    independently locate a URI; and
+
+(e) If the Software includes a "NOTICE" text file, then any Derivative
     Works that You distribute must include a readable copy of the
     attribution notices contained within such NOTICE file, in at least one
     of the following places: within a NOTICE text file distributed as part
@@ -209,46 +390,57 @@ or Object form, provided that You meet the following conditions:
     Your own attribution notices within Derivative Works that You
     distribute, alongside or as an addendum to the NOTICE text from the
     Software, provided that such additional attribution notices cannot be
-    construed as modifying the License.
+    construed as modifying the License; and
+
+(f) Upstream License Harmony: The Software may contain components 
+    originally released under other open-source licenses (e.g., MIT, Zlib, 
+    Boost, GNU GPL, GNU LGPL). You must comply with the conditions of 
+    those respective licenses for those specific components. Specifically, 
+    if You distribute a work that is legally considered a derivative of a 
+    component licensed under the GNU GPL or GNU LGPL, You must make the 
+    corresponding source code of that component available under the terms 
+    of that respective GNU license.
 
 You may add Your own copyright statement to Your modifications and may
 provide additional or different license terms and conditions for use,
 reproduction, or distribution of Your modifications, or for any such
 Derivative Works as a whole — including a Fork — provided Your use,
 reproduction, and distribution of the Software otherwise complies with the
-conditions stated in this License. Unlike LLU-0.1, this License does not
-require a Fork to keep this License.
+conditions stated in this License. This License does not require a Fork 
+to keep this License.
 
 ## 5. Submission of Contributions
 
 Unless You explicitly state otherwise, any Contribution intentionally
 submitted for inclusion in the Software by You to the Licensor shall be
-under the terms and conditions of this License, without any additional
-terms or conditions. Notwithstanding the above, nothing herein shall
-supersede or modify the terms of any separate license agreement You may
-have executed with the Licensor regarding such Contributions.
+licensed to the Licensor under the terms and conditions of this License,
+without any additional terms or conditions. This grant authorizes the
+Licensor to make the Contribution available under either Option (A) or
+Option (B) of the dual license. It does not transfer ownership of the
+Contribution. Notwithstanding the above, nothing herein shall supersede or
+modify the terms of any separate license agreement You may have executed
+with the Licensor regarding such Contributions.
 
 ## 6. Trademarks and Naming
 
 This License does not grant permission to use the trade names,
 trademarks, service marks, or product names of the Licensor (including
-"HyperNix", "hyped", "hyped+", "hyped-pro", "hyped-plus", "HyperLink", and
-associated logos), except as required for reasonable and customary use in
-describing the origin of the Software and reproducing the content of the
-NOTICE file.
+"HyperNix", "Trail Blazer", and associated logos), except as required for 
+reasonable and customary use in describing the origin of the Software and 
+reproducing the content of the NOTICE file.
 
-A Fork or other Derivative Work may not describe itself as "HyperNix," or
-use a name confusingly similar to it, in a way that implies official
-origin, endorsement, or affiliation, unless clearly distinguished (e.g.
-"MyProject, a fork of HyperNix").
+A Fork or other Derivative Work may not describe itself using the 
+Licensor's names, or use a name confusingly similar to them, in a way 
+that implies official origin, endorsement, or affiliation, unless clearly 
+distinguished (e.g., "MyProject, a fork of HyperNix").
 
 ## 7. No Endorsement
 
-You may not state or imply that the Licensor or HyperNix contributors
-sponsor, endorse, fund, or are affiliated with Your Derivative Work,
-Trained Model, product, or service, beyond the factual attribution
-required by §4, without separate written permission. Credit to the
-project (e.g. "built with HyperNix") is welcome and is not endorsement.
+You may not state or imply that the Licensor or contributors sponsor,
+endorse, fund, or are affiliated with Your Derivative Work, Trained Model,
+product, or service, beyond the factual attribution required by §4, 
+without separate written permission. Credit to the project (e.g., "built 
+with HyperNix") is welcome and is not endorsement.
 
 ## 8. Guidance for Trained Models (Non-Binding)
 
@@ -256,8 +448,8 @@ This section states the project's hopes. It creates no obligation, is not
 a condition of this License, and does not restrict any use of the Software
 or of a Trained Model.
 
-(a) Openness. Trained Models produced using a Full Release Version of the
-    Software are encouraged to be released as Open Source or Open Weight.
+(a) Openness. Trained Models produced using the Software are encouraged 
+    to be released as Open Source or Open Weight.
 
 (b) Transparency for large models. A Trained Model with more than
     29,100,000,000 (29.1 billion) Parameters that is shared is encouraged
@@ -267,7 +459,7 @@ or of a Trained Model.
     are neither kind of Sharing.
 
 (c) Accuracy. Descriptions of a Trained Model's provenance, training data,
-    capabilities and limitations are encouraged to be accurate and not
+    capabilities, and limitations are encouraged to be accurate and not
     misleading.
 
 ## 9. Termination
@@ -327,11 +519,12 @@ warranty or additional liability.
     License shall not constitute a waiver of future enforcement of that or
     any other provision.
 
-(c) Versioning. This is version 1.1 of the HyperNix Open Source License.
-    The Licensor may publish revised versions from time to time, each with
-    a distinguishing version number. Software already distributed under
-    HOS-1.0 continues to be governed by HOS-1.0 unless the Licensor
-    explicitly relicenses that specific release under a newer version.
+(c) Versioning. This is version 1.2.1 of the HyperNix Open Source
+    License. The Licensor may publish revised versions from time to time,
+    each with a distinguishing version number. Software already distributed
+    under HOS-1.0, HOS-1.1, or HOS-1.2 continues to be governed by those
+    versions unless the Licensor explicitly relicenses that specific release
+    under a newer version.
 
 (d) Not Legal Advice. This License is a software license, not a legal
     services agreement. The Licensor recommends having it reviewed by
@@ -340,7 +533,6 @@ warranty or additional liability.
 ================================================================================
 OPTION (B): APACHE LICENSE, VERSION 2.0 (Apache-2.0)
 ================================================================================
-
 
                                  Apache License
                            Version 2.0, January 2004
@@ -519,31 +711,6 @@ OPTION (B): APACHE LICENSE, VERSION 2.0 (Apache-2.0)
 
    END OF TERMS AND CONDITIONS
 
-   APPENDIX: How to apply the Apache License to your work.
-
-      To apply the Apache License to your work, attach the following
-      boilerplate notice, with the fields enclosed by brackets "[]"
-      replaced with your own identifying information. (Don't include
-      the brackets!)  The text should be enclosed in the appropriate
-      comment syntax for the file format. We also recommend that a
-      file or class name and description of purpose be included on the
-      same "printed page" as the copyright notice for easier
-      identification within third-party archives.
-
-   Copyright [yyyy] [name of copyright owner]
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
 ================================================================================
 APPENDIX: How to Apply This Dual License
 ================================================================================
@@ -555,12 +722,13 @@ replacing the bracketed fields with your own identifying information:
 
     This software is available under your choice of:
 
-      (A) the HyperNix Open Source License, Version 1.1 (HOS-1.1); or
+      (A) the HyperNix Open Source License, Version 1.2.1 (HOS-1.2.1); or
 
       (B) the Apache License, Version 2.0 (Apache-2.0).
 
-    You must elect one license and comply with its terms. You may not
-    combine terms from both licenses.
+    You may choose and use either license option independently. If You do not
+    make an explicit choice, Option (A), HOS-1.2.1, applies by default.
+    You may not combine terms from both license options.
 
     You may obtain a copy of both licenses at:
 
@@ -571,3 +739,5 @@ replacing the bracketed fields with your own identifying information:
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
     implied. See the applicable License for the specific language
     governing permissions and limitations.
+
+
