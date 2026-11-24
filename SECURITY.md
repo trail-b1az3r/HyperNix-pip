@@ -7,9 +7,9 @@ not patched; upgrade to get a fix.
 
 | Version | Supported |
 | --- | --- |
-| 0.72.8 (alphas, and the release when it ships) | ✅ |
-| 0.72.7 | ✅ until 0.72.8 is released |
-| 0.72.6 and older | ❌ |
+| 0.73.1 (alphas, and the release when it ships, not in dev) | ✅ |
+| 0.73.0 | ✅ until 0.73.1 is released |
+| 0.72.8 and older | ❌ |
 
 The T1 API is versioned separately (`GET /version`); a fix to it ships in
 the next package release and raises the T1 version.
