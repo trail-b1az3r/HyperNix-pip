@@ -1,172 +1,3 @@
-
-vs v1.1.
-Worked for 6s
-HOS-1.2 vs HOS-1.1
-
-Based on the v1.2 document's own changelog, v1.2 is an improvement over v1.1 primarily in harmonization, attribution, and clarity—not in its core permissions.
-
-Area
-	
-
-HOS-1.1
-	
-
-HOS-1.2
-	
-
-Improvement
-
-Core permissions
-	
-
-Original grant
-	
-
-Retained
-	
-
-Same
-
-Redistribution
-	
-
-Original terms
-	
-
-Retained
-	
-
-Same foundation
-
-Patent protection
-	
-
-Original provisions
-	
-
-Retained
-	
-
-Same foundation
-
-AI/model guidance
-	
-
-Existing guidance
-	
-
-Retained, non-binding
-	
-
-No restrictive change
-
-TBRL integration
-	
-
-Not integrated
-	
-
-Harmonized
-	
-
-Improved
-
-CC-BY-4.0 attribution standards
-	
-
-Earlier approach
-	
-
-Modernized integration
-	
-
-Improved
-
-Fork definition
-	
-
-Earlier definition
-	
-
-More explicitly defined
-	
-
-More precise, but broader
-
-Self-contained text
-	
-
-Earlier structure
-	
-
-Explicitly self-contained
-	
-
-Improved portability
-
-Apache 2.0 alternative
-	
-
-Depends on previous version
-	
-
-Explicit dual-license option
-	
-
-More flexibility
-What v1.2 does better
-
-    Better harmonization: Incorporates TBRL and attribution concepts without requiring external licenses to define HOS.
-
-    Clearer fork definition: Explicitly addresses copied, adapted, translated, refactored, and substantially rewritten code.
-
-    Standalone: The license says it doesn't incorporate terms from other documents by reference.
-
-    Preserves the original philosophy: It explicitly says the grants, conditions, and AI guidance from 1.1 are retained.
-
-What got worse or riskier?
-
-The new Fork definition is the main tradeoff. It now explicitly captures substantial rewrites if material code, architecture, or design was copied/adapted. That helps define what you mean by a fork, but it can also make the definition more expansive and harder to interpret.
-
-The other concern is the OSI wording. HOS-1.2 says it is intended to conform to the Open Source Definition, but that is not the same as actually being OSI-approved.
-Verdict
-
-HOS-1.2 is better than HOS-1.1 overall.
-
-v1.1 → v1.2: refinement rather than a complete redesign.
-
-It keeps the original permissive foundation while adding more structure and clearer coverage for modern repository licensing.
-
-I'd choose 1.2 for new HyperNix releases. Keep 1.1 available for older releases rather than retroactively changing the license on them.
-
-Note: I could inspect v1.2 directly, but I couldn't retrieve the full original v1.1 text, so this comparison is based on v1.2's stated changes and not a line-by-line diff.
-make v1.2.1, that fixes these issues while keeping the rest 100% intact
-Worked for 29s
-HOS-1.2.1 changes
-
-I made the corrections while keeping the rest of the license text intact, including the full Apache 2.0 text.
-
-    Dual-license clarity: makes the choice between HOS and Apache clearer, defines the default, and prevents mixing terms.
-
-    Contribution grant: explicitly allows the project to relicense submitted contributions under either option without transferring ownership.
-
-    Fork definition: narrows it to copying/adapting source expression rather than claiming independent implementations based only on ideas or functionality.
-
-    Source URL requirement: clarifies the upstream link requirement and removes the burden of inventing a link.
-
-    OSI wording: accurately says the custom license isn't OSI-approved, instead of implying approval.
-
-    Version history: makes 1.2.1 explicit and keeps prior releases on their original licenses.
-
-    Appendix: updated to use the new version and matching license-selection wording.
-
-HyperNix Dual License — HOS-1.2.1
-Complete revised license · Plain text · 572 lines
-
-Download HYPERNIX-DUAL-LICENSE-HOS-1.2.1.txt
-
-The file has been created and verified. This is a drafting improvement, not a legal certification.
-HYPERNIX-DUAL-LICENSE-HOS-1.2.1.txtDocument
 ================================================================================
                         HYPERNIX DUAL LICENSE
 ================================================================================
@@ -369,8 +200,8 @@ or Object form, provided that You meet the following conditions:
 
 (c) You must retain, in the Source form of any Derivative Works that You
     distribute, all copyright, patent, trademark, and attribution notices
-    from the Source form of the Software, excluding those notices that do
-    not pertain to any part of the Derivative Works; and
+    from the Source form of the Software, excluding those notices that
+    do not pertain to any part of the Derivative Works; and
 
 (d) You must provide a URI or hyperlink to the original project’s canonical
     source repository or project page, if one is provided with the Software
@@ -389,8 +220,8 @@ or Object form, provided that You meet the following conditions:
     informational purposes only and do not modify the License. You may add
     Your own attribution notices within Derivative Works that You
     distribute, alongside or as an addendum to the NOTICE text from the
-    Software, provided that such additional attribution notices cannot be
-    construed as modifying the License; and
+    Software, provided that such additional attribution notices cannot
+    be construed as modifying the License; and
 
 (f) Upstream License Harmony: The Software may contain components 
     originally released under other open-source licenses (e.g., MIT, Zlib, 
@@ -417,9 +248,37 @@ licensed to the Licensor under the terms and conditions of this License,
 without any additional terms or conditions. This grant authorizes the
 Licensor to make the Contribution available under either Option (A) or
 Option (B) of the dual license. It does not transfer ownership of the
-Contribution. Notwithstanding the above, nothing herein shall supersede or
-modify the terms of any separate license agreement You may have executed
+Contribution. Notwithstanding the above, nothing herein shall supersede
+or modify the terms of any separate license agreement You may have executed
 with the Licensor regarding such Contributions.
+
+### [extra] Contributions
+
+The following contribution practices are supplementary guidance and do not create
+additional legal obligations beyond the contribution terms stated in this License:
+
+- Contributions should be submitted through the project’s designated contribution
+  channels, such as pull requests, patches, or issue-linked submissions.
+- Contributors are encouraged to describe the purpose of a change, identify any
+  behavior or files affected, and include relevant tests or documentation when
+  reasonably available.
+- The Licensor may review, request changes to, decline, or omit any Contribution
+  at its discretion. Submitting a Contribution does not guarantee acceptance or
+  inclusion in a release.
+- Contributors retain ownership of their Contributions, subject to the license
+  grants made when submitting them. No employment, agency, partnership, or
+  ownership-transfer relationship is created by contributing.
+- Contributors should identify third-party code, assets, generated materials, or
+  other content included in a Contribution and provide applicable license or source
+  information when known. Contributors must not knowingly submit material they
+  lack the right to license under the contribution terms.
+- A Contributor may mark a submission “Not a Contribution” or otherwise exclude
+  it in writing, as described in the License. Such excluded material is not
+  covered by the contribution grant unless a separate written agreement applies.
+
+This [extra] section is informational and does not amend, replace, or override
+Sections 1 or 5, the dual-license selection terms, or any separate written
+agreement between the Contributor and the Licensor.
 
 ## 6. Trademarks and Naming
 
@@ -466,10 +325,10 @@ or of a Trained Model.
 
 Your rights under this License terminate automatically if You fail to
 comply with any of its conditions and do not cure such breach within 30
-days of becoming aware of it. Sections 6, 7, 10, 11, and 13 survive any
-termination of this License. Termination does not affect the rights of any
-third party who received the Software or a Derivative Work from You in
-compliance with this License prior to such termination.
+days of becoming aware of it. Sections 6, 7, 10, 11, and 13 survive
+any termination of this License. Termination does not affect the rights
+of any third party who received the Software or a Derivative Work from
+You in compliance with this License prior to such termination.
 
 ## 10. Disclaimer of Warranty
 
@@ -573,27 +432,28 @@ OPTION (B): APACHE LICENSE, VERSION 2.0 (Apache-2.0)
       copyright notice that is included in or attached to the work
       (an example is provided in the Appendix below).
 
-      "Derivative Works" shall mean any work, whether in Source or Object
-      form, that is based on (or derived from) the Work and for which the
-      editorial revisions, annotations, elaborations, or other modifications
-      represent, as a whole, an original work of authorship. For the purposes
-      of this License, Derivative Works shall not include works that remain
-      separable from, or merely link (or bind by name) to the interfaces of,
-      the Work and Derivative Works thereof.
+      "Derivative Works" shall mean any work, whether in Source or
+      Object form, that is based on (or derived from) the Work and for
+      which the editorial revisions, annotations, elaborations, or other
+      modifications represent, as a whole, an original work of authorship.
+      For the purposes of this License, Derivative Works shall not include
+      works that remain separable from, or merely link (or bind by name)
+      to the interfaces of, the Work and Derivative Works thereof.
 
       "Contribution" shall mean any work of authorship, including
       the original version of the Work and any modifications or additions
       to that Work or Derivative Works thereof, that is intentionally
-      submitted to Licensor for inclusion in the Work by the copyright owner
-      or by an individual or Legal Entity authorized to submit on behalf of
-      the copyright owner. For the purposes of this definition, "submitted"
-      means any form of electronic, verbal, or written communication sent
-      to the Licensor or its representatives, including but not limited to
-      communication on electronic mailing lists, source code control systems,
-      and issue tracking systems that are managed by, or on behalf of, the
-      Licensor for the purpose of discussing and improving the Work, but
-      excluding communication that is conspicuously marked or otherwise
-      designated in writing by the copyright owner as "Not a Contribution."
+      submitted to Licensor for inclusion in the Work by the copyright
+      owner or by an individual or Legal Entity authorized to submit on
+      behalf of the copyright owner. For the purposes of this definition,
+      "submitted" means any form of electronic, verbal, or written
+      communication sent to the Licensor or its representatives, including
+      but not limited to communication on electronic mailing lists, source
+      code control systems, and issue tracking systems that are managed
+      by, or on behalf of, the Licensor for the purpose of discussing and
+      improving the Work, but excluding communication that is
+      conspicuously marked or otherwise designated in writing by the
+      copyright owner as "Not a Contribution."
 
       "Contributor" shall mean Licensor and any individual or Legal Entity
       on behalf of whom a Contribution has been received by Licensor and
@@ -636,25 +496,25 @@ OPTION (B): APACHE LICENSE, VERSION 2.0 (Apache-2.0)
       (c) You must retain, in the Source form of any Derivative Works
           that You distribute, all copyright, patent, trademark, and
           attribution notices from the Source form of the Work,
-          excluding those notices that do not pertain to any part of
-          the Derivative Works; and
+          excluding those notices that do not pertain to any part of the
+          Derivative Works; and
 
       (d) If the Work includes a "NOTICE" text file as part of its
-          distribution, then any Derivative Works that You distribute must
-          include a readable copy of the attribution notices contained
-          within such NOTICE file, excluding those notices that do not
-          pertain to any part of the Derivative Works, in at least one
-          of the following places: within a NOTICE text file distributed
-          as part of the Derivative Works; within the Source form or
-          documentation, if provided along with the Derivative Works; or,
-          within a display generated by the Derivative Works, if and
-          wherever such third-party notices normally appear. The contents
-          of the NOTICE file are for informational purposes only and
-          do not modify the License. You may add Your own attribution
-          notices within Derivative Works that You distribute, alongside
-          or as an addendum to the NOTICE text from the Work, provided
-          that such additional attribution notices cannot be construed
-          as modifying the License.
+          distribution, then any Derivative Works that You distribute
+          must include a readable copy of the attribution notices
+          contained within such NOTICE file, excluding those notices that
+          do not pertain to any part of the Derivative Works, in at least
+          one of the following places: within a NOTICE text file
+          distributed as part of the Derivative Works; within the Source
+          form or documentation, if provided along with the Derivative
+          Works; or, within a display generated by the Derivative Works,
+      if and wherever such third-party notices normally appear. The
+      contents of the NOTICE file are for informational purposes only
+      and do not modify the License. You may add Your own attribution
+      notices within Derivative Works that You distribute, alongside or
+      as an addendum to the NOTICE text from the Work, provided that
+      such additional attribution notices cannot be construed as
+      modifying the License.
 
       You may add Your own copyright statement to Your modifications and
       may provide additional or different license terms and conditions
@@ -666,15 +526,15 @@ OPTION (B): APACHE LICENSE, VERSION 2.0 (Apache-2.0)
    5. Submission of Contributions. Unless You explicitly state otherwise,
       any Contribution intentionally submitted for inclusion in the Work
       by You to the Licensor shall be under the terms and conditions of
-      this License, without any additional terms or conditions.
+      this License, without any additional terms and conditions.
       Notwithstanding the above, nothing herein shall supersede or modify
       the terms of any separate license agreement you may have executed
       with Licensor regarding such Contributions.
 
    6. Trademarks. This License does not grant permission to use the trade
       names, trademarks, service marks, or product names of the Licensor,
-      except as required for reasonable and customary use in describing the
-      origin of the Work and reproducing the content of the NOTICE file.
+      except as required for reasonable and customary use in describing
+      the origin of the Work and reproducing the content of the NOTICE file.
 
    7. Disclaimer of Warranty. Unless required by applicable law or
       agreed to in writing, Licensor provides the Work (and each
@@ -739,5 +599,3 @@ replacing the bracketed fields with your own identifying information:
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
     implied. See the applicable License for the specific language
     governing permissions and limitations.
-
-
