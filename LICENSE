@@ -7,7 +7,7 @@ Copyright 2026 HyperNix and Trail Blazer contributors
 This software ("the Software") is made available to You under the terms of
 any one of the following licenses, at Your option:
 
-  (A) HyperNix Open Source License, Version 2.0 (HOS-2.0)
+  (A) HyperNix Open Source License, Version 2.0.1 (HOS-2.0.1)
       — an open-source license derived from the Apache License 2.0, integrating
         the cohesive multi-license harmonization of the Trail Blazer Repository
         License (TBRL) and modern CC-BY-4.0 attribution standards, with no
@@ -24,7 +24,7 @@ any one of the following licenses, at Your option:
 You may choose and use any one license option independently. Your choice may be
 indicated by a license notice, distribution documentation, or other clear written
 statement accompanying the Software. If You do not expressly identify an option,
-Option (A), HOS-2.0, is the default license option governing Your exercise of
+Option (A), HOS-2.0.1, is the default license option governing Your exercise of
 permissions for the Software. This default is a licensing rule and does not by
 itself create a requirement to affirmatively assent, sign, or accept this License.
 Options (B) and (C) may be selected by an express written or accompanying notice.
@@ -32,7 +32,7 @@ You may not combine, merge, or cherry-pick terms from the three license options.
 The choice applies to the recipient’s use of the Software and does not alter the
 license under which any separate component is provided.
 
-This multi-license applies from version 2.0 of the Software. Releases
+This multi-license applies from version 2.0.1 of the Software. Releases
 published before it remain available under the licenses they were published
 with, unless the copyright holder expressly relicenses a specific release.
 
@@ -46,21 +46,28 @@ grant. Contributions marked “Not a Contribution” or otherwise excluded in
 writing are not covered by this paragraph.
 
 ================================================================================
-OPTION (A): HYPERNIX OPEN SOURCE LICENSE v2.0 (HOS-2.0)
+OPTION (A): HYPERNIX OPEN SOURCE LICENSE v2.0.1 (HOS-2.0.1)
 ================================================================================
 
 Copyright 2026 HyperNix and Trail Blazer contributors
 
 This License is derived from the Apache License, Version 2.0. It is a custom
-license and has not been approved by the Open Source Initiative (OSI).
-Version 2.0 retains the grants, conditions, and AI-specific guidance of prior
+license that has not been approved by the Open Source Initiative (OSI). No
+statement in this License represents that it has received OSI approval or
+certification, or that it has been formally recognized as conforming to the
+Open Source Definition. Such approval or recognition requires a separate review
+by the OSI and cannot be created by this License's wording alone.
+
+Version 2.0.1 retains the grants, conditions, and AI-specific guidance of prior
 HOS versions, along with the contribution grant, fork definition, source-link
 requirement, project change-approval guidance, and cohesive multi-license
-harmonization. It adds express protections for distribution-neutral use and for
-software distributed alongside the licensed Software. The License also retains
-the modern CC-BY-4.0 attribution standards of the Trail Blazer Repository License
-(TBRL). This document is self-contained: nothing in it is incorporated by reference
-from any other license.
+harmonization. It retains the distribution-neutral protections introduced in
+version 2.0 for software extracted from products or distributions and for
+independent software distributed alongside the licensed Software. This revision
+corrects the prior-version list in §13(c) to include HOS-1.2.1 and HOS-2.0.
+The License also retains the modern CC-BY-4.0 attribution standards of the Trail
+Blazer Repository License (TBRL). This document is self-contained: nothing in it
+is incorporated by reference from any other license.
 
 ## 1. Definitions
 
@@ -441,12 +448,13 @@ warranty or additional liability.
     License shall not constitute a waiver of future enforcement of that or
     any other provision.
 
-(c) Versioning. This is version 2.0 of the HyperNix Open Source
+(c) Versioning. This is version 2.0.1 of the HyperNix Open Source
     License. The Licensor may publish revised versions from time to time,
     each with a distinguishing version number. Software already distributed
-    under HOS-1.0, HOS-1.1, HOS-1.2, or HOS-1.2.2 continues to be governed by
-    the version under which it was distributed unless the Licensor explicitly
-    relicenses that specific release under a newer version.
+    under HOS-1.0, HOS-1.1, HOS-1.2, HOS-1.2.1, HOS-1.2.2, or HOS-2.0
+    continues to be governed by the version under which it was distributed
+    unless the Licensor explicitly relicenses that specific release under a
+    newer version.
 
 (d) Not Legal Advice. This License is a software license, not a legal
     services agreement. The Licensor recommends having it reviewed by
@@ -904,7 +912,7 @@ replacing the bracketed fields with your own identifying information:
 
     This software is available under your choice of one of:
 
-      (A) the HyperNix Open Source License, Version 2.0 (HOS-2.0);
+      (A) the HyperNix Open Source License, Version 2.0.1 (HOS-2.0.1);
 
       (B) the Apache License, Version 2.0 (Apache-2.0); or
 
@@ -912,7 +920,7 @@ replacing the bracketed fields with your own identifying information:
           (HOSUP-1.1).
 
     You may choose and use any one license option independently. If You do not
-    expressly identify an option, Option (A), HOS-2.0, governs Your exercise
+    expressly identify an option, Option (A), HOS-2.0.1, governs Your exercise
     of permissions by default. This default does not itself require
     affirmative assent, signing, or acceptance. You may not combine terms from
     different license options.
@@ -922,7 +930,7 @@ replacing the bracketed fields with your own identifying information:
         [URL to this license text]
 
     Unless required by applicable law or agreed to in writing, software
-    distributed under either license is distributed on an "AS IS" BASIS,
+    distributed under any selected license option is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
     implied. See the applicable License for the specific language
     governing permissions and limitations.
