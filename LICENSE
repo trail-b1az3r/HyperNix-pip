@@ -1,11 +1,11 @@
 ================================================================================
-                        HYPERNIX DUAL LICENSE
+                        HYPERNIX MULTI-LICENSE
 ================================================================================
 
 Copyright 2026 HyperNix and Trail Blazer contributors
 
 This software ("the Software") is made available to You under the terms of
-either of the following licenses, at Your option:
+any one of the following licenses, at Your option:
 
   (A) HyperNix Open Source License, Version 1.2.2 (HOS-1.2.2)
       — an open-source license derived from the Apache License 2.0, integrating
@@ -14,27 +14,32 @@ either of the following licenses, at Your option:
         field-of-use restrictions; or
 
   (B) Apache License, Version 2.0 (Apache-2.0)
-      — the unmodified Apache License, reproduced in full below.
+      — the unmodified Apache License, reproduced in full below; or
 
-You may choose and use either license option independently. Your choice may be
+  (C) HyperNix Open Source Universal Project License, Version 1.0 (HOSUP-1.0)
+      — a universal, project-agnostic permissive license designed for use with
+        projects of any type, purpose, or subject, whether or not related to
+        HyperNix.
+
+You may choose and use any one license option independently. Your choice may be
 indicated by a license notice, distribution documentation, or other clear written
 statement accompanying the Software. If You do not expressly identify an option,
 Option (A), HOS-1.2.2, is the default license option governing Your exercise of
 permissions for the Software. This default is a licensing rule and does not by
 itself create a requirement to affirmatively assent, sign, or accept this License.
-Option (B) may be selected by an express written or accompanying notice. You may
-not combine, merge, or cherry-pick terms from the two license options. The choice
-applies to the recipient’s use of the Software and does not alter the license
-under which any separate component is provided.
+Options (B) and (C) may be selected by an express written or accompanying notice.
+You may not combine, merge, or cherry-pick terms from the three license options.
+The choice applies to the recipient’s use of the Software and does not alter the
+license under which any separate component is provided.
 
-This dual license applies from version 1.2.2 of the Software. Releases
+This multi-license applies from version 1.2.2 of the Software. Releases
 published before it remain available under the licenses they were published
 with, unless the copyright holder expressly relicenses a specific release.
 
 By intentionally submitting a Contribution for inclusion in the project, the
 Contributor grants the project copyright and patent permissions sufficient to
-reproduce, modify, sublicense, and distribute that Contribution under either
-Option (A) or Option (B), unless the Contributor clearly states otherwise at
+reproduce, modify, sublicense, and distribute that Contribution under any of
+Options (A), (B), or (C), unless the Contributor clearly states otherwise at
 the time of submission. This is a license grant, not a transfer of ownership.
 The Contributor represents that they have the rights and authority to make this
 grant. Contributions marked “Not a Contribution” or otherwise excluded in
@@ -250,8 +255,8 @@ Unless You explicitly state otherwise, any Contribution intentionally
 submitted for inclusion in the Software by You to the Licensor shall be
 licensed to the Licensor under the terms and conditions of this License,
 without any additional terms or conditions. This grant authorizes the
-Licensor to make the Contribution available under either Option (A) or
-Option (B) of the dual license. It does not transfer ownership of the
+Licensor to make the Contribution available under any of Options (A), (B),
+or (C) of this multi-license. It does not transfer ownership of the
 Contribution. Notwithstanding the above, nothing herein shall supersede
 or modify the terms of any separate license agreement You may have executed
 with the Licensor regarding such Contributions.
@@ -304,7 +309,7 @@ additional legal obligations beyond the contribution terms stated in this Licens
   covered by the contribution grant unless a separate written agreement applies.
 
 This [extra] section is informational and does not amend, replace, or override
-Sections 1 or 5, the dual-license selection terms, or any separate written
+Sections 1 or 5, the multi-license selection terms, or any separate written
 agreement between the Contributor and the Licensor.
 
 ## 6. Trademarks and Naming
@@ -599,7 +604,233 @@ OPTION (B): APACHE LICENSE, VERSION 2.0 (Apache-2.0)
    END OF TERMS AND CONDITIONS
 
 ================================================================================
-APPENDIX: How to Apply This Dual License
+
+================================================================================
+OPTION (C): HYPERNIX OPEN SOURCE UNIVERSAL PROJECT LICENSE v1.0 (HOSUP-1.0)
+================================================================================
+
+Copyright 2026 HyperNix and Trail Blazer contributors
+
+HOSUP 1.0
+HyperNix Open Source Universal Project License
+
+Version 1.0 — November 23, 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+any work licensed under the HyperNix Open Source Universal Project License
+(HOSUP), to use, reproduce, modify, adapt, publish, distribute, sublicense,
+and/or sell copies of the work, subject to the following terms:
+
+### 1. Universal Applicability
+
+This License is universal and project-agnostic. It may be applied to any
+project, work, software, source code, binary, library, application, game,
+engine, tool, documentation, design, model, configuration, script, creative
+work, research, or other material, regardless of its purpose, subject matter,
+industry, origin, creator, or relationship to HyperNix.
+
+Use of this License does not require a project to be associated with HyperNix,
+its developers, organization, products, technologies, branding, or ecosystem.
+
+### 2. Definitions
+
+**"License"** means this HyperNix Open Source Universal Project License,
+including the terms and conditions stated herein.
+
+**"Licensor"** means the copyright holder or holders who apply this License
+to a Work.
+
+**"You"** means any individual, organization, entity, or other party exercising
+rights granted by this License.
+
+**"Work"** means any material licensed under this License, including its
+original form and any portions thereof.
+
+**"Derivative Work"** means a work based upon, modified from, adapted from,
+or incorporating the Work or a substantial portion of it, where such material
+is protected by applicable copyright law.
+
+**"Distribution"** means making the Work or a Derivative Work available to
+another party, whether through physical media, digital delivery, publication,
+hosting, sale, or other means.
+
+### 3. Copyright Grant
+
+You are permitted to use the Work for any lawful purpose, including but not
+limited to:
+
+- Personal, educational, academic, and research use.
+- Commercial and non-commercial use.
+- Private, public, internal, and organizational use.
+- Modification, adaptation, translation, and restructuring.
+- Reproduction and redistribution.
+- Incorporation into other projects, products, services, and works.
+- Creation and distribution of Derivative Works.
+- Use in proprietary, closed-source, or open-source projects.
+- Sale, licensing, offering, and monetization of the Work or Derivative Works.
+
+These permissions are worldwide, perpetual for the duration of applicable
+copyright, irrevocable except as expressly stated in this License, and
+royalty-free.
+
+### 4. Redistribution
+
+You may distribute the Work or Derivative Works in source code, compiled,
+binary, object, executable, modified, unmodified, packaged, embedded, or
+other forms.
+
+When redistributing substantial portions of the Work, You must:
+
+1. Include a copy of this License with the redistributed Work, where reasonably practicable.
+2. Retain existing copyright notices, license notices, and disclaimers present in the Work.
+3. Clearly identify substantial modifications when reasonably practicable, particularly where modified files or versions could otherwise be mistaken for the original.
+
+You may choose your own distribution format, hosting location, pricing,
+distribution method, and delivery model.
+
+### 5. Modification and Derivative Works
+
+You may modify, adapt, extend, shorten, translate, refactor, port, rewrite,
+transform, merge, or otherwise change the Work.
+
+You may publish, distribute, license, or keep such modifications private.
+
+You are not required to release the source code of modifications, Derivative
+Works, applications, products, or services that incorporate or are based upon
+the Work.
+
+### 6. Sublicensing and Relicensing
+
+You may sublicense, license, or distribute Derivative Works under different
+license terms, including proprietary, commercial, permissive, or other
+open-source licenses, provided that You comply with the applicable
+requirements of this License concerning portions of the original Work that
+You redistribute.
+
+This License does not require Your own original additions, independently
+developed material, or separately licensed components to be distributed
+under HOSUP.
+
+You may not remove or invalidate the rights granted to recipients of the
+original Work under this License.
+
+### 7. Patent Grant
+
+Each Licensor grants You a perpetual, worldwide, non-exclusive, royalty-free,
+irrevocable (except as stated below) patent license to make, use, offer to
+sell, sell, import, reproduce, modify, and otherwise distribute the Work,
+insofar as such license applies to patent claims licensable by that Licensor
+that are necessarily infringed by the Work or a contribution incorporated
+into the Work.
+
+If You initiate patent litigation against any party alleging that the Work or
+a contribution incorporated into the Work constitutes direct or contributory
+patent infringement, the patent licenses granted to You under this License
+for the Work shall terminate as of the date such litigation is filed.
+
+### 8. Attribution and Notices
+
+This License requires preservation of applicable existing copyright and
+license notices when redistributing substantial portions of the Work.
+
+You may provide additional attribution, acknowledgments, credits, references,
+or notices, provided they do not falsely imply endorsement, sponsorship, or
+affiliation.
+
+This License does not require advertising, promotional acknowledgment,
+publication of Your name, links to Your website, or attribution beyond the
+preservation of existing applicable notices and the License itself.
+
+### 9. No Additional Restrictions
+
+You may not impose additional restrictions upon recipients that prevent them
+from exercising the rights granted under this License to the original Work.
+
+This License does not restrict the lawful use of the Work based on its
+industry, field, purpose, functionality, audience, business model, or subject
+matter.
+
+No restriction shall be imposed requiring a project to be related to
+HyperNix, remain within a HyperNix ecosystem, use HyperNix services, or comply
+with HyperNix-specific development policies.
+
+### 10. Trademarks and Names
+
+This License does not grant permission to use the trademarks, service marks,
+logos, trade names, branding, or other identifying marks of the Licensor,
+except as reasonably necessary to identify the origin of the Work or
+reproduce existing notices.
+
+This provision does not restrict lawful descriptive use, nominative use, or
+other uses permitted by applicable law.
+
+### 11. Contributions
+
+Unless explicitly stated otherwise by a contributor at the time of submission,
+any contribution intentionally submitted for inclusion in the Work shall be
+licensed under this License, without additional terms or conditions.
+
+Nothing in this section overrides an explicit license accompanying a
+contribution, or any separate agreement entered into by the contributor and
+the Licensor.
+
+### 12. Disclaimer of Warranty
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY,
+RELIABILITY, OR AVAILABILITY.
+
+YOU ARE SOLELY RESPONSIBLE FOR DETERMINING THE SUITABILITY OF THE WORK FOR
+YOUR USE AND ASSUME ALL RISKS ASSOCIATED WITH ITS USE, MODIFICATION,
+DISTRIBUTION, AND OPERATION.
+
+### 13. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL ANY
+LICENSOR, COPYRIGHT HOLDER, CONTRIBUTOR, OR DISTRIBUTOR BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY, INCLUDING DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR OTHER DAMAGES, ARISING FROM, OUT OF,
+OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS IN THE WORK,
+WHETHER IN CONTRACT, TORT, OR OTHERWISE.
+
+### 14. Severability
+
+If any provision of this License is held unenforceable, invalid, or unlawful,
+that provision shall be modified only to the minimum extent necessary to make
+it enforceable, or severed if modification is not possible.
+
+All remaining provisions shall continue in full force and effect.
+
+### 15. No Obligation
+
+Nothing in this License requires You to use, distribute, publish, modify,
+contribute to, maintain, support, or continue developing the Work.
+
+You may discontinue use of the Work at any time.
+
+### 16. License Version
+
+This Work is licensed under HOSUP 1.0 unless the Licensor explicitly
+identifies another version.
+
+The Licensor may publish newer versions of HOSUP. A newer version shall not
+automatically replace the terms applicable to previously licensed copies
+unless the Licensor explicitly grants the Work under that newer version.
+
+### 17. Acceptance
+
+By exercising rights granted under this License, You agree to its applicable
+terms and conditions.
+
+If You do not agree to these terms, You may not exercise the rights granted
+by this License.
+
+================================================================================
+END OF HOSUP 1.0
+================================================================================
+
+APPENDIX: How to Apply This Multi-License
 ================================================================================
 
 To apply the HyperNix Dual License to a work, attach the following notice,
@@ -607,19 +838,22 @@ replacing the bracketed fields with your own identifying information:
 
     Copyright [yyyy] [name of copyright owner]
 
-    This software is available under your choice of:
+    This software is available under your choice of one of:
 
-      (A) the HyperNix Open Source License, Version 1.2.2 (HOS-1.2.2); or
+      (A) the HyperNix Open Source License, Version 1.2.2 (HOS-1.2.2);
 
-      (B) the Apache License, Version 2.0 (Apache-2.0).
+      (B) the Apache License, Version 2.0 (Apache-2.0); or
 
-    You may choose and use either license option independently. If You do not
+      (C) the HyperNix Open Source Universal Project License, Version 1.0
+          (HOSUP-1.0).
+
+    You may choose and use any one license option independently. If You do not
     expressly identify an option, Option (A), HOS-1.2.2, governs Your exercise
     of permissions by default. This default does not itself require
     affirmative assent, signing, or acceptance. You may not combine terms from
-    both license options.
+    different license options.
 
-    You may obtain a copy of both licenses at:
+    You may obtain a copy of all three licenses at:
 
         [URL to this license text]
 
