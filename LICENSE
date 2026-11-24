@@ -7,7 +7,7 @@ Copyright 2026 HyperNix and Trail Blazer contributors
 This software ("the Software") is made available to You under the terms of
 any one of the following licenses, at Your option:
 
-  (A) HyperNix Open Source License, Version 1.2.2 (HOS-1.2.2)
+  (A) HyperNix Open Source License, Version 2.0 (HOS-2.0)
       — an open-source license derived from the Apache License 2.0, integrating
         the cohesive multi-license harmonization of the Trail Blazer Repository
         License (TBRL) and modern CC-BY-4.0 attribution standards, with no
@@ -16,7 +16,7 @@ any one of the following licenses, at Your option:
   (B) Apache License, Version 2.0 (Apache-2.0)
       — the unmodified Apache License, reproduced in full below; or
 
-  (C) HyperNix Open Source Universal Project License, Version 1.0 (HOSUP-1.0)
+  (C) HyperNix Open Source Universal Project License, Version 1.1 (HOSUP-1.1)
       — a universal, project-agnostic permissive license designed for use with
         projects of any type, purpose, or subject, whether or not related to
         HyperNix.
@@ -24,7 +24,7 @@ any one of the following licenses, at Your option:
 You may choose and use any one license option independently. Your choice may be
 indicated by a license notice, distribution documentation, or other clear written
 statement accompanying the Software. If You do not expressly identify an option,
-Option (A), HOS-1.2.2, is the default license option governing Your exercise of
+Option (A), HOS-2.0, is the default license option governing Your exercise of
 permissions for the Software. This default is a licensing rule and does not by
 itself create a requirement to affirmatively assent, sign, or accept this License.
 Options (B) and (C) may be selected by an express written or accompanying notice.
@@ -32,7 +32,7 @@ You may not combine, merge, or cherry-pick terms from the three license options.
 The choice applies to the recipient’s use of the Software and does not alter the
 license under which any separate component is provided.
 
-This multi-license applies from version 1.2.2 of the Software. Releases
+This multi-license applies from version 2.0 of the Software. Releases
 published before it remain available under the licenses they were published
 with, unless the copyright holder expressly relicenses a specific release.
 
@@ -46,20 +46,21 @@ grant. Contributions marked “Not a Contribution” or otherwise excluded in
 writing are not covered by this paragraph.
 
 ================================================================================
-OPTION (A): HYPERNIX OPEN SOURCE LICENSE v1.2.2 (HOS-1.2.2)
+OPTION (A): HYPERNIX OPEN SOURCE LICENSE v2.0 (HOS-2.0)
 ================================================================================
 
 Copyright 2026 HyperNix and Trail Blazer contributors
 
 This License is derived from the Apache License, Version 2.0. It is a custom
-license and has not been approved by the Open Source Initiative (OSI). Version
-1.2.2 retains the grants, conditions, and AI-specific guidance of version 1.1
-and version 1.2, while clarifying default license selection and adding project
-change-approval guidance alongside the contribution grant, fork definition, and
-source-link requirement. It also retains the cohesive
-multi-license harmonization and modern CC-BY-4.0 attribution standards of the
-Trail Blazer Repository License (TBRL). This document is self-contained: nothing
-in it is incorporated by reference from any other license.
+license and has not been approved by the Open Source Initiative (OSI).
+Version 2.0 retains the grants, conditions, and AI-specific guidance of prior
+HOS versions, along with the contribution grant, fork definition, source-link
+requirement, project change-approval guidance, and cohesive multi-license
+harmonization. It adds express protections for distribution-neutral use and for
+software distributed alongside the licensed Software. The License also retains
+the modern CC-BY-4.0 attribution standards of the Trail Blazer Repository License
+(TBRL). This document is self-contained: nothing in it is incorporated by reference
+from any other license.
 
 ## 1. Definitions
 
@@ -232,14 +233,44 @@ or Object form, provided that You meet the following conditions:
     Software, provided that such additional attribution notices cannot
     be construed as modifying the License; and
 
-(f) Upstream License Harmony: The Software may contain components 
-    originally released under other open-source licenses (e.g., MIT, Zlib, 
-    Boost, GNU GPL, GNU LGPL). You must comply with the conditions of 
-    those respective licenses for those specific components. Specifically, 
-    if You distribute a work that is legally considered a derivative of a 
-    component licensed under the GNU GPL or GNU LGPL, You must make the 
-    corresponding source code of that component available under the terms 
-    of that respective GNU license.
+(f) Upstream License Harmony: The Software may contain components
+    originally released under other open-source licenses (e.g., MIT, Zlib,
+    Boost, GNU GPL, GNU LGPL). You must comply with the conditions of those
+    respective licenses for those specific components. Specifically, if You
+    distribute a work that is legally considered a derivative of a component
+    licensed under the GNU GPL or GNU LGPL, You must make the corresponding
+    source code of that component available under the terms of that respective
+    GNU license; and
+
+(g) Independence from a Particular Product or Distribution: The rights granted
+    by this License attach to the Software itself and do not depend on the
+    Software being included in, delivered with, or distributed as part of any
+    particular product, product line, distribution, repository, platform,
+    service, package, installer, or other offering. You may extract the Software
+    from any such offering and use, reproduce, modify, or distribute it
+    separately, subject to this License. Any recipient of the Software,
+    including a recipient who receives it separately or as part of a different
+    offering, receives the same rights under this License with respect to the
+    Software as a recipient who receives it in its original offering. No person
+    distributing the Software may make those rights conditional on keeping the
+    Software bundled with a particular product or obtaining it from a particular
+    source. This subsection does not grant rights to separate components or
+    trademarks that are not licensed under this License; and
+
+(h) No Restrictions on Other Software: This License applies only to the
+    Software and Derivative Works of the Software to the extent they contain,
+    incorporate, or are based on the Software. It does not impose license terms
+    or conditions on independent or separate software distributed alongside
+    the Software, on the same medium, in the same package or installer, in the
+    same repository, or through the same service. You are not required by this
+    License to make such other software open source, publish its source code,
+    distribute it under this License, or offer it at no charge. Such other
+    software may be distributed under any license or terms chosen by its
+    respective rights holder. Separate components that are incorporated into a
+    Derivative Work remain subject to their own applicable licenses, where those
+    licenses lawfully apply to those components. Nothing in this subsection
+    waives or overrides the license conditions applicable to a component of the
+    Software itself.
 
 You may add Your own copyright statement to Your modifications and may
 provide additional or different license terms and conditions for use,
@@ -410,12 +441,12 @@ warranty or additional liability.
     License shall not constitute a waiver of future enforcement of that or
     any other provision.
 
-(c) Versioning. This is version 1.2.2 of the HyperNix Open Source
+(c) Versioning. This is version 2.0 of the HyperNix Open Source
     License. The Licensor may publish revised versions from time to time,
     each with a distinguishing version number. Software already distributed
-    under HOS-1.0, HOS-1.1, or HOS-1.2 continues to be governed by those
-    versions unless the Licensor explicitly relicenses that specific release
-    under a newer version.
+    under HOS-1.0, HOS-1.1, HOS-1.2, or HOS-1.2.2 continues to be governed by
+    the version under which it was distributed unless the Licensor explicitly
+    relicenses that specific release under a newer version.
 
 (d) Not Legal Advice. This License is a software license, not a legal
     services agreement. The Licensor recommends having it reviewed by
@@ -606,15 +637,15 @@ OPTION (B): APACHE LICENSE, VERSION 2.0 (Apache-2.0)
 ================================================================================
 
 ================================================================================
-OPTION (C): HYPERNIX OPEN SOURCE UNIVERSAL PROJECT LICENSE v1.0 (HOSUP-1.0)
+OPTION (C): HYPERNIX OPEN SOURCE UNIVERSAL PROJECT LICENSE v1.1 (HOSUP-1.1)
 ================================================================================
 
 Copyright 2026 HyperNix and Trail Blazer contributors
 
-HOSUP 1.0
+HOSUP 1.1
 HyperNix Open Source Universal Project License
 
-Version 1.0 — November 23, 2026
+Version 1.1 — November 24, 2026
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 any work licensed under the HyperNix Open Source Universal Project License
@@ -687,6 +718,36 @@ When redistributing substantial portions of the Work, You must:
 
 You may choose your own distribution format, hosting location, pricing,
 distribution method, and delivery model.
+
+#### 4.1 Independence from a Particular Product or Distribution
+
+The rights granted by this License attach to the Work itself and do not depend
+on the Work being included in, delivered with, or distributed as part of any
+particular product, product line, distribution, repository, platform, service,
+package, installer, or other offering. You may extract the Work from any such
+offering and use, reproduce, modify, or distribute it separately, subject to
+this License. Every recipient of the Work, including a recipient who receives
+it separately or as part of a different offering, receives the same rights
+under this License with respect to the Work as a recipient who receives it in
+its original offering. No distributor may make those rights conditional on
+keeping the Work bundled with a particular product or obtaining it from a
+particular source. This subsection does not grant rights to separate components
+or trademarks that are not licensed under this License.
+
+#### 4.2 No Restrictions on Other Software
+
+This License governs only the Work and Derivative Works of the Work to the
+extent they contain, incorporate, or are based on the Work. It does not impose
+license terms or conditions on independent or separate software distributed
+alongside the Work, on the same medium, in the same package or installer, in
+the same repository, or through the same service. You are not required by this
+License to make such other software open source, publish its source code,
+distribute it under this License, or offer it at no charge. Such other software
+may be distributed under any license or terms chosen by its respective rights
+holder. Separate components incorporated into a Derivative Work remain subject
+to their own applicable licenses, where those licenses lawfully apply to those
+components. Nothing in this subsection waives or overrides license conditions
+applicable to a component of the Work itself.
 
 ### 5. Modification and Derivative Works
 
@@ -811,12 +872,15 @@ You may discontinue use of the Work at any time.
 
 ### 16. License Version
 
-This Work is licensed under HOSUP 1.0 unless the Licensor explicitly
+This Work is licensed under HOSUP 1.1 unless the Licensor explicitly
 identifies another version.
 
 The Licensor may publish newer versions of HOSUP. A newer version shall not
 automatically replace the terms applicable to previously licensed copies
 unless the Licensor explicitly grants the Work under that newer version.
+Works previously distributed under HOSUP 1.0 remain governed by HOSUP 1.0
+unless the Licensor expressly relicenses those works under HOSUP 1.1 or a later
+version.
 
 ### 17. Acceptance
 
@@ -827,28 +891,28 @@ If You do not agree to these terms, You may not exercise the rights granted
 by this License.
 
 ================================================================================
-END OF HOSUP 1.0
+END OF HOSUP 1.1
 ================================================================================
 
 APPENDIX: How to Apply This Multi-License
 ================================================================================
 
-To apply the HyperNix Dual License to a work, attach the following notice,
+To apply the HyperNix Multi-License to a work, attach the following notice,
 replacing the bracketed fields with your own identifying information:
 
     Copyright [yyyy] [name of copyright owner]
 
     This software is available under your choice of one of:
 
-      (A) the HyperNix Open Source License, Version 1.2.2 (HOS-1.2.2);
+      (A) the HyperNix Open Source License, Version 2.0 (HOS-2.0);
 
       (B) the Apache License, Version 2.0 (Apache-2.0); or
 
-      (C) the HyperNix Open Source Universal Project License, Version 1.0
-          (HOSUP-1.0).
+      (C) the HyperNix Open Source Universal Project License, Version 1.1
+          (HOSUP-1.1).
 
     You may choose and use any one license option independently. If You do not
-    expressly identify an option, Option (A), HOS-1.2.2, governs Your exercise
+    expressly identify an option, Option (A), HOS-2.0, governs Your exercise
     of permissions by default. This default does not itself require
     affirmative assent, signing, or acceptance. You may not combine terms from
     different license options.
