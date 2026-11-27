@@ -295,7 +295,7 @@ def _parse_changelog_heading(raw_heading: str) -> tuple[str, str, str]:
 def parse_changelog() -> dict[str, Any]:
     generated_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     if not CHANGELOG_PATH.exists():
-        return {"generated_at": generated_at, "source": "wiki/Changelog.md", "entries": []}
+        return {"generated_at": generated_at, "source": "docs/subsystems/core/pages/Changelog.md", "entries": []}
 
     text = CHANGELOG_PATH.read_text(encoding="utf-8", errors="replace")
     matches = list(re.finditer(r"(?m)^##\s+(.+?)\s*$", text))
@@ -367,7 +367,7 @@ def parse_changelog() -> dict[str, Any]:
             "heading": raw_heading,
             "date": date,
             "title": clean_changelog_text(heading_title),
-            "summary": summary or "Release notes in wiki/Changelog.md.",
+            "summary": summary or "Release notes in docs/subsystems/core/pages/Changelog.md.",
             "patch": int(patch.group(1)) if patch else None,
             "headline": headline,
             "highlights": highlights,
@@ -379,7 +379,7 @@ def parse_changelog() -> dict[str, Any]:
 
     return {
         "generated_at": generated_at,
-        "source": "wiki/Changelog.md",
+        "source": "docs/subsystems/core/pages/Changelog.md",
         "entries": entries,
         "unreleased": unreleased,
     }
