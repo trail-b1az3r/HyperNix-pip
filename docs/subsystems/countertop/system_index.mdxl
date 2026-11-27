@@ -1,0 +1,21 @@
+---
+system: hypernix.countertop
+title: hypernix.countertop subsystem index
+description: Stateful chat session management — Countertop creates sessions, bell rings the model, flour applies templates
+page_count: 3
+---
+
+# hypernix.countertop
+
+Stateful chat session management — Countertop creates sessions, bell rings the model, flour applies templates
+
+## Documentation pages
+
+- [Bell](pages/Bell.md)
+- [Countertop](pages/Countertop.md)
+- [Flour](pages/Flour.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

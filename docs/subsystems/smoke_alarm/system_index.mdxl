@@ -1,0 +1,21 @@
+---
+system: hypernix.smoke_alarm
+title: hypernix.smoke_alarm subsystem index
+description: Training-step planner & monitor: RadsAlarm / GasAlarm / ModernAlarm / AutoAlarm + NaN check
+page_count: 3
+---
+
+# hypernix.smoke_alarm
+
+Training-step planner & monitor: RadsAlarm / GasAlarm / ModernAlarm / AutoAlarm + NaN check
+
+## Documentation pages
+
+- [Alarms](pages/Alarms.md)
+- [Camouflage](pages/Camouflage.md)
+- [WakeUp](pages/WakeUp.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

@@ -1,0 +1,19 @@
+---
+system: hypernix.pans
+title: hypernix.pans subsystem index
+description: 5-tier data preprocessing: FryingPan → SaucePan → Skillet → GrillPan → Wok
+page_count: 1
+---
+
+# hypernix.pans
+
+5-tier data preprocessing: FryingPan → SaucePan → Skillet → GrillPan → Wok
+
+## Documentation pages
+
+- [Pans](pages/Pans.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

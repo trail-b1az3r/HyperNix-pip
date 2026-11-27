@@ -1,0 +1,19 @@
+---
+system: hypernix.cake_pan
+title: hypernix.cake_pan subsystem index
+description: Hybrid CPU+GPU training guard: NaN/Inf detection, wall-time watchdog, memory-pressure rollback via BakeOff
+page_count: 1
+---
+
+# hypernix.cake_pan
+
+Hybrid CPU+GPU training guard: NaN/Inf detection, wall-time watchdog, memory-pressure rollback via BakeOff
+
+## Documentation pages
+
+- [CakePan](pages/CakePan.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

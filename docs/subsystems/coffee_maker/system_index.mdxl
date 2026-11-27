@@ -1,0 +1,19 @@
+---
+system: hypernix.coffee_maker
+title: hypernix.coffee_maker subsystem index
+description: 3 training tiers: drip / french_press / percolator + cold_brew for long checkpointed runs
+page_count: 1
+---
+
+# hypernix.coffee_maker
+
+3 training tiers: drip / french_press / percolator + cold_brew for long checkpointed runs
+
+## Documentation pages
+
+- [CoffeeMaker](pages/CoffeeMaker.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

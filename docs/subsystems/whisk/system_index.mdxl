@@ -1,0 +1,19 @@
+---
+system: hypernix.whisk
+title: hypernix.whisk subsystem index
+description: Checkpoint averaging and EMA (Exponential Moving Average) utilities
+page_count: 1
+---
+
+# hypernix.whisk
+
+Checkpoint averaging and EMA (Exponential Moving Average) utilities
+
+## Documentation pages
+
+- [Whisk](pages/Whisk.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

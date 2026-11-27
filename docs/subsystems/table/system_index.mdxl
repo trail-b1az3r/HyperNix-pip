@@ -1,0 +1,19 @@
+---
+system: hypernix.table
+title: hypernix.table subsystem index
+description: Dead-simple tabular viewer: from_training_log, from_judge_corpus, filter, select, show
+page_count: 0
+---
+
+# hypernix.table
+
+Dead-simple tabular viewer: from_training_log, from_judge_corpus, filter, select, show
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

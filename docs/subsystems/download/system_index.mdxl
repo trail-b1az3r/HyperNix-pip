@@ -1,0 +1,21 @@
+---
+system: hypernix.download
+title: hypernix.download subsystem index
+description: Hub snapshot downloads with short-name resolution, gated repo support, and offline cache
+page_count: 3
+---
+
+# hypernix.download
+
+Hub snapshot downloads with short-name resolution, gated repo support, and offline cache
+
+## Documentation pages
+
+- [Download](pages/Download.md)
+- [HuggingFace-Models](pages/HuggingFace-Models.md)
+- [ModelIndex](pages/ModelIndex.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

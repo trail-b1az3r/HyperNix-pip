@@ -1,0 +1,19 @@
+---
+system: hypernix.microwave
+title: hypernix.microwave subsystem index
+description: 5-tier throwaway inference: defrost → low_zap → zap → high_zap → chat_zap, plus reheat
+page_count: 1
+---
+
+# hypernix.microwave
+
+5-tier throwaway inference: defrost → low_zap → zap → high_zap → chat_zap, plus reheat
+
+## Documentation pages
+
+- [Microwave](pages/Microwave.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

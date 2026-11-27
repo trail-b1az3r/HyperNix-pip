@@ -1,0 +1,19 @@
+---
+system: hypernix.smoker
+title: hypernix.smoker subsystem index
+description: 4-tier training quality: UseableSmoker / GoodSmoker / CommercialSmoker / HighQualitySmoker
+page_count: 1
+---
+
+# hypernix.smoker
+
+4-tier training quality: UseableSmoker / GoodSmoker / CommercialSmoker / HighQualitySmoker
+
+## Documentation pages
+
+- [Smoker](pages/Smoker.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

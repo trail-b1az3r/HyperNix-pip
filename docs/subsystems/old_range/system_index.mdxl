@@ -1,0 +1,19 @@
+---
+system: hypernix.old_range
+title: hypernix.old_range subsystem index
+description: Scored rubric with per-criterion scores and explainability strings
+page_count: 0
+---
+
+# hypernix.old_range
+
+Scored rubric with per-criterion scores and explainability strings
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

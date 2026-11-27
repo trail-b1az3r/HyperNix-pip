@@ -1,0 +1,19 @@
+---
+system: hypernix.salt_shaker
+title: hypernix.salt_shaker subsystem index
+description: 3-tier gentle data augmentation: FromTheBag / HandCrusher / PoshSaltDish
+page_count: 1
+---
+
+# hypernix.salt_shaker
+
+3-tier gentle data augmentation: FromTheBag / HandCrusher / PoshSaltDish
+
+## Documentation pages
+
+- [Shakers](pages/Shakers.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

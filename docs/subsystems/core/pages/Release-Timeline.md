@@ -1,0 +1,1260 @@
+# HyperNix Release Timeline
+
+This page contains an automatically updated timeline of all public releases.
+
+## Release v0.70.6 (2026-07-15)
+
+```mermaid
+timeline
+    title Release v0.70.6 Commits
+    0.70.6
+        : 13a371e - Delete fix-intervaltimer-should_fire.patch
+        : e8f0547 - timer modual fixes
+        : c25e377 - 0.70.6, pressure cooker v5s, fixes, tvtop improvements, quicker cl and more
+        : e5356f9 - chore- update JSON stats (scheduled)
+        : df2b4e0 - Update README to remove summary sentence
+        : 1c20ac2 - Replace incomplete usage section with properly formatted PDF documentation links
+        : 653c6a2 - Update README with optimizer PDF link and image
+        : 05d170b - Add usage section to README
+        : dd29a9c - Add files via upload
+        : d47e8c6 - Revise roadmap with new version numbers and releases
+        : 9ba6128 - Fix formatting in pyproject.toml dependencies
+        : d689ee6 - Pin rich package version to 14.3.4
+        : 749b6ff - Add specific version for rich package
+```
+
+## Release v0.70.6-2 (2026-07-19)
+
+```mermaid
+timeline
+    title Release v0.70.6-2 Commits
+    0.70.6-2
+        : 95f7dc0 - fixes for pc v5s/v5  4d bugs and freeze bugs
+        : e53fdf5 - chore- update JSON stats (scheduled)
+        : 4300446 - chore- update JSON stats (scheduled)
+        : 5a29614 - chore- update JSON stats (scheduled)
+        : d79fc67 - chore- update JSON stats (scheduled)
+        : b956c4f - hyped fixes
+        : 628609e - Revise README description for toolkit functionality
+```
+
+## Release v0.70.6-3 (2026-07-20)
+
+```mermaid
+timeline
+    title Release v0.70.6-3 Commits
+    0.70.6-3
+        : 4852ef6 - Rename __init.py__ to __init__.py
+        : ca0eb48 - Document changes for 0.70.6.1 that added major performance improvements
+        : f09661a - Update Changelog.md
+        : e930e29 - Rename init.py to __init__.py
+        : 1033931 - Add files via upload
+        : dfd546c - Delete src/hypernix/__init__.py
+        : a9cae45 - chore- update JSON stats (scheduled)
+```
+
+## Release v0.71.0 (2026-07-20)
+
+```mermaid
+timeline
+    title Release v0.71.0 Commits
+    0.71.0
+        : f062336 - fixes
+        : b697846 - fixes
+        : 5706fc0 - version 0.71.0 addes t1 api keys, gatekeeper, and keymaster and more
+        : e6f964b - Change version to 0.70.6-3 and update changelog
+```
+
+## Release v0.71.1 (2026-07-21)
+
+```mermaid
+timeline
+    title Release v0.71.1 Commits
+    0.71.1
+        : 30a263f - 0.71.1
+        : 1778daa - chore- update JSON stats (scheduled)
+        : c391796 - chore- update JSON stats (scheduled)
+        : cb07ec8 - fixes
+```
+
+## Release v0.71.2 (2026-07-22)
+
+```mermaid
+timeline
+    title Release v0.71.2 Commits
+    0.71.2
+        : 488f761 - 0.71.2, MAJOR hyped tui improvements
+```
+
+## Release v0.71.3 (2026-07-22)
+
+```mermaid
+timeline
+    title Release v0.71.3 Commits
+    0.71.3
+        : dd6f0b6 - Update version check to 0.71.3
+        : 67faf60 - 0.71.3, minor hyped improvements
+```
+
+## Release v0.71.4b1 (2026-07-26)
+
+```mermaid
+timeline
+    title Release v0.71.4b1 Commits
+    0.71.4b1
+        : e3a88d2 - test fixes
+        : 5383a08 - Update version assertions in test for v0.71.4b1
+        : 8a12c8d - ruff fixes
+        : e143083 - paper and improvements and wiki fixes
+        : c36c169 - chore- update JSON stats (scheduled)
+        : 92a584b - chore- update JSON stats (scheduled)
+        : 9b3c79a - chore- update JSON stats (scheduled)
+        : 4b1a06c - chore- update JSON stats (scheduled)
+```
+
+## Release v0.71.4b2 (2026-07-26)
+
+```mermaid
+timeline
+    title Release v0.71.4b2 Commits
+    0.71.4b2
+        : bcfb3e2 - Rename 'hyped+' to 'hyped-plus' in pyproject.toml
+        : c2d87c9 - upload fixed hyped version
+        : 3564b64 - Delete src/hypernix/hyped.py
+        : 5591c64 - 0.71.4b2, hyped pro, base hyped fixes, model updates, wiki updates and more
+        : 98dc5f4 - chore- update JSON stats (scheduled)
+        : a7b9104 - 0.71.4b2 release, hyped+ (hyped-pro) OpenClaw Node.js TUI, updated models catalog, unified model folder, brewer 33.6429M preset, vision support, slash command autocomplete, price estimate, prompt compaction, auto compaction, and bug fixes
+```
+
+## Release v0.71.4b3 (2026-07-27)
+
+```mermaid
+timeline
+    title Release v0.71.4b3 Commits
+    0.71.4b3
+        : 14fad15 - Update package data to include JavaScript files
+        : 5330224 - Add package data configuration for JavaScript files
+        : c73a6c0 - Add debug statements for Node.js and JS file checks
+        : d54048a - Update license from Apache-2.0 to LLU-0.1
+        : ede2f62 - Add LICENSE-betaversionofit file
+        : 0fecb91 - Delete LICENSE
+        : 930578a - Add files via upload
+        : 6c6eb50 - hypernix v0.71.4b2 [skip ci]
+        : bcfb3e2 - Rename 'hyped+' to 'hyped-plus' in pyproject.toml
+```
+
+## Release v0.71.4b4 (2026-07-27)
+
+```mermaid
+timeline
+    title Release v0.71.4b4 Commits
+    0.71.4b4
+        : 883dd54 - Add files via upload
+        : 46baf40 - Delete src/hypernix/hyped_pro.js
+```
+
+## Release v0.71.4b5 (2026-07-28)
+
+```mermaid
+timeline
+    title Release v0.71.4b5 Commits
+    0.71.4b5
+        : 07c8de7 - 0.71.4b5 - fixes
+        : 6c545a3 - chore- update JSON stats (scheduled)
+```
+
+## Release v0.71.4rc1 (2026-08-05)
+
+```mermaid
+timeline
+    title Release v0.71.4rc1 Commits
+    0.71.4rc1
+        : feb773e - took a bit to do the following- 1 fix hyped, 2- imprvoe it 3- add api's, 4- take a break
+        : bbec0c4 - chore- update JSON stats (scheduled)
+        : e8219d4 - chore- update JSON stats (scheduled)
+        : e8b1b73 - chore- update JSON stats (scheduled)
+        : 2d0693a - chore- update JSON stats (scheduled)
+```
+
+## Release v0.71.4 (2026-08-05)
+
+```mermaid
+timeline
+    title Release v0.71.4 Commits
+    0.71.4
+        : af8b224 - cli fixes
+        : dc6cbc9 - Update README with fixes and new resources
+        : 26d1135 - chore- update JSON stats (manual run)
+        : dd5cfc2 - hypernix v0.71.4rc1 [skip ci]
+        : feb773e - took a bit to do the following- 1 fix hyped, 2- imprvoe it 3- add api's, 4- take a break
+        : bbec0c4 - chore- update JSON stats (scheduled)
+        : e8219d4 - chore- update JSON stats (scheduled)
+        : e8b1b73 - chore- update JSON stats (scheduled)
+        : 2d0693a - chore- update JSON stats (scheduled)
+        : b307034 - hypernix v0.71.4b7 [skip ci]
+        : afb17c1 - next beta- major improveve ments to hyped-pro, miltilama
+        : 98344cd - chore- update JSON stats (scheduled)
+        : 050a5de - chore- update JSON stats (scheduled)
+        : cc3811d - hypernix v0.71.4b6 [skip ci]
+        : f983974 - 0.71.4b6 - major hyped improvements, actual model downloading, hyped gui, and more
+```
+
+## Release v0.71.4-1 (2026-08-06)
+
+```mermaid
+timeline
+    title Release v0.71.4-1 Commits
+    0.71.4-1
+        : 565db59 - Fix license text in pyproject.toml
+        : 516b315 - Update license in pyproject.toml
+        : 092824a - Update LICENSE file
+        : 22c3fbe - chore- update JSON stats (scheduled)
+```
+
+## Release v0.71.4-2 (2026-08-09)
+
+```mermaid
+timeline
+    title Release v0.71.4-2 Commits
+    0.71.4-2
+        : 35cc8d7 - MEEP
+        : 73c83d0 - fioerkfkjgn FUCK
+        : 6ae4b41 - Update web UI implementation and enhance module discovery
+        : ceb0b68 - chore- update JSON stats (scheduled)
+        : 73a7a2e - chore- update JSON stats (scheduled)
+        : 9ff15c8 - chore- update JSON stats (scheduled)
+```
+
+## Release v0.71.4-3 (2026-08-09)
+
+```mermaid
+timeline
+    title Release v0.71.4-3 Commits
+    0.71.4-3
+        : 46a3e59 - Remove webui command from HyperNix CLI
+```
+
+## Release v0.71.4-4 (2026-08-11)
+
+```mermaid
+timeline
+    title Release v0.71.4-4 Commits
+    0.71.4-4
+        : ec509fe - caffine addition?
+        : cc1f04e - caffine
+        : ed0ece6 - Add files via upload
+        : c985602 - coffee
+        : 7997539 - Delete HyperNix-pip-main-updated.zip
+        : efb76c8 - Add files via upload
+        : 45559c0 - chore- update JSON stats (scheduled)
+        : f4be6d4 - removed a lot of false facts and lies
+        : 9aefa34 - Update changelog for integration improvement
+        : f54cbd7 - Update Changelog for web UI removal
+        : 0104f68 - chore- update JSON stats (scheduled)
+        : 860d394 - Revise LICENSE to include dual licensing options
+```
+
+## Release v0.71.4-5 (2026-08-16)
+
+```mermaid
+timeline
+    title Release v0.71.4-5 Commits
+    0.71.4-5
+        : 626b562 - chore- update JSON stats (scheduled)
+        : 5b91d75 - chore- update JSON stats (scheduled)
+        : 9124d73 - chore- update JSON stats (scheduled)
+        : a76b5b0 - Update Changelog with unfixed known bug note
+        : 8a194f1 - Revise changelog for version 0.71.5
+        : 623b9f8 - pc-v6+pc-v6v, other changes
+        : f353068 - chore- update JSON stats (scheduled)
+        : 338c2c3 - chore- update JSON stats (scheduled)
+        : 63e58d3 - Revise Nix family section and model notes
+        : b974f12 - Delete hypernix_fixes.diff
+        : b0ebbce - Delete fix-hyped-dict-logits(1).patch
+        : dc99f2d - Delete hypernix_pressure_cooker_v5_v5s.patch
+        : 6ae442b - Delete ci-fixes-v8.patch
+        : de808de - chore- update JSON stats (scheduled)
+        : 883ffdd - chore- update JSON stats (manual run)
+```
+
+## Release v0.71.5a2 (2026-08-17)
+
+```mermaid
+timeline
+    title Release v0.71.5a2 Commits
+    0.71.5a2
+        : 15aa12b - fixes
+        : ee23dc0 - ruff fixes
+        : 33d668c - 0.71.5a1 and a2
+```
+
+## Release v0.71.5postr1 (2026-08-21)
+
+```mermaid
+timeline
+    title Release v0.71.5postr1 Commits
+    0.71.5postr1
+        : 49b678b - Adjust sleep durations in timer test cases
+        : 293a22c - ci fixes
+        : e9bcd09 - win fixes
+        : 5b0268e - win fixes
+        : 56c17b9 - Revise trademark section to unique naming
+        : da87eda - Delete hypernix-ci-fixes.patch
+        : bccc73e - fixes
+        : 604ec86 - b2
+        : 9017d71 - chore- update JSON stats (scheduled)
+        : 5e3b3e6 - chore- update JSON stats (scheduled)
+        : f836d29 - 0.71.5b1-part one of four for the api
+        : 1438264 - chore- update JSON stats (scheduled)
+        : 1d75aa0 - chore- update JSON stats (scheduled)
+```
+
+## Release v0.71.5b3 (2026-08-22)
+
+```mermaid
+timeline
+    title Release v0.71.5b3 Commits
+    0.71.5b3
+        : 7a624da - 0.71.5b3- two bugs found by running against a real server
+        : efa5fc8 - 0.71.5b3- deployment examples, documentation, and the security checklist
+        : 47fd89e - 0.71.5b3- Beta 3 test suite, and four bugs it found
+        : 7efe554 - Fix the CI failures on macOS and Windows
+        : 572d4fa - Change logo image in README
+        : 0b7c35c - Change license to HOL-1.0
+        : b83cf1b - Update README for clarity and formatting fixes
+        : 7e35f6e - Correct changelog link in README
+        : f6cfe32 - Fix link to changelog in README
+        : ada8451 - Update roadmap for version 0.72.0
+        : 3e60ff8 - 0.71.5b3 (part 2/3)- complete SDK, full waiter TUI, smoke tool
+        : 604a834 - 0.71.5b3 (part 1/3)- T1 API production hardening core
+        : 8c1fb10 - chore- update JSON stats (scheduled)
+        : d7c0961 - Add autofix-F for timer-test failures, and a router for all three
+        : b24b3e4 - Make the assistant do real work instead of announcing it
+```
+
+## Release v0.71.5 (2026-08-22)
+
+```mermaid
+timeline
+    title Release v0.71.5 Commits
+    0.71.5
+        : 5b82e76 - Fix the CI failures on Windows, macOS, and one ubuntu job
+        : c1165b3 - hyped-pro- cancellation that cancels; neo_oven- streaming that decodes
+        : 879b000 - 0.71.5rc2 — T1 API Beta 4, hyped-pro, and PATH setup
+        : a846fc2 - Redesign the docs site without touching the palette
+        : 0d3da96 - Make hnx map, eth, and ups actually work
+        : ec50cbd - hypernix v0.71.5b3 [skip ci]
+        : 7a624da - 0.71.5b3- two bugs found by running against a real server
+        : efa5fc8 - 0.71.5b3- deployment examples, documentation, and the security checklist
+        : 47fd89e - 0.71.5b3- Beta 3 test suite, and four bugs it found
+        : 7efe554 - Fix the CI failures on macOS and Windows
+        : 572d4fa - Change logo image in README
+        : 0b7c35c - Change license to HOL-1.0
+        : b83cf1b - Update README for clarity and formatting fixes
+        : 7e35f6e - Correct changelog link in README
+        : f6cfe32 - Fix link to changelog in README
+```
+
+## Release v0.72.0 (2026-08-23)
+
+```mermaid
+timeline
+    title Release v0.72.0 Commits
+    0.72.0
+        : 7433970 - Regenerate egg-info for 0.72.0
+        : fed3509 - iOS- a send race, a command that did not exist, and project hygiene
+        : 797be9d - HyperLink for iOS, the waiter commands, and the release plumbing
+        : c7eabfd - T1 v1.0.26.8.0.1- the LM Studio bridge and HyperLink
+        : fa8ac81 - chore- update JSON stats (scheduled)
+```
+
+## Release v0.72.1 (2026-08-26)
+
+```mermaid
+timeline
+    title Release v0.72.1 Commits
+    0.72.1
+        : 6e05bcf - docs- 0.72.1 changelog
+        : 7f34566 - scriptgen, livestream, 6-bit momentum, and the 0.72.1 test suite
+        : 4a74abc - noodle- multi-agent execution across nine providers
+        : d91c43e - waiter -F- find a server, and never run what it tells you to
+        : 4366727 - HyperLink- accept T2S keys, and download models from Hugging Face
+        : 370119d - T1 v1.0.26.8.1.0- T2 recognition, auth undo/redo, and backups
+        : c58beaa - T2 keys, the quantisation registry, steamroller, and Pascal tuning
+        : ef51dc4 - chore- update JSON stats (scheduled)
+        : 475dd51 - chore- update JSON stats (scheduled)
+        : 7cb5daf - chore- update JSON stats (scheduled)
+        : 3484723 - Remove next milestone details from Roadmap
+        : 3fe8dbd - chore- update JSON stats (manual run)
+```
+
+## Release v0.72.2 (2026-08-26)
+
+```mermaid
+timeline
+    title Release v0.72.2 Commits
+    0.72.2
+        : bb9332e - install-t1.sh- make --yes do what its help text promises
+        : 56a9e0b - install-t1.sh- an interactive installer, and two bugs it exposed
+```
+
+## Release v0.72.2-2 (2026-08-27)
+
+```mermaid
+timeline
+    title Release v0.72.2-2 Commits
+    0.72.2-2
+        : 70f2f6f - chore- update JSON stats (scheduled)
+        : ba52f68 - 0.72.2-2- run_tailscale.sh suggested a command that does not work
+```
+
+## Release v0.72.2-3 (2026-08-27)
+
+```mermaid
+timeline
+    title Release v0.72.2-3 Commits
+    0.72.2-3
+        : ed11d4b - Fix Host ID generation to exclude special characters that conflict with SSPKIDs and V1 Server IDs
+        : 1f6c095 - 0.72.2-3- waiter explains a connection failure instead of restating it
+        : 2218c14 - gkey- mint v2 and v2short keys, and report what this install can mint
+```
+
+## Release v0.72.2.post5 (2026-08-27)
+
+```mermaid
+timeline
+    title Release v0.72.2.post5 Commits
+    0.72.2.post5
+        : a3fd981 - Ignore Python bytecode and tooling caches
+        : 777797f - Do not import fastapi at collection time in the new test modules
+        : eab3065 - T1 v1.0.2026.8.1.1- server IDs advance, and undo/redo actually works
+        : c522250 - Keep setup.cfg's version in step with the other two
+        : 8af94c4 - T2S keys- fix the refusal, and let the phone actually enter one
+```
+
+## Release v0.72.3 (2026-09-02)
+
+```mermaid
+timeline
+    title Release v0.72.3 Commits
+    0.72.3
+        : 2c584d3 - docs- 0.72.3 pt 3 changelog
+        : 3c9b555 - gkey printed about one key in three thousand wrong
+        : 67c4d08 - Dflash2- a draft model, inside the model it drafts for
+        : e45cdfe - An imatrix maker, and an imatrix reader for anyone else's
+        : ac30c2f - hyprslug writes the llama.cpp quants too, still with no llama.cpp
+        : fc269ec - Ask bash where python3 is instead of telling it
+        : 24012dc - Windows- a path is a path, not a URL scheme or a shell escape
+        : 2569171 - wake-up- train a wake word, then listen for it
+        : 260385e - hnx quantize without llama-cpp-python, and generate/chat that read GGUF
+        : cf14b5b - The IQ0.x tiers now actually quantise, and need no llama.cpp
+        : 931c893 - SSPKID that outlives its process, and gkey create -Con
+        : 547dfa4 - T1 v1.0.2026.9.2.1- the governed inference surface
+        : b3b97dd - CI- wait for every server, and let a release skip the integration gate
+        : e1efc70 - Fix formatting of rich dependency in pyproject.toml
+        : 0c67edd - Fix rich dependency version constraint
+        : 78582ae - Fix both CI failures- a version-dependent lint bar and a half-shadowed PATH
+        : 56a179a - Fix two real test failures the missing-torch diagnosis was hiding
+        : 3f872ce - chore- update JSON stats (scheduled)
+        : 3245138 - 0.72.3- ship hypernix-t1, and make create work without a checkout
+        : bcb0fa9 - Fix the CI failures- interpreter choice, a bash that is not one, backslashes in POSIX profiles
+        : a7aeaff - VRAM optimizations- hypernix.system.vram
+        : 1eb8121 - Import Callable from collections.abc, not typing
+        : 4dbd9e2 - Docs modernization, billing-binding lifecycle, and 348 untracked .pyc
+        : 4538dad - hypernix-t1- manage a T1 API server as a service, not an incantation
+        : dc3de5b - Add Codacy security scan workflow
+        : 4c25a42 - CI- gate the release on a live server, a real key and a fake model
+        : 55378e1 - T2P billing keys, and a server's right to refuse them
+        : e392ac0 - HyperLink- fix the three separate reasons it could not reach a server
+        : 5d51695 - A new server issues itself a local, three-day admin key
+        : a82c166 - Security- require consent before the AI agent runs code or touches credentials
+```
+
+## Release v0.72.3.post1 (2026-09-03)
+
+```mermaid
+timeline
+    title Release v0.72.3.post1 Commits
+    0.72.3.post1
+        : 1b575fe - Wire the sub-bit runtime all the way to the command line
+        : 0437bba - Sub-bit in memory *and* fast enough to run
+        : 74ff8f0 - chore- update JSON stats (scheduled)
+        : 4c26095 - Sub-bit in memory too, not only on disk
+        : 9f57892 - The sub-bit models can be run now
+        : b191c39 - --json now means JSON on --list-tiers
+        : a825a36 - hypernix v0.72.3 [skip ci]
+        : 2c584d3 - docs- 0.72.3 pt 3 changelog
+        : 3c9b555 - gkey printed about one key in three thousand wrong
+        : 67c4d08 - Dflash2- a draft model, inside the model it drafts for
+        : e45cdfe - An imatrix maker, and an imatrix reader for anyone else's
+        : ac30c2f - hyprslug writes the llama.cpp quants too, still with no llama.cpp
+        : fc269ec - Ask bash where python3 is instead of telling it
+        : 24012dc - Windows- a path is a path, not a URL scheme or a shell escape
+        : 2569171 - wake-up- train a wake word, then listen for it
+```
+
+## Release v0.72.3.post2 (2026-09-03)
+
+```mermaid
+timeline
+    title Release v0.72.3.post2 Commits
+    0.72.3.post2
+        : 403fe0c - Compare interpreter paths by which one, not by which spelling
+        : abc01a9 - 0.72.3.post4 — two bugs that were invisible on the machine that wrote them
+        : 7a6e68d - Fix a heredoc that ran commands, and a test that only passed here
+        : 9c49726 - Run the sub-bit runtime on CUDA, ROCm, Metal and Intel
+        : 75693da - 0.72.3.post2 — hypernix-t1 fixes, example configs, wikis
+        : 29962c9 - tvtoppro- tvtop++'s numbers, btop++'s presentation
+        : afb85f8 - Five new quant types, and hyprslug-headers
+        : ca23e01 - Update package-ecosystem in dependabot.yml
+        : 0184183 - Update package-ecosystem in dependabot.yml
+        : cbe800a - Add Dependabot configuration file
+```
+
+## Release v0.72.3.post7 (2026-09-03)
+
+```mermaid
+timeline
+    title Release v0.72.3.post7 Commits
+    0.72.3.post7
+        : ac0053d - 0.72.3.post6 — hypernix-t1 index, and three more from the field
+        : 67558a5 - chore- update JSON stats (scheduled)
+        : 5037556 - 0.72.3.post5 — what running the shipped commands on a real box found
+```
+
+## Release v0.72.3.post8 (2026-09-04)
+
+```mermaid
+timeline
+    title Release v0.72.3.post8 Commits
+    0.72.3.post8
+        : b57e28c - 0.72.3.post7 — 'it is installed already', and it was
+```
+
+## Release v0.72.4rc1 (2026-09-09)
+
+```mermaid
+timeline
+    title Release v0.72.4rc1 Commits
+    0.72.4rc1
+        : 42abf29 - ggml-hnx self-test- name the binary suffix instead of assuming it
+        : 7392081 - Three CI failures- a race, and two POSIX assumptions stated as such
+        : e1e71f1 - 0.72.4.dev11 — beta 1 full- fuse box, and a claim that did not survive measurement
+        : 1946651 - 0.72.4.dev10 — beta 1 pt 1- gather, and hyperNix0x-v2 in Neo oven
+        : 7f92760 - Update logo and badges in README
+        : 5b88b8b - CUDA kernels for the sub-bit types
+        : 3d07cc0 - Item 13 beta 2- every GPU reader goes through one abstraction
+        : cda277f - Fix the website's mobile view, and sync the site from main
+        : b993ca8 - 0.72.4.dev9 — HyperNix Studio, and CI for both native pieces
+        : 477169e - native/ggml-hnx — a llama.cpp that can actually read a sub-bit model
+        : feab3f3 - Three CI failures, and the one that was worse than a failure
+        : 744d912 - chore- update JSON stats (scheduled)
+        : 9b956c3 - 0.72.4.dev8 — HyperLink knows which machine it is talking to
+        : acf8b02 - Auto-update README header (hourly)
+        : f535daa - HyperLink gets the new mark as its app icon
+```
+
+## Release v0.72.4 (2026-09-09)
+
+```mermaid
+timeline
+    title Release v0.72.4 Commits
+    0.72.4
+        : 739aae7 - hypernix v0.72.4rc1 [skip ci]
+        : 42abf29 - ggml-hnx self-test- name the binary suffix instead of assuming it
+        : 7392081 - Three CI failures- a race, and two POSIX assumptions stated as such
+        : e1e71f1 - 0.72.4.dev11 — beta 1 full- fuse box, and a claim that did not survive measurement
+        : 1946651 - 0.72.4.dev10 — beta 1 pt 1- gather, and hyperNix0x-v2 in Neo oven
+        : 7f92760 - Update logo and badges in README
+        : 5b88b8b - CUDA kernels for the sub-bit types
+        : 3d07cc0 - Item 13 beta 2- every GPU reader goes through one abstraction
+        : cda277f - Fix the website's mobile view, and sync the site from main
+        : b993ca8 - 0.72.4.dev9 — HyperNix Studio, and CI for both native pieces
+        : 477169e - native/ggml-hnx — a llama.cpp that can actually read a sub-bit model
+        : feab3f3 - Three CI failures, and the one that was worse than a failure
+        : 744d912 - chore- update JSON stats (scheduled)
+        : 9b956c3 - 0.72.4.dev8 — HyperLink knows which machine it is talking to
+        : acf8b02 - Auto-update README header (hourly)
+```
+
+## Release v0.72.4.post1 (2026-09-09)
+
+```mermaid
+timeline
+    title Release v0.72.4.post1 Commits
+    0.72.4.post1
+        : 0cfdb91 - patch_llamacpp- the traits table is two tables, and COUNT is a literal
+```
+
+## Release v0.72.4.post3 (2026-09-09)
+
+```mermaid
+timeline
+    title Release v0.72.4.post3 Commits
+    0.72.4.post3
+        : c29c77d - 0.72.4.post2 — rebase onto the released main
+        : c375b0d - 0.72.4.dev13 — the pinned llama.cpp had stopped compiling
+        : 2ead0f2 - 0.72.4.dev12 — Studio runs models itself, with no server
+        : 6a02fc0 - Auto-update README header (hourly)
+```
+
+## Release v0.72.4.post12 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post12 Commits
+    0.72.4.post12
+        : 70a1d7e - 0.72.4.post12 — three tests that needed a server and never said so
+        : ff63f05 - 0.72.4.post11 — the engine is linked
+        : 17a8807 - 0.72.4.post10 — HyperLink runs models on the phone
+        : 46f5901 - 0.72.4.post9 — HyperLink catches up, notifies, and searches
+        : 27222ca - 0.72.4.post8 — deprecated modules say so where it can be seen
+        : 9a45a26 - 0.72.4.post7 — the subsystem map describes the tree that exists
+        : 0031df3 - 0.72.4.post6 — the release guard stopped refusing prepared releases
+        : e37e37d - chore- update JSON stats (scheduled)
+        : 60f45d6 - 0.72.4.post5 — hypernix-t1 start left nothing running
+        : fb4e216 - 0.72.4.post4 — hnx runtime, and the reason hnx gather printed the usage table
+        : d3eaad2 - build.sh- pin C++17, so one upstream warning stops repeating 46 times
+        : 29a3103 - Auto-update README header (hourly)
+```
+
+## Release v0.72.4.post13 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post13 Commits
+    0.72.4.post13
+        : 6c7be9e - 0.72.4.post13 — `optional- true` does not mean what I thought
+```
+
+## Release v0.72.4.post14 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post14 Commits
+    0.72.4.post14
+        : 58a3164 - 0.72.4.post14 — actor isolation, and the easy fix that was wrong
+```
+
+## Release v0.72.4.post16 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post16 Commits
+    0.72.4.post16
+        : ff4dca46 - 0.72.4.post16 — ne[0], not the element count
+        : 0fd4adc2 - Auto-update README header (hourly)
+        : 4a3a7aa2 - 0.72.4.post15 — SecTask is macOS-only
+```
+
+## Release v0.72.4.post17 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post17 Commits
+    0.72.4.post17
+        : 28d01459 - 0.72.4.post17 — check and repair the files already written
+```
+
+## Release v0.72.4.post18 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post18 Commits
+    0.72.4.post18
+        : 8ff6b497 - 0.72.4.post18 — Brewer attention was not causal
+        : 35b0dd90 - Auto-update README header (hourly)
+```
+
+## Release v0.72.4.post20 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post20 Commits
+    0.72.4.post20
+        : 845cf628 - chore- update JSON stats (scheduled)
+        : 99f6b87f - 0.72.4.post20 — status did not know about the autostart service
+        : fc08f185 - 0.72.4.post19 — start was reporting someone else's server
+        : cbf7a1fd - Auto-update README header (hourly)
+```
+
+## Release v0.72.5.dev1 (2026-09-12)
+
+```mermaid
+timeline
+    title Release v0.72.5.dev1 Commits
+    0.72.5.dev1
+        : 1a789b6a - Document package layout and module organization
+        : 1fb16430 - chore- update JSON stats (scheduled)
+        : 2b300329 - Auto-update README header (hourly)
+        : 9cc43526 - 0.72.5 — hnx_1375bit, and quantisation-aware training
+        : ccbf43ee - 0.72.4.post21 — why both tiers gave a 1.4 GB file
+        : e463bdef - Update pyproject.toml
+        : 137dacc8 - Update pyproject.toml
+        : ccf76868 - Update pyproject.toml
+```
+
+## Release v0.72.5.dev2 (2026-09-15)
+
+```mermaid
+timeline
+    title Release v0.72.5.dev2 Commits
+    0.72.5.dev2
+        : a97d518a - docs- a README that describes this release, and two claims made true
+        : 42e0b474 - quant- the drafts take every hyprslug target, and a tier is spelled one way
+        : 6171f046 - hyperlink- CarPlay, Siri, themes, the whole attachment menu, and renaming
+        : 2324f0fa - t1 v1.0.26.9.2.3- sign up for a key without already having one
+        : 2ced462d - cli- say what was wrong with the command, and list every command
+        : 8cf552db - docs- a training guide that answers 'which of these do I use?'
+        : 8bba7d55 - security- API keys were world-readable; key auth leaked which key you sent
+        : 2f92aebb - cctvtop- fix the Remote Desktop panel
+        : 7212638b - noodle- actually put it inside hyped-pro
+        : e46529b8 - tvtoppro- decoding intro, a module system, and a stale-log watchdog
+        : 1a3dcf49 - quant- INT8/INT2/FP32/FP16/BF16 targets, dflash1, and multi-quant bundles
+        : 9dc50952 - chore- update JSON stats (scheduled)
+        : d4ac3b4e - Add Changelog guide for hyperNix releases
+        : 7bdfc7ce - Update Changelog.md
+        : b91bb63f - chore- update JSON stats (scheduled)
+```
+
+## Release v0.72.5 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5 Commits
+    0.72.5
+        : bbc1b156 - release- bump install-t1.sh with the other three, and compare files not wheels
+        : faee5534 - A HyperNix model runner, settings, memory and tool calling
+        : 3f05aaf6 - The version it actually is, the runner from the phone, and edit mode
+        : 345cf4c1 - ios- the engine step was skipped on every push, and HyperLink grew four things
+        : 2987d12e - Refactor pip install command for user site-packages
+        : 8588ed07 - Add --break-system-packages option to pip install
+        : b672593b - Update version numbers in install-t1.sh
+        : 3816faa3 - quant + prot- the router the quantiser was crushing, and a screen that stayed on
+        : cc94bf5a - t1- run a model without LM Studio, and switch it from the API
+        : 182b1efc - t1- index the models this machine has, and estimate what they cost
+        : 88c9024f - t1- noodle over the API — files, edits, fish and archives
+        : 087a6cf0 - t1- /chat/compact/* — making a long conversation fit again
+        : 6c58a994 - Fix the CI build break, and ship an IPA that can run a model
+        : 1803aaab - t1- what the server's hardware is doing, and how long it has been up
+        : 030bf41b - hyperlink- one model list from every source, and a Stop that stops
+```
+
+## Release v0.72.5.post1 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post1 Commits
+    0.72.5.post1
+        : b55b6e71 - ios- fix the Swift that did not compile, and stop CI hiding the rest
+        : 1062fa94 - Auto-update README header (hourly)
+        : 1ebe8469 - hypernix v0.72.5 [skip ci]
+        : bbc1b156 - release- bump install-t1.sh with the other three, and compare files not wheels
+        : faee5534 - A HyperNix model runner, settings, memory and tool calling
+        : 3f05aaf6 - The version it actually is, the runner from the phone, and edit mode
+        : 345cf4c1 - ios- the engine step was skipped on every push, and HyperLink grew four things
+        : 2987d12e - Refactor pip install command for user site-packages
+        : 8588ed07 - Add --break-system-packages option to pip install
+        : b672593b - Update version numbers in install-t1.sh
+        : 3816faa3 - quant + prot- the router the quantiser was crushing, and a screen that stayed on
+        : cc94bf5a - t1- run a model without LM Studio, and switch it from the API
+        : 182b1efc - t1- index the models this machine has, and estimate what they cost
+        : 88c9024f - t1- noodle over the API — files, edits, fish and archives
+        : 087a6cf0 - t1- /chat/compact/* — making a long conversation fit again
+```
+
+## Release v0.72.5.post3 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post3 Commits
+    0.72.5.post3
+        : f9a73ca9 - release- stage the file the bump writes, and survive the branch moving
+        : dd35954e - Auto-update README header (hourly)
+        : e177bd25 - ios- `?? (try await ...)` cannot work, and my guard could not see it
+```
+
+## Release v0.72.5.post4 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post4 Commits
+    0.72.5.post4
+        : 561c8499 - ios- declare the CodingKeys that nothing was synthesising
+```
+
+## Release v0.72.5.post5 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post5 Commits
+    0.72.5.post5
+        : e72a66ea - tests- the blanking tests described a session the code never saw
+        : d5612d45 - ios- a Siri phrase cannot name a String parameter
+```
+
+## Release v0.72.5.post6 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post6 Commits
+    0.72.5.post6
+        : e16edf58 - ci- check the bundle that ships, not the project that made it
+        : 03930629 - ios- stop shipping a CarPlay entitlement the build does not hold
+        : 52544ab1 - ios- nothing in CI had ever started the app
+```
+
+## Release v0.72.5.post8 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post8 Commits
+    0.72.5.post8
+        : 726ddb59 - ci- a check that cannot fail is not coverage
+        : fc4b7d21 - ios- the launch test raced the simulator, and lost
+        : e2fdb084 - ci- main's iOS builds were cancelling each other
+```
+
+## Release v0.72.5.post9 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post9 Commits
+    0.72.5.post9
+        : d5d9b874 - ci- put the framework verdict in the summary too
+        : 99b86743 - ios- embed llama.framework, which is dynamic
+        : 2ade3a1f - docs- the entitlement did not cause the crash
+        : 7de3d059 - Auto-update README header (hourly)
+        : 5ae0e1f1 - ci- say in the summary what the shipped bundle carried
+```
+
+## Release v0.72.5.post10 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post10 Commits
+    0.72.5.post10
+        : 9c98a24d - models- say where the scan looked and what was in there
+        : 6ab301e3 - Auto-update README header (hourly)
+```
+
+## Release v0.72.5.post11 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post11 Commits
+    0.72.5.post11
+        : e9e53197 - chore- update JSON stats (scheduled)
+        : 46047fec - models- reconcile 'Models registered 44' with an empty picker
+        : a75a750b - t1api- add GET /version, and stop a stale process looking like a wrong number
+        : aad95131 - models- say where the scan looked and what was in there
+```
+
+## Release v0.72.5.post12 (2026-09-17)
+
+```mermaid
+timeline
+    title Release v0.72.5.post12 Commits
+    0.72.5.post12
+        : f49a394b - hyperlink- settings that could not be saved
+```
+
+## Release v0.72.5.post13 (2026-09-17)
+
+```mermaid
+timeline
+    title Release v0.72.5.post13 Commits
+    0.72.5.post13
+        : 6c8fe0fa - tests- the refusal names a command that exists
+        : 4182dabd - Auto-update README header (hourly)
+        : 792c5d27 - hyperlink- add and re-port a server; hypernix-t1 built-in-runner start
+```
+
+## Release v0.72.6.rc1 (2026-09-23)
+
+```mermaid
+timeline
+    title Release v0.72.6.rc1 Commits
+    0.72.6.rc1
+        : 848cfa6a - 0.72.6.rc1- prepare the tree, and fix what the first release run hit
+        : 8b5c6781 - chore- update generated API and code stats
+        : 4e0dfcb8 - 0.72.6 pt4 docs- every page current, and a test that keeps them so
+        : fd74589c - HyperLink- Siri on App Intents entities, so chats and models can be named
+        : 4d38d85a - waiter serv- grouped letters, -b, and -u -k -c -T -Y -S -e
+        : c76677db - t1sdk- server info, conceal, and v2.1 kits as a credential
+        : 0068bbf2 - T1- conceal mode with 36-hour retention, and a public /server/info
+        : 1869a8b9 - hyped-pro finds the T1 server, and says what to do when nothing answers
+        : 541d7839 - HyperLink shell- the root check is one plain prefix test
+        : f0e4ce13 - desktop- one SettingsView entry, not two
+        : 6576f39d - Windows- the editor keeps line endings, the disk panel works, tvtop++ stops rescanning processes
+        : 2ad71b99 - chore- update generated API and code stats
+        : 5a1c0713 - Update CMakeLists.txt
+        : 462b479d - v2.1 (T2C) keys, sealed with Rotorvault
+        : 0d427c97 - ci- Studio embeds SettingsView; public-only fetches connect to the checked address
+```
+
+## Release v0.72.6.rc2 (2026-09-23)
+
+```mermaid
+timeline
+    title Release v0.72.6.rc2 Commits
+    0.72.6.rc2
+        : dfb2baef - chore- update JSON stats (scheduled)
+        : c81b29d2 - 0.72.6.rc2- tvtop-max, and HyperLink's default system prompt
+        : 25d5540b - HyperLink Siri- say what the phrases match, and name models as they are said
+```
+
+## Release v0.72.6.rc3 (2026-09-24)
+
+```mermaid
+timeline
+    title Release v0.72.6.rc3 Commits
+    0.72.6.rc3
+        : 92406910 - HyperLink- the assistant's bubble tail no longer punches a hole in it
+        : 471493b0 - 0.72.6.rc3- a HyperLink model has its tools on the route the app uses
+        : 39faa5ae - chore- update generated API and code stats
+```
+
+## Release v0.72.6 (2026-09-24)
+
+```mermaid
+timeline
+    title Release v0.72.6 Commits
+    0.72.6
+        : d4798650 - release- the push retry no longer mistakes a dirty tree for a conflict
+        : ddaedee0 - chore- update generated API and code stats
+        : 3fc645bf - HyperLink- memories sync from the server as they change
+        : 6abb9484 - 0.72.6- a release its own tests would reject cannot be started
+        : 32762dfc - tvtop-max- never a blank screen; a bounded log search that finds .runs
+        : 84d28c42 - hypernix v0.72.6.rc3 [skip ci]
+        : 92406910 - HyperLink- the assistant's bubble tail no longer punches a hole in it
+        : 471493b0 - 0.72.6.rc3- a HyperLink model has its tools on the route the app uses
+        : 39faa5ae - chore- update generated API and code stats
+        : 982f0924 - hypernix v0.72.6.rc2 [skip ci]
+        : dfb2baef - chore- update JSON stats (scheduled)
+        : c81b29d2 - 0.72.6.rc2- tvtop-max, and HyperLink's default system prompt
+        : 25d5540b - HyperLink Siri- say what the phrases match, and name models as they are said
+        : bcff04be - hypernix v0.72.6.rc1 [skip ci]
+        : 848cfa6a - 0.72.6.rc1- prepare the tree, and fix what the first release run hit
+```
+
+## Release v0.72.6.post1 (2026-09-27)
+
+```mermaid
+timeline
+    title Release v0.72.6.post1 Commits
+    0.72.6.post1
+        : 43b0c4d0 - Modify pip install to include 't1api' extra
+        : 9cad38dc - Add 't1api' to editable install in CI workflow
+        : f100cd49 - Pages changelog- read the changelog guide's format
+        : 4523433d - 0.72.6.post1- changelog entry in the updated changelog guide's format
+        : e37af407 - 0.72.6.post1- changelog and docs for HyperLink on the web and the LM Studio move
+        : f67439a9 - HyperLink on the web- dark mode
+        : 59c7a9f4 - HyperLink on the web- the T1 server hosts it on port 37965
+        : 6fcb21b0 - chore- refresh generated docs data and release summaries
+        : bf44cc7e - HyperLink- move LM Studio's model onto the HyperNix runner
+        : 8147b3b8 - HyperLink- teach the model when to use its tools, not only the format
+        : ddf4092f - 0.72.6.post1- version, changelog and docs; simpler path guards
+        : 1c244db8 - Runner- serve native HyperNix models; HyperNix.3-mini is the default
+        : 43e651df - HyperLink- tool calls from the models people actually run
+        : eb12198c - Fix the high-rated security findings
+        : fa59f481 - hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`
+```
+
+## Release v0.72.6.post2 (2026-09-27)
+
+```mermaid
+timeline
+    title Release v0.72.6.post2 Commits
+    0.72.6.post2
+        : 20b4cbaf - 0.72.6.post2- HyperLink on the web works from the tailnet, and says why a reply failed
+        : 0002558b - HyperLink- a model reads the link it is given
+        : 28d8e5f3 - chore- refresh generated docs data and release summaries
+        : 29dd64a3 - chore- refresh generated docs data and release summaries
+        : 069fcdc3 - Auto-update README header (hourly)
+        : 91e6ce60 - chore- refresh generated docs data and release summaries
+```
+
+## Release v0.72.6.post3 (2026-09-30)
+
+```mermaid
+timeline
+    title Release v0.72.6.post3 Commits
+    0.72.6.post3
+        : 944653b2 - chore- refresh generated docs data and release summaries
+        : cb1f8da8 - chore- refresh generated docs data and release summaries
+        : 16a3c07e - docs- /code in T1-API, the .env example and the changelog
+        : 858eefd0 - t1api- /code — sandboxes that run code, with perms in the web settings grammar
+        : f629743c - chore- refresh generated docs data and release summaries
+        : 4953798e - chore- update JSON stats (scheduled)
+        : e010f8c9 - doctor- check what the package needs now; runner- pick a llama.cpp that reads the model
+        : a939eaaa - docs- bring the native and scripts READMEs and every wiki page up to date
+        : d08461fb - Nightly- stat-bot commits alone do not make a new nightly
+        : efdd8f05 - chore- refresh generated docs data and release summaries
+        : ac96ea38 - public-release- nightly builds behind PUBLIC_RELEASE_NIGHTLY
+        : 99636442 - HyperLink- symlinked models load, and models can be linked from the app
+        : 448bcc9d - hypernix convert -P -Q- safetensors to any hyprslug quant in one step
+        : 7e6e59a3 - hyprslug- Q8_K, INT3, FP8, the hnx_Q6_H hybrids, and Brewer input
+        : fdb60dd8 - hypernix-t1 launch-script- -1 'CMD' replaces -$ 'CMD'
+```
+
+## Release v0.72.6.post4 (2026-10-01)
+
+```mermaid
+timeline
+    title Release v0.72.6.post4 Commits
+    0.72.6.post4
+        : 5071a035 - chore- refresh generated docs data and release summaries
+        : 11086864 - release- 0.72.6.post4 -- its own changelog entry and version
+        : fe0159c2 - chore- refresh generated docs data and release summaries
+        : 9d5186ed - hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout
+        : 3327d117 - chore- update JSON stats (scheduled)
+        : 4b7fe9d5 - t1api- serve /inference from the HyperNix runner
+        : 34ccaa58 - convert- a Brewer model saved without config.json exports as llama, not hypernix
+        : 022ee992 - chore- refresh generated docs data and release summaries
+        : 8bd42f6e - chore- refresh generated docs data and release summaries
+        : f6ab07fa - Auto-update README header (hourly)
+```
+
+## Release v0.72.7 (2026-10-07)
+
+```mermaid
+timeline
+    title Release v0.72.7 Commits
+    0.72.7
+        : c763500c - chore- refresh generated docs data and release summaries
+        : 55aadbb6 - Windows- never probe a pid with os.kill(pid, 0)
+        : 8b25e66f - 0.72.7- version, changelog heading and the measured benchmark results
+        : 2137d41b - Python 3.15 without torch- say so, and skip what needs it
+        : 07034ed9 - chore- update JSON stats (scheduled)
+        : 0a5db23c - Windows CI- the remaining 26, and the 3.12-3.15 matrix fixes it found
+        : e29949ad - chore- refresh generated docs data and release summaries
+        : 1a35b713 - 0.72.7 step 3- Python 3.12-3.15 -- requires-python, PEP 798/799/810/831
+        : 316780e9 - 0.72.7 step 2- Windows CI -- real bugs fixed, tests made platform-honest
+        : d595eb4a - 0.72.7 step 2- images on the HyperNix runner; macOS/Linux CI and first Windows fixes
+        : d3fa96c1 - chore- refresh generated docs data and release summaries
+        : 203b7112 - 0.72.7 step 1- link config-less models, `runner auto`, images converted on upload
+        : 721b8155 - chore- refresh generated docs data and release summaries
+        : c570f302 - chore- refresh generated docs data and release summaries
+        : b577f6b8 - chore- update JSON stats (scheduled)
+```
+
+## Release v0.72.7.post1 (2026-10-08)
+
+```mermaid
+timeline
+    title Release v0.72.7.post1 Commits
+    0.72.7.post1
+        : c351919a - docs data- restore the generated files; add only the 0.72.7.post1 entry
+        : a1f0806d - release- 0.72.7.post1 -- its own changelog entry and version
+        : 0d47f715 - wiki/Changelog- T1 streams stop the backend when the caller leaves
+        : 42ae0215 - wiki- a caller leaving an inference stream stops the reply
+        : 91cd2708 - t1api- a caller leaving a stream stops the backend's reply
+        : 8a990892 - build(deps)- bump source-map-js from 1.2.1 to 1.2.2 in /docs
+        : e69686ed - chore- update JSON stats (scheduled)
+        : 4e2b9951 - Changelog- what 0.72.7 did not ship goes under Unreleased; lts/0.72.6
+        : 151a354a - Auto-resolve docs/public/v1 merge conflicts on pull requests
+        : 0b752ed8 - chore- refresh generated docs data and release summaries
+        : 12cbbe39 - chore- refresh generated docs data and release summaries
+        : d13f3063 - llama-easy- rename from llama-essir, and make it one call to use
+        : bfdd3dff - llama-essir- a Hugging Face Hub kernel for Llama models, auto-published
+        : 22ae2e3f - Auto-update README header (hourly)
+        : 86d95a05 - wiki/Python-3.15- what was actually tested
+```
+
+## Release v0.72.8a3 (2026-10-21)
+
+```mermaid
+timeline
+    title Release v0.72.8a3 Commits
+    0.72.8a3
+        : 4b9b188c - Fix the 0.72.8a3 release's test failures
+        : 65a9c16c - chore- refresh generated docs data and release summaries
+        : 5dd2f5ba - 0.72.8a3- the installer's and the iOS app's T1 version fallbacks follow 1.1.26.10.2.0
+        : c21dc6db - 0.72.8a3- T1 v1.1.26.10.2.0, changelog, docs and examples/t1api
+        : 8020618a - HyperLink iOS- the chat request carries dataset parts and a code sandbox
+        : 8acb4c6c - HyperLink web- attach files, choose parts of datasets, Code tab for /code sandboxes
+        : ed2f79bc - chore- refresh generated docs data and release summaries
+        : 677812ea - 0.72.8 pt3 (part 3)- HyperLink Markdown, dataset excerpts, code-session tools
+        : 6b84ede7 - chore- refresh generated docs data and release summaries
+        : e84eba14 - chore- update JSON stats (scheduled)
+        : b01ec7a3 - chore- refresh generated docs data and release summaries
+        : 57773753 - 0.72.8 pt3 (part 2)- MCP both ways, /net in the T1 API, public-server counter
+        : e89afd46 - 0.72.8 pt3 (part 1)- Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands
+        : 02232ccd - chore- refresh generated docs data and release summaries
+        : 8c898a8d - chore- refresh generated docs data and release summaries
+```
+
+## Release v0.72.8a4 (2026-10-22)
+
+```mermaid
+timeline
+    title Release v0.72.8a4 Commits
+    0.72.8a4
+        : c4d8e605 - Launcher- don't call a running systemd job unknown
+        : 182fd6fa - chore- refresh generated docs data and release summaries
+        : 2ad57305 - Tests- hyped-pro's tool tests expect the registered codes
+        : 1932bc40 - chore- refresh generated docs data and release summaries
+        : 1a60a8a5 - 0.72.8a4- changelog, version, and the guides start with hnx-t1 setup
+        : 2a8a1c85 - Website- a T1 API reference worth reading
+        : 2c07970a - update_json_stats- say why the series zip is not strict
+        : bf94d5f9 - Website- a multi-line graph of downloads on the Stats page
+        : 192b97d7 - Website- the docs page, remade like PyTorch's and Hyprland's
+        : fd848f59 - hnx list-all, hnx-t1 setup (installer b1), hnx-t1 upgrade -S env|venv|all
+        : 0f0172ab - chore- update JSON stats (scheduled)
+        : 89597167 - chore- refresh generated docs data and release summaries
+        : da36f8dc - Error codes- hyped-pro's moved into the registry (70), and 38 more
+        : bb54e804 - Auto-update README header (hourly)
+        : 6b55a31f - chore- refresh generated docs data and release summaries
+```
+## Release v0.72.8a5 (2026-10-27)
+
+```mermaid
+timeline
+    title Release v0.72.8a5 Commits
+    0.72.8a5
+        : 5c5503f8 - chore- refresh generated docs data and release summaries
+        : 05eae954 - hnx-t1 setup --dry-run- the file on stdout again, with its secrets redacted
+        : b27d021d - fix(system)- drain final job logs before completion marker
+        : ca9f3235 - fix(t1api)- keep setup dry-run stdout as env file
+        : a5754beb - Noodle- an escaping path is outside_workspace again
+        : 1f71cc6f - Security- the scan's high alerts, vulnerable dependency floors; 0.72.8a5
+        : 1864fdc4 - chore- refresh generated docs data and release summaries
+        : 4d4b91c7 - prot- hold a Hyprland session unlocked (hypridle, hyprlock, Quickshell)
+        : ce93aa3a - hnx0xv2image- Brewer from a training run, and hyprslug quantising
+        : a17c8f79 - Wiki- current versions kept current; one timeline section per release
+        : 9476ebc8 - HyperLink- stop dropping a Tailscale connection the moment it is made
+        : 2c7ddb57 - T1 runner start- a quick model list and a picker that never freezes
+        : e1374474 - chore- refresh generated docs data and release summaries
+        : 301d4d2f - chore- refresh generated docs data and release summaries
+        : edd27b74 - Update main.md
+```
+
+## Release v0.72.8rc1 (2026-10-28)
+
+```mermaid
+timeline
+    title Release v0.72.8rc1 Commits
+    0.72.8rc1
+        : baa7d954 - CI fixes for PR #185- a log-follow race, mypy, a bare except
+        : 05a8b49e - chore- refresh generated docs data and release summaries
+        : 9ba5c10c - latest- log the kind of Hub failure, not the request
+        : 685653c7 - 0.72.8rc1
+        : f10ee30c - scriptgen- a script that runs, a redesigned window, more options
+        : 602589dd - chore- refresh generated docs data and release summaries
+        : 50fbf14a - Stats page- downloads by HyperNix version
+        : d2a47609 - hnx download --latest; the runner fetches and registers HyperNix releases
+        : 49c52c75 - chore- update JSON stats (scheduled)
+        : 802be03d - Runners- CPU offloading
+        : 70069443 - Website- a security page, rescanned on every Pages build
+        : 9531f68f - Security- the critical and high CodeQL alerts from the alert export
+        : 945aa8c4 - chore- refresh generated docs data and release summaries
+```
+
+## Release v0.72.8 (2026-10-28)
+
+```mermaid
+timeline
+    title Release v0.72.8 Commits
+    0.72.8
+        : 43f2bda4 - torch_shim- never install torch for --help, under HYPERNIX_AUTO_INSTALL=0, or in tests
+        : 00df2d64 - torch_shim- ask PyPI through hypernix.security.safeurl
+        : 5123e971 - ci- the PEP 831 frame-pointer check prints the prologue it reads
+        : e6d894cb - torch_shim test- assert the whole URL, not a host substring
+        : 0404ebd2 - 0.72.8
+        : 10317ac6 - Python 3.15- torch from a shim, stable if PyTorch has the wheel, else nightly
+        : af397a46 - hypernix v0.72.8rc1 [skip ci]
+        : baa7d954 - CI fixes for PR #185- a log-follow race, mypy, a bare except
+        : 05a8b49e - chore- refresh generated docs data and release summaries
+        : 9ba5c10c - latest- log the kind of Hub failure, not the request
+        : 685653c7 - 0.72.8rc1
+        : f10ee30c - scriptgen- a script that runs, a redesigned window, more options
+        : 602589dd - chore- refresh generated docs data and release summaries
+        : 50fbf14a - Stats page- downloads by HyperNix version
+        : d2a47609 - hnx download --latest; the runner fetches and registers HyperNix releases
+```
+
+## Release v0.72.8.post1 (2026-11-03)
+
+```mermaid
+timeline
+    title Release v0.72.8.post1 Commits
+    0.72.8.post1
+        : 4911c36e - 0.72.8.post1- HyperLink -- a chat that cannot be started says why
+        : ffc4e109 - chore- refresh generated docs data and release summaries
+        : 2f0a0567 - chore- refresh generated docs data and release summaries
+        : 8f7e3c2e - chore- refresh generated docs data and release summaries
+        : 28d122ef - chore- update JSON stats (scheduled)
+        : 85112772 - chore- refresh generated docs data and release summaries
+        : d7ec759f - chore- refresh generated docs data and release summaries
+        : 12d2ebd6 - chore- refresh generated docs data and release summaries
+        : b3fed4a4 - chore- update JSON stats (scheduled)
+        : 3b7b5771 - chore- refresh generated docs data and release summaries
+        : 55add889 - chore- refresh generated docs data and release summaries
+        : e6152cad - chore- refresh generated docs data and release summaries
+        : 3ee6f8bc - chore- refresh generated docs data and release summaries
+        : 2b2e3216 - chore- update JSON stats (scheduled)
+        : 8536b10e - chore- refresh generated docs data and release summaries
+```
+
+## Release v0.72.8.post2 (2026-11-04)
+
+```mermaid
+timeline
+    title Release v0.72.8.post2 Commits
+    0.72.8.post2
+        : 451f2d28 - chore- refresh generated docs data and release summaries
+        : 208c600f - Auto-update README header (hourly)
+        : 978e3cfa - 0.72.8.post2- hnx-t1 runner start loads the model again
+        : 42ed2e1b - chore- refresh generated docs data and release summaries
+        : c9d08f3d - Auto-update README header (hourly)
+        : 6c05708a - chore- update JSON stats (scheduled)
+        : bcdad140 - chore- refresh generated docs data and release summaries
+```
+
+## Release v0.73.0a1 (2026-11-12)
+
+```mermaid
+timeline
+    title Release v0.73.0a1 Commits
+    0.73.0a1
+        : de229114 - 0.73.0a1- Strife GPU offload, the full benchmark, CI smoke jobs; alpha 1
+        : 50234c67 - chore- refresh generated docs data and release summaries
+        : 638e1b28 - build(deps)- bump github/codeql-action/upload-sarif
+        : 5d7c5839 - build(deps)- bump softprops/action-gh-release from 3.0.3 to 3.0.4
+        : ad0512d8 - hnx chat never downloads on its own; relay works in a 512-token context
+        : 8760ba6f - chore- update JSON stats (scheduled)
+        : 5cd037f3 - chore- refresh generated docs data and release summaries
+        : a244c099 - Fix Strife argparse percentage help formatting
+        : 44b43caa - Lint- explicit strict= on the 3H interpreter's zips; regenerated docs data
+        : 93d34cdb - Strife native kernels- quantised decode and matmul in C, built and verified on the user's machine
+        : 64357b94 - Docs- add 3H, Hydrogen elements and .hnx syntax guides
+        : 059a01ad - Sort Hydrogen standard-library imports
+        : 26e9a6f7 - Document the 3H element scripting isotope
+        : 532ed927 - Fix element attachment module formatting
+        : bd1a7587 - Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime
+```
+
+## Release v0.73.0 (2026-11-20)
+
+```mermaid
+timeline
+    title Release v0.73.0 Commits
+    0.73.0
+        : c299577d - 0.73.0 changelog- the test count is about 10,900
+        : 7b425992 - 0.73.0- release notes, README section and version
+        : 6091d1f7 - chore- refresh generated docs data and release summaries
+        : caa7d25c - 0.73.0a2 changelog- the re-measured figures and what they overturned
+        : e11e00dc - V7 page- measured tables rendered from the results, and what they show
+        : 327da429 - V7- on a CPU, int8 momentum only when fp32 would take half the free memory
+        : b97e5fe9 - Optimizer benchmark- free each band run's optimizer before the next
+        : 2337c9b9 - Optimizer results- V5, V5+, V5S, V6 and V7Q at rates above the main grid
+        : 97e3b7dd - Optimizer results- V7, V7S and V7M ablations
+        : 376664eb - Optimizer results- all eleven optimizers on six workloads
+        : 4f6bad2d - Optimizer results- training inside V7Mini's band (41.6M parameters)
+        : 53bdee90 - Optimizer results- step() around V7Mini's band (30M to 150M)
+        : 144d8d62 - Optimizer results renderer; V7 page awaits the re-measured figures
+        : 546559b6 - Optimizer benchmark- read MemAvailable for the band's memory check
+        : 2ec1a39d - Optimizer benchmark- ablations, raw observations, V7Mini's band
+```
+

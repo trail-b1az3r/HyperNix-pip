@@ -3,6 +3,7 @@
 // components so it can be grepped/updated without touching markup.
 
 export const SUBSYSTEMS = [
+  { name: 'hypernix.core', desc: 'Core package concepts, installation, CLI, project-wide guides, compatibility, release notes, and documentation shared across HyperNix subsystems' },
   { name: 'hypernix.download', desc: 'Hub snapshot downloads with short-name resolution, gated repo support, and offline cache' },
   { name: 'hypernix.train', desc: 'HyperNixConfig, HyperNixModel, init_from_scratch, expand_checkpoint, and full training loop' },
   { name: 'hypernix.brewer', desc: 'hyperNix0x-v2 architecture presets: 33m/micro/small/medium/large (GPU) + cpu-nano/cpu-tiny/cpu-small (CPU-only). custom_arch() for a bespoke config' },
@@ -90,6 +91,7 @@ export const SUBSYSTEM_GROUPS = {
   'Evaluation': ['new_range','old_range','industrial_range','espresso_maker'],
   'Runtime & memory': ['freezer','old_fridge','torch_compat'],
   'Ship & convert': ['download','convert','quantize','upload'],
+  'Other': ['core'],
 }
 
 export const GROUP_ORDER = Object.keys(SUBSYSTEM_GROUPS)

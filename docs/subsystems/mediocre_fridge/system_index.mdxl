@@ -1,0 +1,19 @@
+---
+system: hypernix.mediocre_fridge
+title: hypernix.mediocre_fridge subsystem index
+description: Judge-training dataset generation: synthesize_judge_corpus, collect_responses_from
+page_count: 0
+---
+
+# hypernix.mediocre_fridge
+
+Judge-training dataset generation: synthesize_judge_corpus, collect_responses_from
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

@@ -15,7 +15,7 @@ const REPO = 'https://github.com/trail-b1az3r/HyperNix-pip'
 const RAW = 'https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main'
 
 type Heading = { depth: number, text: string }
-type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number }
+type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number, sourcePath?: string }
 const label = (index: Index, doc: string) => index.pages[doc]?.short || index.pages[doc]?.title || doc.replace(/-/g, ' ')
 type Group = { id: string, title: string, blurb: string, pages: string[] }
 type Index = { groups: Group[], pages: Record<string, PageInfo> }
@@ -381,8 +381,8 @@ function Article({ doc, anchor, index, navigate }: { doc: string, anchor?: strin
           <h1>{info?.title || doc.replace(/-/g, ' ')}</h1>
           <div className="docs-meta">
             {info?.words ? <span>{Math.max(1, Math.round(info.words / 220))} min read</span> : null}
-            <a href={`${REPO}/blob/main/wiki/${doc}.md`} target="_blank" rel="noreferrer">View source</a>
-            <a href={`${REPO}/edit/main/wiki/${doc}.md`} target="_blank" rel="noreferrer">Edit on GitHub</a>
+            <a href={`${REPO}/blob/main/${info?.sourcePath || `wiki/${doc}.md`}`} target="_blank" rel="noreferrer">View source</a>
+            <a href={`${REPO}/edit/main/${info?.sourcePath || `wiki/${doc}.md`}`} target="_blank" rel="noreferrer">Edit on GitHub</a>
           </div>
         </header>
         {failed && (
@@ -428,7 +428,7 @@ const QUICK = [
 ]
 
 function systemHref(name: string) {
-  return docHref(`@system:${name}`)
+  return `./subsystems/${name.replace(/^hypernix\\./, '')}/system_index.html`
 }
 
 const GROUP_ICONS: Record<string, string> = {

@@ -1,0 +1,19 @@
+---
+system: hypernix.blender
+title: hypernix.blender subsystem index
+description: 4-tier multi-source mixing: HandBlender / PersonalBlender / CountertopBlender / HighPowerBlender
+page_count: 1
+---
+
+# hypernix.blender
+
+4-tier multi-source mixing: HandBlender / PersonalBlender / CountertopBlender / HighPowerBlender
+
+## Documentation pages
+
+- [Blender](pages/Blender.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

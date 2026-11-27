@@ -1,0 +1,19 @@
+---
+system: hypernix.multilama
+title: hypernix.multilama subsystem index
+description: One interface over several llama.cpp variants (vanilla, ik_llama.cpp, PrismML fork, KoboldCpp, Nanbeige fork) for GGUF models a single backend can't all load
+page_count: 1
+---
+
+# hypernix.multilama
+
+One interface over several llama.cpp variants (vanilla, ik_llama.cpp, PrismML fork, KoboldCpp, Nanbeige fork) for GGUF models a single backend can't all load
+
+## Documentation pages
+
+- [Llama-Easy](pages/Llama-Easy.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
