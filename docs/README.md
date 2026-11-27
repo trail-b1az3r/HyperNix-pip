@@ -24,7 +24,7 @@ npm run preview
 
 ## Generated data
 
-At build time `vite.config.js` discovers `subsystems/*/pages/*.md`, keeps `/wiki/<Page>.md` compatibility URLs for internal links, and publishes each subsystem's `system_index.html`, `system_index.css`, and `system_index.mdxl`, and writes `v1/docs-index.json` (groups, titles, headings, summaries), `v1/t1-openapi.json` and `v1/t1-settings.json`; `npm run dev` serves the same files from the checkout. None of them are committed. `public/v1/error-codes.json` is written by `../scripts/generate_error_codes.py`.
+At build time `vite.config.js` indexes subsystem-local `.md` and `.mdxl` pages plus the remaining `wiki/*.md` pages, keeps `/wiki/<Page>.md` compatibility URLs for internal links, publishes each subsystem's `system_index.html`, `system_index.css`, and `system_index.mdxl`, and writes `v1/docs-index.json` (groups, titles, headings, summaries), `v1/t1-openapi.json` and `v1/t1-settings.json`; `npm run dev` serves the same files from the checkout. None of them are committed. `public/v1/error-codes.json` is written by `../scripts/generate_error_codes.py`.
 
 `public/v1/security.json` is written in the Pages build by `../scripts/security_report.py` (run it locally to see the page in `npm run dev`); it is not committed.
 
@@ -56,4 +56,4 @@ Every Python subsystem has a directory under `docs/subsystems/<subsystem>/` cont
 - `system_index.mdxl` — editable Markdown-extended index source and page manifest.
 - `pages/` — the Markdown guides and references owned by that subsystem.
 
-The Docs application builds its grouped index from these `pages/` directories. The old `/wiki/<Page>.md` fetch path remains as a compatibility alias; the source of truth is each subsystem's `pages/` folder.
+The Docs application builds its grouped index from these `pages/` directories. The old `/wiki/<Page>.md` fetch path remains as a compatibility alias; the source of truth is each subsystem's `pages/` folder. Legacy Markdown pages already present on `main` remain supported alongside the new `.mdxl` pages.
