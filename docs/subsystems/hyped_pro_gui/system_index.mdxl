@@ -1,0 +1,19 @@
+---
+system: hypernix.hyped_pro_gui
+title: hypernix.hyped_pro_gui subsystem index
+description: hyped-pro desktop GUI: Qt6 (X11 + Wayland) via PySide6, GTK4 fallback
+page_count: 1
+---
+
+# hypernix.hyped_pro_gui
+
+hyped-pro desktop GUI: Qt6 (X11 + Wayland) via PySide6, GTK4 fallback
+
+## Documentation pages
+
+- [HyperLink-OnDevice](pages/HyperLink-OnDevice.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

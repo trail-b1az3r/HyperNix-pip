@@ -1,0 +1,19 @@
+---
+system: hypernix.food_processor
+title: hypernix.food_processor subsystem index
+description: 4-tier bulk chunking: ChopBlade / SliceBlade / ShredBlade / PureeBlade
+page_count: 1
+---
+
+# hypernix.food_processor
+
+4-tier bulk chunking: ChopBlade / SliceBlade / ShredBlade / PureeBlade
+
+## Documentation pages
+
+- [FoodProcessor](pages/FoodProcessor.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

@@ -1,0 +1,19 @@
+---
+system: hypernix.new_fridge
+title: hypernix.new_fridge subsystem index
+description: Training-curve graphing: parse_training_log, plot_loss_curve, plot_score_distribution
+page_count: 0
+---
+
+# hypernix.new_fridge
+
+Training-curve graphing: parse_training_log, plot_loss_curve, plot_score_distribution
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

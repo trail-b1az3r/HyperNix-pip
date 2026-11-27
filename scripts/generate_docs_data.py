@@ -24,7 +24,7 @@ PUBLIC_ROOT = ROOT / "docs" / "public" / "v1"
 API_DEEP_PATH = PUBLIC_ROOT / "api-deep.json"
 T1_API_PATH = PUBLIC_ROOT / "t1-api.json"
 CODE_STATS_PATH = PUBLIC_ROOT / "code-stats.json"
-CHANGELOG_PATH = ROOT / "wiki" / "Changelog.md"
+CHANGELOG_PATH = ROOT / "docs" / "subsystems" / "core" / "pages" / "Changelog.md"
 CHANGELOG_DATA_PATH = PUBLIC_ROOT / "changelog.json"
 
 CODE_EXTENSIONS = {

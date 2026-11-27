@@ -1,0 +1,24 @@
+---
+system: hypernix.hyped_pro_core
+title: hypernix.hyped_pro_core subsystem index
+description: hyped-pro/hyped+ TUI's provider+model registry and real dispatch: cloud APIs (Anthropic/OpenAI-compatible), local safetensors, GGUF via multilama, and an agentic tool-calling loop
+page_count: 6
+---
+
+# hypernix.hyped_pro_core
+
+hyped-pro/hyped+ TUI's provider+model registry and real dispatch: cloud APIs (Anthropic/OpenAI-compatible), local safetensors, GGUF via multilama, and an agentic tool-calling loop
+
+## Documentation pages
+
+- [Browser-Agent](pages/Browser-Agent.md)
+- [HnxRun](pages/HnxRun.md)
+- [Runtime](pages/Runtime.md)
+- [T1-API](pages/T1-API.md)
+- [T1-API-Security-Checklist](pages/T1-API-Security-Checklist.md)
+- [Waiter-TUI](pages/Waiter-TUI.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

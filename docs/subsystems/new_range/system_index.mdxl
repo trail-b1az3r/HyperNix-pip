@@ -1,0 +1,19 @@
+---
+system: hypernix.new_range
+title: hypernix.new_range subsystem index
+description: Zero-dep first-fail labeling rubric — lightest scoring tier
+page_count: 1
+---
+
+# hypernix.new_range
+
+Zero-dep first-fail labeling rubric — lightest scoring tier
+
+## Documentation pages
+
+- [Ranges](pages/Ranges.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

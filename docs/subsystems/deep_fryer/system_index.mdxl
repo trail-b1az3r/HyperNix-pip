@@ -1,0 +1,19 @@
+---
+system: hypernix.deep_fryer
+title: hypernix.deep_fryer subsystem index
+description: 2-tier model-weight perturbation: LightFry (regulariser) / HeavyFry (severe). Reversible via snapshot
+page_count: 1
+---
+
+# hypernix.deep_fryer
+
+2-tier model-weight perturbation: LightFry (regulariser) / HeavyFry (severe). Reversible via snapshot
+
+## Documentation pages
+
+- [DeepFryer](pages/DeepFryer.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

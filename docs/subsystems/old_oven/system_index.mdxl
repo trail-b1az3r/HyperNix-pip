@@ -1,0 +1,20 @@
+---
+system: hypernix.old_oven
+title: hypernix.old_oven subsystem index
+description: CodeOven wrapper with .complete() / .chat() / .fill() / .save_pt(). new_oven() for parametric models
+page_count: 2
+---
+
+# hypernix.old_oven
+
+CodeOven wrapper with .complete() / .chat() / .fill() / .save_pt(). new_oven() for parametric models
+
+## Documentation pages
+
+- [MTP](pages/MTP.md)
+- [Ovens](pages/Ovens.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

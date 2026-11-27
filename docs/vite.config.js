@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 
-const WIKI = path.resolve(__dirname, '../wiki')
+const SYSTEMS_ROOT = path.resolve(__dirname, 'subsystems')
 const NAV = path.resolve(__dirname, 'src/lib/data/docs-nav.json')
 const OPENAPI = path.resolve(__dirname, '../examples/t1api/openapi.json')
 const ENV_EXAMPLE = path.resolve(__dirname, '../examples/t1api/.env.example')
@@ -58,13 +58,32 @@ function pageInfo(name, md) {
   }
 }
 
+function collectPages() {
+  const pages = []
+  if (!fs.existsSync(SYSTEMS_ROOT)) return pages
+  for (const slug of fs.readdirSync(SYSTEMS_ROOT).sort()) {
+    const dir = path.join(SYSTEMS_ROOT, slug, 'pages')
+    if (!fs.existsSync(dir)) continue
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
+      pages.push({ name: file.slice(0, -3), file, slug, absolute: path.join(dir, file),
+        sourcePath: `docs/subsystems/${slug}/pages/${file}` })
+    }
+  }
+  return pages
+}
+
+function findPage(name) {
+  return collectPages().find((page) => page.name === name)
+}
+
 function buildIndex() {
   const nav = JSON.parse(fs.readFileSync(NAV, 'utf-8'))
-  const files = fs.existsSync(WIKI) ? fs.readdirSync(WIKI).filter((f) => f.endsWith('.md')) : []
-  const names = files.map((f) => f.slice(0, -3))
+  const files = collectPages()
+  const names = files.map((f) => f.name)
   const pages = {}
-  for (const name of names) {
-    pages[name] = pageInfo(name, fs.readFileSync(path.join(WIKI, `${name}.md`), 'utf-8'))
+  for (const file of files) {
+    const info = pageInfo(file.name, fs.readFileSync(file.absolute, 'utf-8'))
+    pages[file.name] = { ...info, sourcePath: file.sourcePath }
   }
   const listed = new Set()
   const groups = nav.groups.map((g) => {
@@ -73,9 +92,8 @@ function buildIndex() {
     return { id: g.id, title: g.title, blurb: g.blurb, pages: present }
   })
   const rest = names.filter((n) => !listed.has(n)).sort()
-  if (rest.length) groups.push({ id: 'more', title: 'More', blurb: 'Everything else in the wiki.', pages: rest })
+  if (rest.length) groups.push({ id: 'more', title: 'More', blurb: 'Everything else in the subsystem pages.', pages: rest })
   for (const g of groups) for (const p of g.pages) pages[p].group = g.id
-  // A short label two pages share says nothing: those keep their titles.
   const seen = {}
   for (const info of Object.values(pages)) seen[info.short] = (seen[info.short] || 0) + 1
   for (const info of Object.values(pages)) if (seen[info.short] > 1) info.short = info.title
@@ -179,18 +197,26 @@ function wikiPlugin() {
           return
         }
         const m = /^\/wiki\/([A-Za-z0-9._-]+\.md)$/.exec(url)
-        if (m && fs.existsSync(path.join(WIKI, m[1]))) {
+        const page = m && findPage(m[1].slice(0, -3))
+        if (page) {
           res.setHeader('Content-Type', 'text/markdown; charset=utf-8')
-          res.end(fs.readFileSync(path.join(WIKI, m[1])))
+          res.end(fs.readFileSync(page.absolute))
           return
         }
         next()
       })
     },
     generateBundle() {
-      if (!fs.existsSync(WIKI)) return
-      for (const file of fs.readdirSync(WIKI).filter((f) => f.endsWith('.md'))) {
-        this.emitFile({ type: 'asset', fileName: `wiki/${file}`, source: fs.readFileSync(path.join(WIKI, file)) })
+      for (const page of collectPages()) {
+        const source = fs.readFileSync(page.absolute)
+        this.emitFile({ type: 'asset', fileName: `wiki/${page.file}`, source })
+        this.emitFile({ type: 'asset', fileName: `subsystems/${page.slug}/pages/${page.file}`, source })
+      }
+      if (fs.existsSync(SYSTEMS_ROOT)) for (const slug of fs.readdirSync(SYSTEMS_ROOT)) {
+        for (const file of ['system_index.html', 'system_index.css', 'system_index.mdxl']) {
+          const absolute = path.join(SYSTEMS_ROOT, slug, file)
+          if (fs.existsSync(absolute)) this.emitFile({ type: 'asset', fileName: `subsystems/${slug}/${file}`, source: fs.readFileSync(absolute) })
+        }
       }
       for (const [url, build] of Object.entries(GENERATED)) {
         this.emitFile({ type: 'asset', fileName: url.slice(1), source: JSON.stringify(build()) })

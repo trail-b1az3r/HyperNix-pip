@@ -1,0 +1,19 @@
+---
+system: hypernix.upload
+title: hypernix.upload subsystem index
+description: Push artifacts to HuggingFace Hub with multipart + model card generation
+page_count: 0
+---
+
+# hypernix.upload
+
+Push artifacts to HuggingFace Hub with multipart + model card generation
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

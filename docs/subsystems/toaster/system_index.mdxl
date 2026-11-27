@@ -1,0 +1,19 @@
+---
+system: hypernix.toaster
+title: hypernix.toaster subsystem index
+description: 4-tier per-line formatting: TwoSliceToaster / FourSliceToaster / ConveyorToaster / ToasterOven
+page_count: 1
+---
+
+# hypernix.toaster
+
+4-tier per-line formatting: TwoSliceToaster / FourSliceToaster / ConveyorToaster / ToasterOven
+
+## Documentation pages
+
+- [Toaster](pages/Toaster.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

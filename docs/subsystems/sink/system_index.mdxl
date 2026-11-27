@@ -1,0 +1,19 @@
+---
+system: hypernix.sink
+title: hypernix.sink subsystem index
+description: Append-only file sink with optional rotation and deduplication
+page_count: 0
+---
+
+# hypernix.sink
+
+Append-only file sink with optional rotation and deduplication
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

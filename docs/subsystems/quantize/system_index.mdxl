@@ -1,0 +1,23 @@
+---
+system: hypernix.quantize
+title: hypernix.quantize subsystem index
+description: llama-quantize driver for Q8_0, Q6_K, Q4_K_M, Q5_K_M — 30 quant types total
+page_count: 5
+---
+
+# hypernix.quantize
+
+llama-quantize driver for Q8_0, Q6_K, Q4_K_M, Q5_K_M — 30 quant types total
+
+## Documentation pages
+
+- [HyprSlug](pages/HyprSlug.md)
+- [HyprSlug-Headers](pages/HyprSlug-Headers.md)
+- [Imatrix](pages/Imatrix.md)
+- [LowBit](pages/LowBit.md)
+- [Quantization](pages/Quantization.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

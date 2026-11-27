@@ -1,0 +1,19 @@
+---
+system: hypernix.cutting_board
+title: hypernix.cutting_board subsystem index
+description: Train / val / test dataset splitting with stratified and k-fold support
+page_count: 1
+---
+
+# hypernix.cutting_board
+
+Train / val / test dataset splitting with stratified and k-fold support
+
+## Documentation pages
+
+- [CuttingBoard](pages/CuttingBoard.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

@@ -1,0 +1,21 @@
+---
+system: hypernix.freezer
+title: hypernix.freezer subsystem index
+description: OldFreezer (8-10 GB) / NewFreezer (11 GB+) / FlashFreezer (OOM-safe retry). 20 GPU presets + 60 CPU presets (Intel + AMD Ryzen)
+page_count: 3
+---
+
+# hypernix.freezer
+
+OldFreezer (8-10 GB) / NewFreezer (11 GB+) / FlashFreezer (OOM-safe retry). 20 GPU presets + 60 CPU presets (Intel + AMD Ryzen)
+
+## Documentation pages
+
+- [Devices](pages/Devices.md)
+- [Freezer](pages/Freezer.md)
+- [VRAM](pages/VRAM.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

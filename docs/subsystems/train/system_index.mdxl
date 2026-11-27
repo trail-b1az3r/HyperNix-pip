@@ -1,0 +1,20 @@
+---
+system: hypernix.train
+title: hypernix.train subsystem index
+description: HyperNixConfig, HyperNixModel, init_from_scratch, expand_checkpoint, and full training loop
+page_count: 2
+---
+
+# hypernix.train
+
+HyperNixConfig, HyperNixModel, init_from_scratch, expand_checkpoint, and full training loop
+
+## Documentation pages
+
+- [Model-Training-Guide](pages/Model-Training-Guide.md)
+- [Training](pages/Training.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

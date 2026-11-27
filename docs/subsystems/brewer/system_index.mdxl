@@ -1,0 +1,25 @@
+---
+system: hypernix.brewer
+title: hypernix.brewer subsystem index
+description: hyperNix0x-v2 architecture presets: 33m/micro/small/medium/large (GPU) + cpu-nano/cpu-tiny/cpu-small (CPU-only). custom_arch() for a bespoke config
+page_count: 7
+---
+
+# hypernix.brewer
+
+hyperNix0x-v2 architecture presets: 33m/micro/small/medium/large (GPU) + cpu-nano/cpu-tiny/cpu-small (CPU-only). custom_arch() for a bespoke config
+
+## Documentation pages
+
+- [Architecture](pages/Architecture.md)
+- [Architectures](pages/Architectures.md)
+- [C4](pages/C4.md)
+- [Dflash2](pages/Dflash2.md)
+- [HNX0xV2Image](pages/HNX0xV2Image.md)
+- [STML](pages/STML.md)
+- [Workshop](pages/Workshop.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
