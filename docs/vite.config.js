@@ -59,6 +59,21 @@ function pageInfo(name, md) {
   }
 }
 
+function collectSubsystemMarkdownPages() {
+  const found = {}
+  if (!fs.existsSync(SUBSYSTEM_DIR)) return found
+  for (const slug of fs.readdirSync(SUBSYSTEM_DIR).sort()) {
+    const dir = path.join(SUBSYSTEM_DIR, slug, 'pages')
+    if (!fs.existsSync(dir)) continue
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
+      const name = file.slice(0, -3)
+      if (name === 'api-reference' || found[name]) continue
+      found[name] = { path: `subsystems/${slug}/pages/${file}`, absolute: path.join(dir, file) }
+    }
+  }
+  return found
+}
+
 function buildIndex() {
   const nav = JSON.parse(fs.readFileSync(NAV, 'utf-8'))
   const subsystemPages = JSON.parse(fs.readFileSync(SUBSYSTEM_PAGES_FILE, 'utf-8'))
@@ -67,14 +82,16 @@ function buildIndex() {
     for (const name of pageNames) moved[name] = `subsystems/${slug}/pages/${name}.mdxl`
   }
   const wikiFiles = fs.existsSync(WIKI) ? fs.readdirSync(WIKI).filter((f) => f.endsWith('.md')) : []
-  const names = [...new Set([...wikiFiles.map((f) => f.slice(0, -3)), ...Object.keys(moved)])]
+  const subsystemMarkdown = collectSubsystemMarkdownPages()
+  const names = [...new Set([...wikiFiles.map((f) => f.slice(0, -3)), ...Object.keys(subsystemMarkdown), ...Object.keys(moved)])]
   const pages = {}
   for (const name of names) {
     const filePath = moved[name]
       ? path.resolve(__dirname, moved[name])
-      : path.join(WIKI, `${name}.md`)
+      : subsystemMarkdown[name]?.absolute || path.join(WIKI, `${name}.md`)
     pages[name] = pageInfo(name, fs.readFileSync(filePath, 'utf-8'))
     if (moved[name]) pages[name].path = moved[name]
+    else if (subsystemMarkdown[name]) pages[name].path = subsystemMarkdown[name].path
   }
   const listed = new Set()
   const groups = nav.groups.map((g) => {
@@ -222,6 +239,23 @@ function wikiPlugin() {
         fileName: 'subsystems/hypernix.core/system_index.html',
         source: '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=../hyped-pro-core/system_index.html"><link rel="canonical" href="../hyped-pro-core/system_index.html"><title>HyperNix Core · HyperNix Docs</title></head><body><p>This subsystem page has moved to <a href="../hyped-pro-core/system_index.html">Hyped Pro Core</a>.</p><script>location.replace("../hyped-pro-core/system_index.html" + location.hash)</script></body></html>',
       })
+      // Also publish the newer Markdown pages introduced on main. The MDXL
+      // subsystem pages above take precedence for names in the MDXL registry.
+      for (const page of Object.values(collectSubsystemMarkdownPages())) {
+        this.emitFile({ type: 'asset', fileName: page.path, source: fs.readFileSync(page.absolute) })
+      }
+      // Keep static indexes from subsystems added on main, including the
+      // canonical hypernix.core index, even when they are not in the MDXL map.
+      if (fs.existsSync(SUBSYSTEM_DIR)) {
+        for (const slug of fs.readdirSync(SUBSYSTEM_DIR)) {
+          if (Object.prototype.hasOwnProperty.call(subsystemPages, slug)) continue
+          const folder = path.join(SUBSYSTEM_DIR, slug)
+          for (const file of ['system_index.html', 'system_index.css', 'system_index.mdxl']) {
+            const sourcePath = path.join(folder, file)
+            if (fs.existsSync(sourcePath)) this.emitFile({ type: 'asset', fileName: `subsystems/${slug}/${file}`, source: fs.readFileSync(sourcePath) })
+          }
+        }
+      }
       for (const [url, build] of Object.entries(GENERATED)) {
         this.emitFile({ type: 'asset', fileName: url.slice(1), source: JSON.stringify(build()) })
       }
