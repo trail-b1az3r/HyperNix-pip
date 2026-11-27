@@ -432,7 +432,7 @@ const QUICK = [
 ]
 
 function systemHref(name: string) {
-  const moduleSlug = name.replace(/^hypernix\\./, '').replace(/_/g, '-')
+  const moduleSlug = name.replace(/^hypernix\./, '').replace(/_/g, '-')
   // Keep the historical core URL working; it redirects to hyped-pro-core.
   const slug = moduleSlug === 'core' ? 'hypernix.core' : moduleSlug
   return `./subsystems/${slug}/system_index.html`
