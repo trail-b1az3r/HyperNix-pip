@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { WIKI_PAGES } from '../lib/data/wiki'
 import { anchorKey, highlight, renderMarkdown } from '../lib/markdown'
 import { SUBSYSTEMS, GROUP_ORDER, subsystemGroup } from '../lib/data/subsystems'
+import { MODULES } from '../lib/data/api-reference'
 
 // The documentation, laid out the way PyTorch's and Hyprland's are: groups
 // down the left, the page in the middle, "On this page" down the right,
@@ -451,7 +452,7 @@ function SubsystemIndex({ name, index }: { name: string, index: Index }) {
     }
     return (terms[group] || []).some((term) => haystack.includes(term))
   }).slice(0, 6)
-  const modulePath = name.replace(/^hypernix\./, '').replace(/\./g, '/')
+  const apiModule = MODULES.find((item) => item.name === name)
   return (
     <div className="docs-article subsystem-article">
       <nav className="docs-crumbs" aria-label="Breadcrumb">
@@ -470,7 +471,15 @@ function SubsystemIndex({ name, index }: { name: string, index: Index }) {
       <section className="docs-system-overview">
         <div className="eyebrow">At a glance</div><h2>What this system does</h2>
         <p>{system.desc}</p>
-        <div className="docs-system-tags"><span>hypernix package</span><span>{group}</span><span>src/hypernix/{modulePath}</span></div>
+        <div className="docs-system-tags"><span>hypernix package</span><span>{group}</span><span>Module: {name}</span></div>
+      </section>
+      <section className="docs-system-explore">
+        <div className="eyebrow">API surface</div><h2>Public functions and classes</h2>
+        {apiModule?.fns?.length ? <div className="docs-system-api">
+          {apiModule.fns.map((entry) => <div key={entry.fn} className="docs-system-api-row">
+            <code>{entry.fn}</code><p>{entry.desc}</p>
+          </div>)}
+        </div> : <p>The generated API inventory does not currently list individual callables for this subsystem. Browse the full Python API reference or source tree for implementation details.</p>}
       </section>
       <section className="docs-system-explore">
         <div className="eyebrow">Explore</div><h2>Guides and references</h2>
@@ -578,10 +587,24 @@ function Sidebar({ index, doc, open, onPick }: { index: Index, doc?: string, ope
         )
       })}
       <div className="docs-side-group">
-        <button type="button" className="docs-side-title" aria-expanded="true"><span className="caret open">›</span>Systems</button>
-        <ul>{SUBSYSTEMS.filter((item) => !f || item.name.toLowerCase().includes(f) || item.desc.toLowerCase().includes(f))
-          .map((item) => <li key={item.name}><a className={doc === `@system:${item.name}` ? 'active' : ''}
-            href={systemHref(item.name)} onClick={onPick}>{item.name.replace('hypernix.', '')}</a></li>)}</ul>
+        <div className="docs-side-title">Systems</div>
+        {GROUP_ORDER.map((group) => {
+          const systems = SUBSYSTEMS.filter((item) => subsystemGroup(item.name) === group)
+            .filter((item) => !f || item.name.toLowerCase().includes(f) || item.desc.toLowerCase().includes(f))
+          if (!systems.length) return null
+          const key = `systems:${group}`
+          const shut = !f && closed[key]
+          return <div key={group}>
+            <button type="button" className="docs-side-title" aria-expanded={!shut}
+              onClick={() => setClosed((c) => ({ ...c, [key]: !shut }))}>
+              <span className={`caret${shut ? '' : ' open'}`}>›</span>{group}
+            </button>
+            {!shut && <ul>{systems.map((item) => <li key={item.name}>
+              <a className={doc === `@system:${item.name}` ? 'active' : ''}
+                href={systemHref(item.name)} onClick={onPick}>{item.name.replace('hypernix.', '')}</a>
+            </li>)}</ul>}
+          </div>
+        })}
       </div>
     </aside>
   )
@@ -634,6 +657,11 @@ export function DocsPage({ route = {}, navigate }: { route?: Route, navigate?: (
         .docs-system-overview p,.docs-system-explore>p{color:var(--text-dim);line-height:1.8;font-size:14px}
         .docs-system-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}
         .docs-system-tags span{border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text-muted);font:10px var(--font-mono);overflow-wrap:anywhere}
+.docs-system-api{border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:14px}
+        .docs-system-api-row{padding:13px 15px;border-bottom:1px solid var(--border)}
+        .docs-system-api-row:last-child{border-bottom:0}
+        .docs-system-api-row code{color:var(--accent-text);font-size:12px;overflow-wrap:anywhere}
+        .docs-system-api-row p{margin:6px 0 0;color:var(--text-dim);font-size:12px;line-height:1.65}
         .docs-system-explore,.docs-system-related{margin:30px 0}
         .docs-system-link strong{display:flex;justify-content:space-between;gap:8px;color:var(--text);font-size:12px}
         .docs-system-link small{display:block;margin-top:7px;color:var(--text-dim);font-size:11px;line-height:1.55}
