@@ -1,0 +1,19 @@
+---
+system: hypernix.industrial_range
+title: hypernix.industrial_range subsystem index
+description: LLM-as-judge wrapper routing through a CodeOven for scoring
+page_count: 0
+---
+
+# hypernix.industrial_range
+
+LLM-as-judge wrapper routing through a CodeOven for scoring
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

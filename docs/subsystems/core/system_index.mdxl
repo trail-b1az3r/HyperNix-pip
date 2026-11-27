@@ -1,0 +1,52 @@
+---
+system: hypernix.core
+title: hypernix.core subsystem index
+description: Core package concepts, installation, CLI, project-wide guides, compatibility, release notes, and documentation shared across HyperNix subsystems.
+page_count: 34
+---
+
+# hypernix.core
+
+Core package concepts, installation, CLI, project-wide guides, compatibility, release notes, and documentation shared across HyperNix subsystems.
+
+## Documentation pages
+
+- [3H](pages/3H.md)
+- [Abbicus](pages/Abbicus.md)
+- [Apron](pages/Apron.md)
+- [Changelog](pages/Changelog.md)
+- [Changelog-guide](pages/Changelog-guide.md)
+- [CLI](pages/CLI.md)
+- [Cookbook](pages/Cookbook.md)
+- [Dashboards](pages/Dashboards.md)
+- [Elements](pages/Elements.md)
+- [Error-Codes](pages/Error-Codes.md)
+- [Examples](pages/Examples.md)
+- [Frameworks](pages/Frameworks.md)
+- [FuseBox](pages/FuseBox.md)
+- [Gather](pages/Gather.md)
+- [HNX-Syntax](pages/HNX-Syntax.md)
+- [Home](pages/Home.md)
+- [HyperLog](pages/HyperLog.md)
+- [HyperNix0xV3](pages/HyperNix0xV3.md)
+- [Kitchen](pages/Kitchen.md)
+- [Lunchbox](pages/Lunchbox.md)
+- [macOS-legacy](pages/macOS-legacy.md)
+- [Menu](pages/Menu.md)
+- [Pascal](pages/Pascal.md)
+- [PipelineMechanics](pages/PipelineMechanics.md)
+- [Python-3.15](pages/Python-3.15.md)
+- [RecipeBook](pages/RecipeBook.md)
+- [Release-Timeline](pages/Release-Timeline.md)
+- [Roadmap](pages/Roadmap.md)
+- [Scavenger](pages/Scavenger.md)
+- [Strife](pages/Strife.md)
+- [Tupperware](pages/Tupperware.md)
+- [TvTopMax](pages/TvTopMax.md)
+- [TvTopPro](pages/TvTopPro.md)
+- [Vera](pages/Vera.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

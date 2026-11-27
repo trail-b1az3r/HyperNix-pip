@@ -1,0 +1,24 @@
+---
+system: hypernix.pressure_cooker
+title: hypernix.pressure_cooker subsystem index
+description: Custom optimizer: AdamW + warmup / plateau detection / cosine cooldown + lookahead
+page_count: 6
+---
+
+# hypernix.pressure_cooker
+
+Custom optimizer: AdamW + warmup / plateau detection / cosine cooldown + lookahead
+
+## Documentation pages
+
+- [Optimizers](pages/Optimizers.md)
+- [Pressure-Cooker-V3](pages/Pressure-Cooker-V3.md)
+- [Pressure-Cooker-V4](pages/Pressure-Cooker-V4.md)
+- [Pressure-Cooker-V5](pages/Pressure-Cooker-V5.md)
+- [Pressure-Cooker-V6](pages/Pressure-Cooker-V6.md)
+- [Pressure-Cooker-V7](pages/Pressure-Cooker-V7.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

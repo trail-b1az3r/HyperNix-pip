@@ -1,0 +1,1 @@
+../docs/subsystems/freezer/pages/Devices.md

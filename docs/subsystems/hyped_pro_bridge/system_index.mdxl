@@ -1,0 +1,20 @@
+---
+system: hypernix.hyped_pro_bridge
+title: hypernix.hyped_pro_bridge subsystem index
+description: Line-delimited JSON stdio worker the Node hyped-pro TUI shells out to for every real operation
+page_count: 2
+---
+
+# hypernix.hyped_pro_bridge
+
+Line-delimited JSON stdio worker the Node hyped-pro TUI shells out to for every real operation
+
+## Documentation pages
+
+- [Context-Relay](pages/Context-Relay.md)
+- [HyperLink-Sync](pages/HyperLink-Sync.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

@@ -1,0 +1,19 @@
+---
+system: hypernix.instant_pot
+title: hypernix.instant_pot subsystem index
+description: brew(recipe) — one-shot end-to-end pipeline. Also available as CLI: hypernix brew recipe.json
+page_count: 0
+---
+
+# hypernix.instant_pot
+
+brew(recipe) — one-shot end-to-end pipeline. Also available as CLI: hypernix brew recipe.json
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

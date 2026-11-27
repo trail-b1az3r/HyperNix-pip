@@ -1,0 +1,19 @@
+---
+system: hypernix.old_fridge
+title: hypernix.old_fridge subsystem index
+description: Memory housekeeping: freeze, unfreeze, parameter_stats, offload_to_cpu, chill_cache
+page_count: 1
+---
+
+# hypernix.old_fridge
+
+Memory housekeeping: freeze, unfreeze, parameter_stats, offload_to_cpu, chill_cache
+
+## Documentation pages
+
+- [Fridges](pages/Fridges.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

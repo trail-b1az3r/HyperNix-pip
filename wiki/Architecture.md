@@ -1,0 +1,1 @@
+../docs/subsystems/brewer/pages/Architecture.md

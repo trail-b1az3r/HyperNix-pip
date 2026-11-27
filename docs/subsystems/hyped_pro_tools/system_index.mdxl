@@ -1,0 +1,19 @@
+---
+system: hypernix.hyped_pro_tools
+title: hypernix.hyped_pro_tools subsystem index
+description: Real, workspace-scoped file create/edit/read/search tools for hyped-pro's agentic chat loop
+page_count: 0
+---
+
+# hypernix.hyped_pro_tools
+
+Real, workspace-scoped file create/edit/read/search tools for hyped-pro's agentic chat loop
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

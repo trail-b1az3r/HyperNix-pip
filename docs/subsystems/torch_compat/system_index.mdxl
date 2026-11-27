@@ -1,0 +1,19 @@
+---
+system: hypernix.torch_compat
+title: hypernix.torch_compat subsystem index
+description: Portability shim (RMSNorm + SDPA) for running on old Intel Macs with torch 1.13
+page_count: 0
+---
+
+# hypernix.torch_compat
+
+Portability shim (RMSNorm + SDPA) for running on old Intel Macs with torch 1.13
+
+## Documentation pages
+
+No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)

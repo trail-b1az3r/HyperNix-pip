@@ -24,11 +24,11 @@ npm run preview
 
 ## Generated data
 
-At build time `vite.config.js` copies `../wiki/*.md` into the site as `wiki/<Page>.md` and writes `v1/docs-index.json` (groups, titles, headings, summaries), `v1/t1-openapi.json` and `v1/t1-settings.json`; `npm run dev` serves the same files from the checkout. None of them are committed. `public/v1/error-codes.json` is written by `../scripts/generate_error_codes.py`.
+At build time `vite.config.js` discovers `subsystems/*/pages/*.md`, keeps `/wiki/<Page>.md` compatibility URLs for internal links, and publishes each subsystem's `system_index.html`, `system_index.css`, and `system_index.mdxl`, and writes `v1/docs-index.json` (groups, titles, headings, summaries), `v1/t1-openapi.json` and `v1/t1-settings.json`; `npm run dev` serves the same files from the checkout. None of them are committed. `public/v1/error-codes.json` is written by `../scripts/generate_error_codes.py`.
 
 `public/v1/security.json` is written in the Pages build by `../scripts/security_report.py` (run it locally to see the page in `npm run dev`); it is not committed.
 
-`../scripts/generate_docs_data.py` refreshes the API reference JSON, code statistics, and the parsed changelog at `public/v1/changelog.json`. The changelog summary fields are derived from the actual canonical change bullets in `wiki/Changelog.md`; release dates are kept separate from summaries.
+`../scripts/generate_docs_data.py` refreshes the API reference JSON, code statistics, and the parsed changelog at `public/v1/changelog.json`. The changelog summary fields are derived from the actual canonical change bullets in `docs/subsystems/core/pages/Changelog.md`; release dates are kept separate from summaries.
 
 The scheduled `.github/workflows/update-docs-data.yml` workflow regenerates these files and commits only when their contents change.
 
@@ -45,3 +45,15 @@ The scheduled `.github/workflows/update-docs-data.yml` workflow regenerates thes
 - **Lucide React** — icons
 
 The current site does not depend on Tailwind CSS or Framer Motion; older copies of this README described tooling that is no longer present.
+
+
+## Subsystem documentation layout
+
+Every Python subsystem has a directory under `docs/subsystems/<subsystem>/` containing:
+
+- `system_index.html` — standalone subsystem landing page.
+- `system_index.css` — local styling for that index.
+- `system_index.mdxl` — editable Markdown-extended index source and page manifest.
+- `pages/` — the Markdown guides and references owned by that subsystem.
+
+The Docs application builds its grouped index from these `pages/` directories. The old `/wiki/<Page>.md` fetch path remains as a compatibility alias; the source of truth is each subsystem's `pages/` folder.

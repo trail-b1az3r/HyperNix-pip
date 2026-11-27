@@ -1,0 +1,19 @@
+---
+system: hypernix.espresso_maker
+title: hypernix.espresso_maker subsystem index
+description: 4-tier evaluation: Ristretto / SingleShot / DoubleShot / Lungo — prompt battery + scoring
+page_count: 1
+---
+
+# hypernix.espresso_maker
+
+4-tier evaluation: Ristretto / SingleShot / DoubleShot / Lungo — prompt battery + scoring
+
+## Documentation pages
+
+- [EspressoMaker](pages/EspressoMaker.md)
+
+## Source
+
+- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
+- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
