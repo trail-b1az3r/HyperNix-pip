@@ -432,7 +432,10 @@ const QUICK = [
 ]
 
 function systemHref(name: string) {
-  return `./subsystems/${name.replace(/^hypernix\\./, '')}/system_index.html`
+  const moduleSlug = name.replace(/^hypernix\\./, '').replace(/_/g, '-')
+  // Keep the historical core URL working; it redirects to hyped-pro-core.
+  const slug = moduleSlug === 'core' ? 'hypernix.core' : moduleSlug
+  return `./subsystems/${slug}/system_index.html`
 }
 
 const GROUP_ICONS: Record<string, string> = {
@@ -596,17 +599,11 @@ function Sidebar({ index, doc, open, onPick }: { index: Index, doc?: string, ope
           const systems = SUBSYSTEMS.filter((item) => subsystemGroup(item.name) === group)
             .filter((item) => !f || item.name.toLowerCase().includes(f) || item.desc.toLowerCase().includes(f))
           if (!systems.length) return null
-          const key = `systems:${group}`
-          const shut = !f && closed[key]
           return <div key={group}>
-            <button type="button" className="docs-side-title" aria-expanded={!shut}
-              onClick={() => setClosed((c) => ({ ...c, [key]: !shut }))}>
-              <span className={`caret${shut ? '' : ' open'}`}>›</span>{group}
-            </button>
-            {!shut && <ul>{systems.map((item) => <li key={item.name}>
-              <a className={doc === `@system:${item.name}` ? 'active' : ''}
-                href={systemHref(item.name)} onClick={onPick}>{item.name.replace('hypernix.', '')}</a>
-            </li>)}</ul>}
+            <div className="docs-side-title">{group}</div>
+            <ul>{systems.map((item) => <li key={item.name}>
+              <a href={systemHref(item.name)} onClick={onPick}>{item.name.replace('hypernix.', '')}</a>
+            </li>)}</ul>
           </div>
         })}
       </div>
