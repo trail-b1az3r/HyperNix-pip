@@ -1,1 +1,0 @@
-../docs/subsystems/smoker/pages/Smoker.md

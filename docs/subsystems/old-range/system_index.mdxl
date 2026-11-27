@@ -1,0 +1,54 @@
+---
+title: "Old Range"
+module: "hypernix.old_range"
+category: "hypernix.old_range"
+---
+
+# hypernix.old_range
+
+Scored rubric with per-criterion scores and explainability strings.
+
+## Documentation pages
+
+No dedicated guide has been published for this subsystem yet. See the API reference and source module.
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `length_score(prompt, response, ctx) -> Score`
+
+1.0 for responses in [min_chars, soft_max_chars], 0.0 if empty,
+
+### `refusal_score(prompt, response, ctx) -> Score`
+
+0.0 if the response contains a refusal phrase, 1.0 otherwise.
+
+### `math_digit_score(prompt, response, ctx) -> Score`
+
+For math-y prompts: 1.0 if the response has digits, else 0.0.
+
+### `overlap_score(prompt, response, ctx) -> Score`
+
+Token-overlap with a reference answer in ``ctx['references']``.
+
+### `keyword_score(prompt, response, ctx) -> Score`
+
+1.0 if the response contains every required keyword for this prompt.
+
+### `repetition_score(prompt, response, ctx) -> Score`
+
+0.0 on long single-character runs, 1.0 otherwise.
+
+### `OldRange()`
+
+Weighted-mean scored rubric with fatal-rule short-circuit.
+
+### `OldRange.label_with_breakdown(prompt, response) -> tuple[str, float, list[tuple[str, float | None, str]]]`
+
+Return ``(label, aggregate_score, [(rule_name, score, reason), ...])``.
+
+## Source
+
+[`src/hypernix/evaluation/old_range.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/evaluation/old_range.py)
+

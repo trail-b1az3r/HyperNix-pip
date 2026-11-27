@@ -1,0 +1,19 @@
+# hypernix.pepper_shaker API reference
+
+Implementation: `src/hypernix/data/pepper_shaker.py`
+
+## `SmallShaker()`
+
+Random word masking at ``rate``. Replaces whole whitespace-
+
+## `Dish()`
+
+Typo injection. For each word with probability ``rate``,
+
+## `TallHandmade()`
+
+Negation injection. Prepends ``negator`` (\"NOT \" by default)
+
+## `pepper_shaker(tier, source, **kw) -> Shaker`
+
+Construct a pepper-shaker tier by short name.

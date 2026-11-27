@@ -1,0 +1,47 @@
+# hypernix.smoke_alarm API reference
+
+Implementation: `src/hypernix/timing/smoke_alarm.py`
+
+## `TrainingBudget()`
+
+Plan returned by every alarm before training starts.
+
+## `AlarmStatus()`
+
+Result of a mid-run :meth:`Alarm.check` call.
+
+## `Alarm()`
+
+Base class — see the four concrete subclasses below.
+
+## `RadsAlarm()`
+
+Lightest alarm. Uses a single per-step constant and scales it
+
+## `GasAlarm()`
+
+Mid tier. Looks up CPU and GPU presets and scales the per-step
+
+## `ModernAlarm()`
+
+Most accurate alarm. Runs ``warmup_steps`` real training steps
+
+## `ModernAlarm.warmup(step_fn) -> float`
+
+Run ``step_fn()`` ``warmup_steps`` times, record per-step
+
+## `AutoAlarm()`
+
+Convenience selector. ``alarm()`` returns whichever concrete
+
+## `detect_gpu_preset() -> GPUPreset | None`
+
+Best-effort match of the currently-installed CUDA device against
+
+## `detect_cpu_preset() -> CPUPreset | None`
+
+Best-effort match of /proc/cpuinfo's model name against
+
+## `… 2 more`
+
+Additional documented functions/methods in this module — see source.

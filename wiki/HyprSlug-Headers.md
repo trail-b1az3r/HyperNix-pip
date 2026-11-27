@@ -1,1 +1,0 @@
-../docs/subsystems/quantize/pages/HyprSlug-Headers.md

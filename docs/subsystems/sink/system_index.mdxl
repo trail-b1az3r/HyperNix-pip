@@ -1,19 +1,39 @@
 ---
-system: hypernix.sink
-title: hypernix.sink subsystem index
-description: Append-only file sink with optional rotation and deduplication
-page_count: 0
+title: "Sink"
+module: "hypernix.sink"
+category: "hypernix.sink"
 ---
 
 # hypernix.sink
 
-Append-only file sink with optional rotation and deduplication
+Append-only file sink with optional rotation and deduplication.
 
 ## Documentation pages
 
-No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+- [Lunchbox](../../#/docs/Lunchbox) · [MDXL source](pages/Lunchbox.mdxl)
+- [Menu](../../#/docs/Menu) · [MDXL source](pages/Menu.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `Sink()`
+
+Append-only text sink.
+
+### `Sink.write(line) -> bool`
+
+Append ``line`` (newline added if missing). Returns True on
+
+### `Sink.pour(iterable) -> Path`
+
+Write every item of ``iterable`` to the sink; return the
+
+### `Sink.drain() -> None`
+
+No-op right now — we open/close the file per-write for
 
 ## Source
 
-- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
-- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
+[`src/hypernix/data/sink.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/data/sink.py)
+

@@ -1,0 +1,7 @@
+# hypernix.convert API reference
+
+Implementation: `src/hypernix/quant/convert.py`
+
+## `convert_to_gguf(model_dir, output, dtype='fp16', arch_name='hypernix', name='HyperNix', n_head_hint=None, context_length=None) -> Path`
+
+Write an uncompressed GGUF file at fp32 or fp16 precision.

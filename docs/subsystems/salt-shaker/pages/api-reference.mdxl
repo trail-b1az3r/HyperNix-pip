@@ -1,0 +1,23 @@
+# hypernix.salt_shaker API reference
+
+Implementation: `src/hypernix/data/salt_shaker.py`
+
+## `Shaker()`
+
+Abstract seasoning applicator. Subclasses override :meth:`season`.
+
+## `FromTheBag()`
+
+Cheapest tier. Per-character substitution at ``rate`` with a
+
+## `HandCrusher()`
+
+Middle tier. Token-level adjacent-swap at ``rate``. Produces
+
+## `PoshSaltDish()`
+
+Finest tier. Word-aware drop / duplicate / swap at independent
+
+## `salt_shaker(tier, source, **kw)`
+
+Construct a salt-shaker tier by short name.

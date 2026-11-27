@@ -1,0 +1,23 @@
+# hypernix.new_range API reference
+
+Implementation: `src/hypernix/evaluation/new_range.py`
+
+## `math_lacks_digit(prompt, response) -> bool`
+
+True if the prompt looks numeric and the response has no digits.
+
+## `is_repetition(prompt, response, min_run=8) -> bool`
+
+True if the same character or short token repeats `min_run` times.
+
+## `NewRange()`
+
+First-fail rubric labeler.
+
+## `default_rules() -> Iterable[Rule]`
+
+The out-of-the-box rule set used when no explicit ``rules`` is given.
+
+## `new_range(rules=None) -> NewRange`
+
+Construct a :class:`NewRange` with the given rules (or the defaults).

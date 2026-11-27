@@ -1,1 +1,0 @@
-../docs/subsystems/whisk/pages/Whisk.md

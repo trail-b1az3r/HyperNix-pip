@@ -1,0 +1,27 @@
+# hypernix.hyped_pro_core API reference
+
+Implementation: `src/hypernix/interfaces/hyped_pro_core.py`
+
+## `HypedProError(code, message)`
+
+A real, coded failure — never silently swallowed into a fake reply.
+
+## `ensure_downloaded(model, quiet=False) -> Path`
+
+Download ``model``'s weights if they aren't already cached.
+
+## `extract_thinking(text) -> tuple[str, str | None]`
+
+Split a reply into (visible_text, thinking_text_or_None).
+
+## `strip_thinking(text) -> str`
+
+Remove inline <think>/<thinking>/<reasoning> blocks from a reply.
+
+## `send_chat_message(model_short, messages, system=None, api_key=None, max_tokens=None, max_thinking_tokens=None, hide_thinking=True, enable_tools=True) -> dict[str, str | None]`
+
+Returns {\"content\": <visible reply>, \"thinking\": <extracted thinking
+
+## `catalog_json() -> dict[str, Any]`
+
+Serializable view of MODELS + PROVIDERS for the bridge's `catalog` cmd.

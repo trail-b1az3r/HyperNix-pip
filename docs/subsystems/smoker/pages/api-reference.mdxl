@@ -1,0 +1,31 @@
+# hypernix.smoker API reference
+
+Implementation: `src/hypernix/training/smoker.py`
+
+## `Smoker()`
+
+Base smoker. Subclasses override :meth:`smoke`.
+
+## `Smoker.smoke(dataset, out_dir) -> Path`
+
+Subclasses implement.
+
+## `UseableSmoker()`
+
+Minimum viable smoker. Straight pass-through to ``oven.train``.
+
+## `GoodSmoker()`
+
+Swaps vanilla AdamW for :class:`PressureCooker`. The LR
+
+## `CommercialSmoker()`
+
+Adds an exponential moving average of weights and periodic
+
+## `HighQualitySmoker()`
+
+Curriculum: trains in progressive context lengths. Runs three
+
+## `smoker(tier, oven, **kw) -> Smoker`
+
+Pick a smoker tier by short name.

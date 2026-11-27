@@ -1,19 +1,38 @@
 ---
-system: hypernix.table
-title: hypernix.table subsystem index
-description: Dead-simple tabular viewer: from_training_log, from_judge_corpus, filter, select, show
-page_count: 0
+title: "Table"
+module: "hypernix.table"
+category: "hypernix.table"
 ---
 
 # hypernix.table
 
-Dead-simple tabular viewer: from_training_log, from_judge_corpus, filter, select, show
+Dead-simple tabular viewer: from_training_log, from_judge_corpus, filter, select, show.
 
 ## Documentation pages
 
-No dedicated subsystem pages are assigned yet. Add Markdown documentation to this subsystem's pages/ directory.
+- [Kitchen](../../#/docs/Kitchen) · [MDXL source](pages/Kitchen.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `Table()`
+
+Minimal tabular view over ``rows``, a list of ``dict[str, Any]``.
+
+### `Table.from_training_log(cls, path) -> Table`
+
+Load step/loss pairs from a training stdout capture.
+
+### `Table.from_judge_corpus(cls, path) -> Table`
+
+Load ``<JUDGE_PROMPT>...<JUDGE_LABEL>...`` lines.
+
+### `Table.select(*columns) -> Table`
+
+Drop every column not in ``columns``.
 
 ## Source
 
-- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
-- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
+[`src/hypernix/monitoring/table.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/monitoring/table.py)
+

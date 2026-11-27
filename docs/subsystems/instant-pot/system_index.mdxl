@@ -1,0 +1,28 @@
+---
+title: "Instant Pot"
+module: "hypernix.instant_pot"
+category: "hypernix.instant_pot"
+---
+
+# hypernix.instant_pot
+
+brew(recipe) — one-shot end-to-end pipeline. Also available as CLI: hypernix brew recipe.json.
+
+## Documentation pages
+
+- [RecipeBook](../../#/docs/RecipeBook) · [MDXL source](pages/RecipeBook.mdxl)
+- [PipelineMechanics](../../#/docs/PipelineMechanics) · [MDXL source](pages/PipelineMechanics.mdxl)
+- [Cookbook](../../#/docs/Cookbook) · [MDXL source](pages/Cookbook.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `brew(recipe) -> Path`
+
+Run the full pipeline described by ``recipe``; return the trained
+
+## Source
+
+[`src/hypernix/training/instant_pot.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/training/instant_pot.py)
+

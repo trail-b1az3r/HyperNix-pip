@@ -1,1 +1,0 @@
-../docs/subsystems/smoke_alarm/pages/WakeUp.md

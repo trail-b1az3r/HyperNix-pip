@@ -1,1 +1,0 @@
-../docs/subsystems/core/pages/Scavenger.md

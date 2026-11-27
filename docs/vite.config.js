@@ -3,14 +3,15 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 
-const SYSTEMS_ROOT = path.resolve(__dirname, 'subsystems')
+const WIKI = path.resolve(__dirname, '../wiki')
 const NAV = path.resolve(__dirname, 'src/lib/data/docs-nav.json')
+const SUBSYSTEM_PAGES_FILE = path.resolve(__dirname, 'src/lib/data/subsystem-pages.json')
+const SUBSYSTEM_DIR = path.resolve(__dirname, 'subsystems')
 const OPENAPI = path.resolve(__dirname, '../examples/t1api/openapi.json')
 const ENV_EXAMPLE = path.resolve(__dirname, '../examples/t1api/.env.example')
 
-// The wiki, served by the site itself: every wiki/*.md is copied into the
-// build as wiki/<Page>.md, and v1/docs-index.json holds the sidebar's
-// groups and a search index (titles, headings, a summary, plain text).
+// The docs site bundles general wiki pages plus subsystem-local MDXL pages.
+// v1/docs-index.json indexes both sets so search and navigation remain unified.
 // The docs page used to fetch each page from GitHub at view time, which
 // the unauthenticated API allows sixty times an hour per visitor.
 
@@ -58,32 +59,39 @@ function pageInfo(name, md) {
   }
 }
 
-function collectPages() {
-  const pages = []
-  if (!fs.existsSync(SYSTEMS_ROOT)) return pages
-  for (const slug of fs.readdirSync(SYSTEMS_ROOT).sort()) {
-    const dir = path.join(SYSTEMS_ROOT, slug, 'pages')
+function collectSubsystemMarkdownPages() {
+  const found = {}
+  if (!fs.existsSync(SUBSYSTEM_DIR)) return found
+  for (const slug of fs.readdirSync(SUBSYSTEM_DIR).sort()) {
+    const dir = path.join(SUBSYSTEM_DIR, slug, 'pages')
     if (!fs.existsSync(dir)) continue
     for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
-      pages.push({ name: file.slice(0, -3), file, slug, absolute: path.join(dir, file),
-        sourcePath: `docs/subsystems/${slug}/pages/${file}` })
+      const name = file.slice(0, -3)
+      if (name === 'api-reference' || found[name]) continue
+      found[name] = { path: `subsystems/${slug}/pages/${file}`, absolute: path.join(dir, file) }
     }
   }
-  return pages
-}
-
-function findPage(name) {
-  return collectPages().find((page) => page.name === name)
+  return found
 }
 
 function buildIndex() {
   const nav = JSON.parse(fs.readFileSync(NAV, 'utf-8'))
-  const files = collectPages()
-  const names = files.map((f) => f.name)
+  const subsystemPages = JSON.parse(fs.readFileSync(SUBSYSTEM_PAGES_FILE, 'utf-8'))
+  const moved = {}
+  for (const [slug, pageNames] of Object.entries(subsystemPages)) {
+    for (const name of pageNames) moved[name] = `subsystems/${slug}/pages/${name}.mdxl`
+  }
+  const wikiFiles = fs.existsSync(WIKI) ? fs.readdirSync(WIKI).filter((f) => f.endsWith('.md')) : []
+  const subsystemMarkdown = collectSubsystemMarkdownPages()
+  const names = [...new Set([...wikiFiles.map((f) => f.slice(0, -3)), ...Object.keys(subsystemMarkdown), ...Object.keys(moved)])]
   const pages = {}
-  for (const file of files) {
-    const info = pageInfo(file.name, fs.readFileSync(file.absolute, 'utf-8'))
-    pages[file.name] = { ...info, sourcePath: file.sourcePath }
+  for (const name of names) {
+    const filePath = moved[name]
+      ? path.resolve(__dirname, moved[name])
+      : subsystemMarkdown[name]?.absolute || path.join(WIKI, `${name}.md`)
+    pages[name] = pageInfo(name, fs.readFileSync(filePath, 'utf-8'))
+    if (moved[name]) pages[name].path = moved[name]
+    else if (subsystemMarkdown[name]) pages[name].path = subsystemMarkdown[name].path
   }
   const listed = new Set()
   const groups = nav.groups.map((g) => {
@@ -92,8 +100,9 @@ function buildIndex() {
     return { id: g.id, title: g.title, blurb: g.blurb, pages: present }
   })
   const rest = names.filter((n) => !listed.has(n)).sort()
-  if (rest.length) groups.push({ id: 'more', title: 'More', blurb: 'Everything else in the subsystem pages.', pages: rest })
+  if (rest.length) groups.push({ id: 'more', title: 'More', blurb: 'Everything else in the wiki.', pages: rest })
   for (const g of groups) for (const p of g.pages) pages[p].group = g.id
+  // A short label two pages share says nothing: those keep their titles.
   const seen = {}
   for (const info of Object.values(pages)) seen[info.short] = (seen[info.short] || 0) + 1
   for (const info of Object.values(pages)) if (seen[info.short] > 1) info.short = info.title
@@ -197,25 +206,54 @@ function wikiPlugin() {
           return
         }
         const m = /^\/wiki\/([A-Za-z0-9._-]+\.md)$/.exec(url)
-        const page = m && findPage(m[1].slice(0, -3))
-        if (page) {
+        if (m && fs.existsSync(path.join(WIKI, m[1]))) {
           res.setHeader('Content-Type', 'text/markdown; charset=utf-8')
-          res.end(fs.readFileSync(page.absolute))
+          res.end(fs.readFileSync(path.join(WIKI, m[1])))
           return
         }
         next()
       })
     },
     generateBundle() {
-      for (const page of collectPages()) {
-        const source = fs.readFileSync(page.absolute)
-        this.emitFile({ type: 'asset', fileName: `wiki/${page.file}`, source })
-        this.emitFile({ type: 'asset', fileName: `subsystems/${page.slug}/pages/${page.file}`, source })
+      if (fs.existsSync(WIKI)) {
+        for (const file of fs.readdirSync(WIKI).filter((f) => f.endsWith('.md'))) {
+          this.emitFile({ type: 'asset', fileName: `wiki/${file}`, source: fs.readFileSync(path.join(WIKI, file)) })
+        }
       }
-      if (fs.existsSync(SYSTEMS_ROOT)) for (const slug of fs.readdirSync(SYSTEMS_ROOT)) {
-        for (const file of ['system_index.html', 'system_index.css', 'system_index.mdxl']) {
-          const absolute = path.join(SYSTEMS_ROOT, slug, file)
-          if (fs.existsSync(absolute)) this.emitFile({ type: 'asset', fileName: `subsystems/${slug}/${file}`, source: fs.readFileSync(absolute) })
+      const subsystemPages = JSON.parse(fs.readFileSync(SUBSYSTEM_PAGES_FILE, 'utf-8'))
+      for (const [slug, pageNames] of Object.entries(subsystemPages)) {
+        const folder = path.join(SUBSYSTEM_DIR, slug)
+        for (const file of ['system_index.html', 'system_index.css', 'system_index.mdxl', 'pages/api-reference.mdxl']) {
+          const sourcePath = path.join(folder, file)
+          this.emitFile({ type: 'asset', fileName: `subsystems/${slug}/${file}`, source: fs.readFileSync(sourcePath) })
+        }
+        for (const name of pageNames) {
+          const fileName = `subsystems/${slug}/pages/${name}.mdxl`
+          this.emitFile({ type: 'asset', fileName, source: fs.readFileSync(path.join(folder, 'pages', `${name}.mdxl`)) })
+        }
+      }
+      // Backwards-compatible public URL used by older HyperNix docs links.
+      // The canonical subsystem folder is hyped-pro-core (module hypernix.hyped_pro_core).
+      this.emitFile({
+        type: 'asset',
+        fileName: 'subsystems/hypernix.core/system_index.html',
+        source: '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=../hyped-pro-core/system_index.html"><link rel="canonical" href="../hyped-pro-core/system_index.html"><title>HyperNix Core · HyperNix Docs</title></head><body><p>This subsystem page has moved to <a href="../hyped-pro-core/system_index.html">Hyped Pro Core</a>.</p><script>location.replace("../hyped-pro-core/system_index.html" + location.hash)</script></body></html>',
+      })
+      // Also publish the newer Markdown pages introduced on main. The MDXL
+      // subsystem pages above take precedence for names in the MDXL registry.
+      for (const page of Object.values(collectSubsystemMarkdownPages())) {
+        this.emitFile({ type: 'asset', fileName: page.path, source: fs.readFileSync(page.absolute) })
+      }
+      // Keep static indexes from subsystems added on main, including the
+      // canonical hypernix.core index, even when they are not in the MDXL map.
+      if (fs.existsSync(SUBSYSTEM_DIR)) {
+        for (const slug of fs.readdirSync(SUBSYSTEM_DIR)) {
+          if (Object.prototype.hasOwnProperty.call(subsystemPages, slug)) continue
+          const folder = path.join(SUBSYSTEM_DIR, slug)
+          for (const file of ['system_index.html', 'system_index.css', 'system_index.mdxl']) {
+            const sourcePath = path.join(folder, file)
+            if (fs.existsSync(sourcePath)) this.emitFile({ type: 'asset', fileName: `subsystems/${slug}/${file}`, source: fs.readFileSync(sourcePath) })
+          }
         }
       }
       for (const [url, build] of Object.entries(GENERATED)) {

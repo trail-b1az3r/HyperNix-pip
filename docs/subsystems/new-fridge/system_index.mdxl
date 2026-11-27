@@ -1,0 +1,41 @@
+---
+title: "New Fridge"
+module: "hypernix.new_fridge"
+category: "hypernix.new_fridge"
+---
+
+# hypernix.new_fridge
+
+Training-curve graphing: parse_training_log, plot_loss_curve, plot_score_distribution.
+
+## Documentation pages
+
+- [Dashboards](../../#/docs/Dashboards) · [MDXL source](pages/Dashboards.mdxl)
+- [TvTopMax](../../#/docs/TvTopMax) · [MDXL source](pages/TvTopMax.mdxl)
+- [TvTopPro](../../#/docs/TvTopPro) · [MDXL source](pages/TvTopPro.mdxl)
+- [HyperLog](../../#/docs/HyperLog) · [MDXL source](pages/HyperLog.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `parse_training_log(text) -> list[tuple[int, float]]`
+
+Return ``(step, loss)`` pairs parsed from ``hypernix.train`` stdout.
+
+### `plot_loss_curve(pairs, out_path, title='Training loss') -> Path`
+
+Save a loss curve as a PNG. Returns the path written.
+
+### `plot_score_distribution(scores, out_path, title='Judge score distribution', bins=20) -> Path`
+
+Histogram of judge scores (one pass through a dataset).
+
+### `plot_round_losses(rounds, out_path, title='Multi-round training loss', round_labels=None) -> Path`
+
+Plot loss curves for multiple training rounds (e.g. from :mod:`tupperware`).
+
+## Source
+
+[`src/hypernix/evaluation/new_fridge.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/evaluation/new_fridge.py)
+

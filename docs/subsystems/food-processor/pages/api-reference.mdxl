@@ -1,0 +1,19 @@
+# hypernix.food_processor API reference
+
+Implementation: `src/hypernix/data/food_processor.py`
+
+## `ChopBlade()`
+
+Split the file on ``separator`` and yield each non-empty piece.
+
+## `SliceBlade()`
+
+Fixed-length character slicing with optional overlap. Good for
+
+## `ShredBlade()`
+
+Whitespace-tokenized sliding window.
+
+## `PureeBlade()`
+
+The whole file as one output, with internal whitespace

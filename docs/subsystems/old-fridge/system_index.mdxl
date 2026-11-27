@@ -1,0 +1,42 @@
+---
+title: "Old Fridge"
+module: "hypernix.old_fridge"
+category: "hypernix.old_fridge"
+---
+
+# hypernix.old_fridge
+
+Memory housekeeping: freeze, unfreeze, parameter_stats, offload_to_cpu, chill_cache.
+
+## Documentation pages
+
+- [Fridges](../../#/docs/Fridges) · [MDXL source](pages/Fridges.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `freeze(model, patterns=('embed_tokens',)) -> int`
+
+Set ``requires_grad=False`` on parameters whose names match ``patterns``.
+
+### `unfreeze(model, patterns=('*',)) -> int`
+
+Inverse of :func:`freeze`. Default unfreezes everything.
+
+### `offload_to_cpu(model, patterns=('embed_tokens',)) -> int`
+
+Move submodules matched by ``patterns`` to CPU. Returns how many moved.
+
+### `chill_cache() -> None`
+
+Free unreferenced tensors from the allocator cache.
+
+### `unwrap_model(model) -> nn.Module`
+
+Return the inner module, unwrapping DDP / FSDP / DataParallel.
+
+## Source
+
+[`src/hypernix/system/old_fridge.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/system/old_fridge.py)
+

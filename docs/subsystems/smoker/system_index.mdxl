@@ -1,19 +1,50 @@
 ---
-system: hypernix.smoker
-title: hypernix.smoker subsystem index
-description: 4-tier training quality: UseableSmoker / GoodSmoker / CommercialSmoker / HighQualitySmoker
-page_count: 1
+title: "Smoker"
+module: "hypernix.smoker"
+category: "hypernix.smoker"
 ---
 
 # hypernix.smoker
 
-4-tier training quality: UseableSmoker / GoodSmoker / CommercialSmoker / HighQualitySmoker
+4-tier training quality: UseableSmoker / GoodSmoker / CommercialSmoker / HighQualitySmoker.
 
 ## Documentation pages
 
-- [Smoker](pages/Smoker.md)
+- [Smoker](../../#/docs/Smoker) · [MDXL source](pages/Smoker.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `Smoker()`
+
+Base smoker. Subclasses override :meth:`smoke`.
+
+### `Smoker.smoke(dataset, out_dir) -> Path`
+
+Subclasses implement.
+
+### `UseableSmoker()`
+
+Minimum viable smoker. Straight pass-through to ``oven.train``.
+
+### `GoodSmoker()`
+
+Swaps vanilla AdamW for :class:`PressureCooker`. The LR
+
+### `CommercialSmoker()`
+
+Adds an exponential moving average of weights and periodic
+
+### `HighQualitySmoker()`
+
+Curriculum: trains in progressive context lengths. Runs three
+
+### `smoker(tier, oven, **kw) -> Smoker`
+
+Pick a smoker tier by short name.
 
 ## Source
 
-- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
-- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
+[`src/hypernix/training/smoker.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/training/smoker.py)
+

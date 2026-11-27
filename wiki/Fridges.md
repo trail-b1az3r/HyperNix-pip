@@ -1,1 +1,0 @@
-../docs/subsystems/old_fridge/pages/Fridges.md

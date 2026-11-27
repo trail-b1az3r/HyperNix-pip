@@ -1,0 +1,43 @@
+# hypernix.multilama API reference
+
+Implementation: `src/hypernix/models/multilama.py`
+
+## `MultiLlamaError(code, message)`
+
+A real, coded failure — see ``.code``. Never swallowed into a fake reply.
+
+## `locate_binary(backend) -> Path | None`
+
+An already-available binary for ``backend`` — env override, then
+
+## `fetch_binary(backend, quiet=False, search_releases=10) -> Path`
+
+Download+cache a prebuilt server binary for ``backend``.
+
+## `ensure_binary(backend, quiet=False) -> Path`
+
+locate_binary(), falling back to fetch_binary() if nothing's found.
+
+## `shutdown_all_servers() -> None`
+
+Terminate every server subprocess this module has launched.
+
+## `MultiLlama(backend, repo_id, filename, gguf_path, n_gpu_layers, n_ctx, _python_llm=None)`
+
+A loaded GGUF model, backed by whichever llama.cpp variant answered
+
+## `MultiLlama.chat_message(messages, system=None, max_tokens=512, temperature=0.7, tools=None) -> dict[str, Any]`
+
+Like :meth:`chat`, but returns the raw OpenAI-style message dict
+
+## `load(repo_id, filename, backend='vanilla', n_gpu_layers=-1, n_ctx=8192, quiet=False) -> MultiLlama`
+
+Load a GGUF model through ``backend`` (see :data:`BACKENDS`).
+
+## `auto_select_backend(repo_id, filename) -> str`
+
+Best-effort default backend for a given GGUF, based on naming
+
+## `status_json() -> dict[str, Any]`
+
+Serializable availability report for every registered backend —

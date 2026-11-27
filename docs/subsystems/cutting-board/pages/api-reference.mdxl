@@ -1,0 +1,15 @@
+# hypernix.cutting_board API reference
+
+Implementation: `src/hypernix/data/cutting_board.py`
+
+## `CuttingBoard()`
+
+Deterministic random split.
+
+## `StratifiedBoard()`
+
+Split a list of dict records while preserving the
+
+## `cutting_board(source=None, train=0.8, val=0.1, test=0.1, seed=0, shuffle=True) -> CuttingBoard | dict[str, list[str]]`
+
+If ``source`` is given, return the slice dict directly; else

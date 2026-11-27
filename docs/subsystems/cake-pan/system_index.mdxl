@@ -1,0 +1,54 @@
+---
+title: "Cake Pan"
+module: "hypernix.cake_pan"
+category: "hypernix.cake_pan"
+---
+
+# hypernix.cake_pan
+
+Hybrid CPU+GPU training guard: NaN/Inf detection, wall-time watchdog, memory-pressure rollback via BakeOff.
+
+## Documentation pages
+
+- [CakePan](../../#/docs/CakePan) · [MDXL source](pages/CakePan.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `BakeOff(reason, step) -> None`
+
+Raised when a CakePan detects a corruption-class event
+
+### `CakePan()`
+
+Hybrid CPU + GPU training guard. See module docstring.
+
+### `CakePan.save_pristine() -> None`
+
+Capture the current state dict on CPU. Every
+
+### `CakePan.roll_back() -> bool`
+
+Restore the last pristine snapshot. Returns True on
+
+### `CakePan.memory_guard() -> bool`
+
+Return True if the guard performed an offload this call.
+
+### `CakePan.bake(step_fn) -> Any`
+
+Run one training step safely.
+
+### `CakePan.oven(batches, step_fn, on_bake_off=None, max_retries_per_batch=2) -> int`
+
+Loop over ``batches``, calling ``step_fn(batch)`` under
+
+### `cake_pan(model, optimizer=None, **kwargs) -> CakePan`
+
+Construct a :class:`CakePan` with keyword configuration.
+
+## Source
+
+[`src/hypernix/training/cake_pan.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/training/cake_pan.py)
+

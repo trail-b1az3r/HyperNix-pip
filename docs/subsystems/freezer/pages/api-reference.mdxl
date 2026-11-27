@@ -1,0 +1,47 @@
+# hypernix.freezer API reference
+
+Implementation: `src/hypernix/system/freezer.py`
+
+## `VRAMBudget()`
+
+Snapshot of device memory at one point in time.
+
+## `probe_vram(device_index=0) -> VRAMBudget`
+
+Return current VRAM state for the given CUDA device, or a zeroed
+
+## `compute_capability(device_index=0) -> tuple[int, int] | None`
+
+Return ``(major, minor)`` for a CUDA device, or ``None`` on CPU-only hosts.
+
+## `is_pascal(device_index=0) -> bool`
+
+True if the device is a Pascal chip (sm_60, sm_61, sm_62).
+
+## `pascal_safe_dtype(device_index=0) -> torch.dtype`
+
+Pick a dtype that trains stably on the detected device.
+
+## `pascal_mode_hints(device_index=0) -> dict[str, object]`
+
+Return a dict of recommended settings for Pascal (sm_61) GPUs.
+
+## `Freezer()`
+
+Base VRAM manager. Concrete subclasses set the tuning knobs.
+
+## `Freezer.suggest_batch_size(hint=None) -> int`
+
+Return a batch size appropriate for this freezer.
+
+## `Freezer.guard(fn, *args, **kwargs) -> T`
+
+Call ``fn(*args, **kwargs)``. Base implementation is a plain call;
+
+## `Freezer.suggest_qat_batch_size(bits=6, hint=None) -> int`
+
+Suggest a QAT-aware batch size.
+
+## `… 11 more`
+
+Additional documented functions/methods in this module — see source.

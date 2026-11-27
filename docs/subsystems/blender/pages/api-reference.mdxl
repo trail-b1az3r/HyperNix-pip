@@ -1,0 +1,23 @@
+# hypernix.blender API reference
+
+Implementation: `src/hypernix/data/blender.py`
+
+## `HandBlender()`
+
+Straight concatenation. Source A, then source B, then C, …
+
+## `PersonalBlender()`
+
+Round-robin interleave. Pulls one line from each source in
+
+## `CountertopBlender()`
+
+Weighted random sampling with replacement.
+
+## `HighPowerBlender()`
+
+Buffers every source into RAM, concatenates, then shuffles.
+
+## `blender(tier, sources, **kw)`
+
+Construct a blender tier by name.

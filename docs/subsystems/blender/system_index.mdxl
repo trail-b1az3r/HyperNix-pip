@@ -1,19 +1,42 @@
 ---
-system: hypernix.blender
-title: hypernix.blender subsystem index
-description: 4-tier multi-source mixing: HandBlender / PersonalBlender / CountertopBlender / HighPowerBlender
-page_count: 1
+title: "Blender"
+module: "hypernix.blender"
+category: "hypernix.blender"
 ---
 
 # hypernix.blender
 
-4-tier multi-source mixing: HandBlender / PersonalBlender / CountertopBlender / HighPowerBlender
+4-tier multi-source mixing: HandBlender / PersonalBlender / CountertopBlender / HighPowerBlender.
 
 ## Documentation pages
 
-- [Blender](pages/Blender.md)
+- [Blender](../../#/docs/Blender) · [MDXL source](pages/Blender.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `HandBlender()`
+
+Straight concatenation. Source A, then source B, then C, …
+
+### `PersonalBlender()`
+
+Round-robin interleave. Pulls one line from each source in
+
+### `CountertopBlender()`
+
+Weighted random sampling with replacement.
+
+### `HighPowerBlender()`
+
+Buffers every source into RAM, concatenates, then shuffles.
+
+### `blender(tier, sources, **kw)`
+
+Construct a blender tier by name.
 
 ## Source
 
-- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
-- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
+[`src/hypernix/data/blender.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/data/blender.py)
+

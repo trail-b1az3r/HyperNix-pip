@@ -1,0 +1,31 @@
+---
+title: "Hyped Pro Bridge"
+module: "hypernix.hyped_pro_bridge"
+category: "hypernix.hyped_pro_bridge"
+---
+
+# hypernix.hyped_pro_bridge
+
+Line-delimited JSON stdio worker the Node hyped-pro TUI shells out to for every real operation.
+
+## Documentation pages
+
+- [Context Relay](../../#/docs/Context-Relay) · [MDXL source](pages/Context-Relay.mdxl)
+- [HyperLink Sync](../../#/docs/HyperLink-Sync) · [MDXL source](pages/HyperLink-Sync.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `serve() -> int`
+
+Read JSON requests from stdin, write JSON responses to stdout, forever.
+
+### `cli_main(argv=None) -> int`
+
+One-shot mode for scripting/debugging: build a single request from
+
+## Source
+
+[`src/hypernix/interfaces/hyped_pro_bridge.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/interfaces/hyped_pro_bridge.py)
+

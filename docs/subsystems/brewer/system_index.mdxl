@@ -1,25 +1,76 @@
 ---
-system: hypernix.brewer
-title: hypernix.brewer subsystem index
-description: hyperNix0x-v2 architecture presets: 33m/micro/small/medium/large (GPU) + cpu-nano/cpu-tiny/cpu-small (CPU-only). custom_arch() for a bespoke config
-page_count: 7
+title: "Brewer"
+module: "hypernix.brewer"
+category: "hypernix.brewer"
 ---
 
 # hypernix.brewer
 
-hyperNix0x-v2 architecture presets: 33m/micro/small/medium/large (GPU) + cpu-nano/cpu-tiny/cpu-small (CPU-only). custom_arch() for a bespoke config
+hyperNix0x-v2 architecture presets: 33m/micro/small/medium/large (GPU) + cpu-nano/cpu-tiny/cpu-small (CPU-only). custom_arch() for a bespoke config.
 
 ## Documentation pages
 
-- [Architecture](pages/Architecture.md)
-- [Architectures](pages/Architectures.md)
-- [C4](pages/C4.md)
-- [Dflash2](pages/Dflash2.md)
-- [HNX0xV2Image](pages/HNX0xV2Image.md)
-- [STML](pages/STML.md)
-- [Workshop](pages/Workshop.md)
+- [Architectures](../../#/docs/Architectures) · [MDXL source](pages/Architectures.mdxl)
+- [Architecture](../../#/docs/Architecture) · [MDXL source](pages/Architecture.mdxl)
+- [HNX0xV2Image](../../#/docs/HNX0xV2Image) · [MDXL source](pages/HNX0xV2Image.mdxl)
+- [HyperNix0xV3](../../#/docs/HyperNix0xV3) · [MDXL source](pages/HyperNix0xV3.mdxl)
+- [C4](../../#/docs/C4) · [MDXL source](pages/C4.mdxl)
+- [MTP](../../#/docs/MTP) · [MDXL source](pages/MTP.mdxl)
+- [Frameworks](../../#/docs/Frameworks) · [MDXL source](pages/Frameworks.mdxl)
+- [Pascal](../../#/docs/Pascal) · [MDXL source](pages/Pascal.mdxl)
+- [STML](../../#/docs/STML) · [MDXL source](pages/STML.mdxl)
+- [Dflash2](../../#/docs/Dflash2) · [MDXL source](pages/Dflash2.mdxl)
+- [Workshop](../../#/docs/Workshop) · [MDXL source](pages/Workshop.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `BrewerConfig()`
+
+All hyperparameters for a ``hyperNix0x-v2`` style model.
+
+### `BrewerConfig.approx_params() -> int`
+
+Rough parameter count estimate (millions would be /1e6).
+
+### `BrewerRMSNorm(dim, eps=1e-05) -> None`
+
+Root-mean-square layer normalisation (no bias, no mean subtraction).
+
+### `BrewerEmbedding(cfg) -> None`
+
+Token embedding layer. RoPE is applied inside :class:`BrewerAttention`.
+
+### `BrewerAttention(cfg, layer_idx=0) -> None`
+
+Multi-head / Grouped Query Attention with RoPE and optional sliding window.
+
+### `BrewerFFN(cfg) -> None`
+
+SwiGLU feed-forward network.
+
+### `BrewerBlock(cfg, layer_idx) -> None`
+
+Single Pre-Norm transformer block: RMSNorm → Attention → RMSNorm → FFN.
+
+### `BrewerModel(cfg) -> None`
+
+Full decoder-only transformer stack for the ``hyperNix0x-v2`` family.
+
+### `BrewerModel.forward(input_ids, attn_mask=None) -> torch.Tensor`
+
+Forward pass.
+
+### `hypernix0x_v2_33m() -> BrewerConfig`
+
+``hyperNix0x-v2-33m`` — 6 layers, ~33.6429M params (33,642,900 parameters), ctx=4096.
+
+### `… 16 more`
+
+Additional documented functions/methods in this module — see source.
 
 ## Source
 
-- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
-- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
+[`src/hypernix/training/brewer.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/training/brewer.py)
+

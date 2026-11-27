@@ -1,1 +1,0 @@
-../docs/subsystems/freezer/pages/Freezer.md

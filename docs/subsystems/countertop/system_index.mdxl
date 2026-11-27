@@ -1,21 +1,64 @@
 ---
-system: hypernix.countertop
-title: hypernix.countertop subsystem index
-description: Stateful chat session management — Countertop creates sessions, bell rings the model, flour applies templates
-page_count: 3
+title: "Countertop"
+module: "hypernix.countertop"
+category: "hypernix.countertop"
 ---
 
 # hypernix.countertop
 
-Stateful chat session management — Countertop creates sessions, bell rings the model, flour applies templates
+Stateful chat session management — Countertop creates sessions, bell rings the model, flour applies templates.
 
 ## Documentation pages
 
-- [Bell](pages/Bell.md)
-- [Countertop](pages/Countertop.md)
-- [Flour](pages/Flour.md)
+- [Countertop](../../#/docs/Countertop) · [MDXL source](pages/Countertop.mdxl)
+- [Bell](../../#/docs/Bell) · [MDXL source](pages/Bell.mdxl)
+- [Flour](../../#/docs/Flour) · [MDXL source](pages/Flour.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `interactive_cli(use_rich=True) -> int`
+
+Interactive TUI/CLI menu for all HyperNix operations.
+
+### `Countertop()`
+
+A persistent multi-turn chat session bound to an oven.
+
+### `Countertop.authenticate_t1(t1_key) -> Any`
+
+Authenticate and bind a T1 API key to this Countertop session.
+
+### `Countertop.t1_meta() -> Any | None`
+
+Return the authenticated T1 key metadata, if bound.
+
+### `Countertop.t1_stats() -> dict[str, Any]`
+
+Return Gatekeeper usage statistics for the bound T1 key.
+
+### `Countertop.say(user, max_new_tokens=None, temperature=None, top_k=None, top_p=None, seed=None) -> str`
+
+Append ``user`` to the transcript, generate a reply, append
+
+### `Countertop.reset() -> None`
+
+Clear the running transcript (keeps ``system`` and config).
+
+### `Countertop.messages() -> list[dict[str, str]]`
+
+Return the full message list including the system prompt
+
+### `Countertop.render(add_generation_prompt=True) -> str`
+
+Render the current transcript through the chat template
+
+### `countertop(oven, system=None, persona=None, template=None, max_history_tokens=None, bell=None, flour=None, t1_key=None, keymaster=None, gatekeeper=None, **sampling) -> Countertop`
+
+Build a :class:`Countertop`.
 
 ## Source
 
-- [HyperNix Python source](https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix)
-- [Repository](https://github.com/trail-b1az3r/HyperNix-pip)
+[`src/hypernix/chat/countertop.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/chat/countertop.py)
+

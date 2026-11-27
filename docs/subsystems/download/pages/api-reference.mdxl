@@ -1,0 +1,23 @@
+# hypernix.download API reference
+
+Implementation: `src/hypernix/models/download.py`
+
+## `ModelInfo()`
+
+Metadata for a known model on the HuggingFace Hub.
+
+## `resolve_repo_id(name_or_repo_id) -> str`
+
+Resolve a short name (``\"nano-mini\"``) to a full ``org/repo`` id.
+
+## `resolve_model_info(name_or_repo_id) -> ModelInfo | None`
+
+Return the :class:`ModelInfo` for a known short-or-full name, else None.
+
+## `verify_snapshot(model_dir) -> list[str]`
+
+Verify a downloaded snapshot contains everything `convert` needs.
+
+## `download_model(repo_id='ray0rf1re/hyper-nix.1', revision=None, cache_dir=None, local_dir=None, model_dir_name=None, token=None, quiet=False, verify=True) -> Path`
+
+Download a full HuggingFace model snapshot and return its directory.

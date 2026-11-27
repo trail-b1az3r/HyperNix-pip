@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { WIKI_PAGES } from '../lib/data/wiki'
+import SUBSYSTEM_PAGES from '../lib/data/subsystem-pages.json'
 import { anchorKey, highlight, renderMarkdown } from '../lib/markdown'
 import { SUBSYSTEMS, GROUP_ORDER, subsystemGroup } from '../lib/data/subsystems'
 import { MODULES } from '../lib/data/api-reference'
@@ -15,8 +16,9 @@ const REPO = 'https://github.com/trail-b1az3r/HyperNix-pip'
 const RAW = 'https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main'
 
 type Heading = { depth: number, text: string }
-type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number, sourcePath?: string }
+type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number, sourcePath?: string, path?: string }
 const label = (index: Index, doc: string) => index.pages[doc]?.short || index.pages[doc]?.title || doc.replace(/-/g, ' ')
+const SUBSYSTEM_PAGE_PATHS: Record<string, string> = Object.fromEntries(Object.entries(SUBSYSTEM_PAGES).flatMap(([slug, pages]) => pages.map((page) => [page, `subsystems/${slug}/pages/${page}.mdxl`])))
 type Group = { id: string, title: string, blurb: string, pages: string[] }
 type Index = { groups: Group[], pages: Record<string, PageInfo> }
 type Route = { doc?: string, anchor?: string }
@@ -44,8 +46,10 @@ function useIndex(): [Index, boolean] {
   return [index, ready]
 }
 
-async function loadPage(name: string): Promise<string> {
-  for (const url of [`./wiki/${name}.md`, `${RAW}/wiki/${name}.md`]) {
+async function loadPage(name: string, index?: Index): Promise<string> {
+  const movedPath = index?.pages[name]?.path || index?.pages[name]?.sourcePath || SUBSYSTEM_PAGE_PATHS[name]
+  const urls = movedPath ? [`./${movedPath}`, `${RAW}/${movedPath}`] : [`./wiki/${name}.md`, `${RAW}/wiki/${name}.md`]
+  for (const url of urls) {
     try {
       const r = await fetch(url)
       if (r.ok) {
@@ -77,7 +81,7 @@ function loadFullText(index: Index): Promise<Section[]> {
   if (FULL_TEXT) return FULL_TEXT
   FULL_TEXT = Promise.all(Object.keys(index.pages).map(async (doc) => {
     let md = ''
-    try { md = await loadPage(doc) } catch { return [] as Section[] }
+    try { md = await loadPage(doc, index) } catch { return [] as Section[] }
     const out: Section[] = []
     let heading: string | undefined
     let buf: string[] = []
@@ -309,7 +313,7 @@ function Article({ doc, anchor, index, navigate }: { doc: string, anchor?: strin
   useEffect(() => {
     let live = true
     setMd(null); setFailed(false); setToc([])
-    loadPage(doc).then((text) => { if (live) setMd(text) }).catch(() => { if (live) setFailed(true) })
+    loadPage(doc, index).then((text) => { if (live) setMd(text) }).catch(() => { if (live) setFailed(true) })
     return () => { live = false }
   }, [doc])
 
@@ -381,7 +385,7 @@ function Article({ doc, anchor, index, navigate }: { doc: string, anchor?: strin
           <h1>{info?.title || doc.replace(/-/g, ' ')}</h1>
           <div className="docs-meta">
             {info?.words ? <span>{Math.max(1, Math.round(info.words / 220))} min read</span> : null}
-            <a href={`${REPO}/blob/main/${info?.sourcePath || `wiki/${doc}.md`}`} target="_blank" rel="noreferrer">View source</a>
+            <a href={`${REPO}/blob/main/${info?.sourcePath || info?.path || `wiki/${doc}.md`}`} target="_blank" rel="noreferrer">View source</a>
             <a href={`${REPO}/edit/main/${info?.sourcePath || `wiki/${doc}.md`}`} target="_blank" rel="noreferrer">Edit on GitHub</a>
           </div>
         </header>

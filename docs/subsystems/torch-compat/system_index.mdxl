@@ -1,0 +1,39 @@
+---
+title: "Torch Compat"
+module: "hypernix.torch_compat"
+category: "hypernix.torch_compat"
+---
+
+# hypernix.torch_compat
+
+Portability shim (RMSNorm + SDPA) for running on old Intel Macs with torch 1.13.
+
+## Documentation pages
+
+- [macOS legacy](../../#/docs/macOS-legacy) · [MDXL source](pages/macOS-legacy.mdxl)
+- [Python 3.15](../../#/docs/Python-3.15) · [MDXL source](pages/Python-3.15.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `is_legacy_torch() -> bool`
+
+True for torch < 2.0 (the \"old Intel Mac / torch 1.13\" path).
+
+### `has_native_rmsnorm() -> bool`
+
+True for torch ≥ 2.4 where ``torch.nn.RMSNorm`` is available.
+
+### `scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=False) -> torch.Tensor`
+
+Portable attention. On torch ≥ 2.0 dispatches to the native
+
+### `describe() -> dict[str, object]`
+
+Return a one-shot summary of the active torch compat state.
+
+## Source
+
+[`src/hypernix/system/torch_compat.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/system/torch_compat.py)
+

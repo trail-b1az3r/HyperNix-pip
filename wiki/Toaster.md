@@ -1,1 +1,0 @@
-../docs/subsystems/toaster/pages/Toaster.md

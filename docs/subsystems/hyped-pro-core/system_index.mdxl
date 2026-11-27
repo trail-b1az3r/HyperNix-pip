@@ -1,0 +1,49 @@
+---
+title: "Hyped Pro Core"
+module: "hypernix.hyped_pro_core"
+category: "hypernix.hyped_pro_core"
+---
+
+# hypernix.hyped_pro_core
+
+hyped-pro/hyped+ TUI's provider+model registry and real dispatch: cloud APIs (Anthropic/OpenAI-compatible), local safetensors, GGUF via multilama, and an agentic tool-calling loop.
+
+## Documentation pages
+
+- [CLI](../../#/docs/CLI) · [MDXL source](pages/CLI.mdxl)
+- [Waiter TUI](../../#/docs/Waiter-TUI) · [MDXL source](pages/Waiter-TUI.mdxl)
+- [Runtime](../../#/docs/Runtime) · [MDXL source](pages/Runtime.mdxl)
+- [HnxRun](../../#/docs/HnxRun) · [MDXL source](pages/HnxRun.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `HypedProError(code, message)`
+
+A real, coded failure — never silently swallowed into a fake reply.
+
+### `ensure_downloaded(model, quiet=False) -> Path`
+
+Download ``model``'s weights if they aren't already cached.
+
+### `extract_thinking(text) -> tuple[str, str | None]`
+
+Split a reply into (visible_text, thinking_text_or_None).
+
+### `strip_thinking(text) -> str`
+
+Remove inline <think>/<thinking>/<reasoning> blocks from a reply.
+
+### `send_chat_message(model_short, messages, system=None, api_key=None, max_tokens=None, max_thinking_tokens=None, hide_thinking=True, enable_tools=True) -> dict[str, str | None]`
+
+Returns {\"content\": <visible reply>, \"thinking\": <extracted thinking
+
+### `catalog_json() -> dict[str, Any]`
+
+Serializable view of MODELS + PROVIDERS for the bridge's `catalog` cmd.
+
+## Source
+
+[`src/hypernix/interfaces/hyped_pro_core.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/interfaces/hyped_pro_core.py)
+

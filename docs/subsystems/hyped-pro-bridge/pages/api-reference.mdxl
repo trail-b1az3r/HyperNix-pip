@@ -1,0 +1,11 @@
+# hypernix.hyped_pro_bridge API reference
+
+Implementation: `src/hypernix/interfaces/hyped_pro_bridge.py`
+
+## `serve() -> int`
+
+Read JSON requests from stdin, write JSON responses to stdout, forever.
+
+## `cli_main(argv=None) -> int`
+
+One-shot mode for scripting/debugging: build a single request from

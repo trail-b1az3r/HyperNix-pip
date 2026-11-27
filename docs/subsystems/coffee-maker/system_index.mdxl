@@ -1,0 +1,54 @@
+---
+title: "Coffee Maker"
+module: "hypernix.coffee_maker"
+category: "hypernix.coffee_maker"
+---
+
+# hypernix.coffee_maker
+
+3 training tiers: drip / french_press / percolator + cold_brew for long checkpointed runs.
+
+## Documentation pages
+
+- [CoffeeMaker](../../#/docs/CoffeeMaker) · [MDXL source](pages/CoffeeMaker.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `Brew()`
+
+One result from a single ``brew_fn()`` call.
+
+### `CoffeeMaker()`
+
+Repeat ``brew_fn`` on an interval.
+
+### `CoffeeMaker.run(cycles) -> list[Brew]`
+
+Run exactly ``cycles`` brews (sleeping between them).
+
+### `CoffeeMaker.serve(install_sigint=True) -> list[Brew]`
+
+Run until :meth:`stop` is called. If ``install_sigint`` is
+
+### `CoffeeMaker.stop() -> None`
+
+Cooperative cancel. Finishes the current brew, then exits.
+
+### `FrenchPressMaker()`
+
+Batch brew: takes a list of callables, runs them all once,
+
+### `PercolatorMaker()`
+
+Cyclic brew: the output of cycle N is passed as the input to
+
+### `ColdBrewMaker()`
+
+Long-running single brew with mandatory disk checkpoints.
+
+## Source
+
+[`src/hypernix/timing/coffee_maker.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/timing/coffee_maker.py)
+

@@ -1,0 +1,50 @@
+---
+title: "Deep Fryer"
+module: "hypernix.deep_fryer"
+category: "hypernix.deep_fryer"
+---
+
+# hypernix.deep_fryer
+
+2-tier model-weight perturbation: LightFry (regulariser) / HeavyFry (severe). Reversible via snapshot.
+
+## Documentation pages
+
+- [DeepFryer](../../#/docs/DeepFryer) · [MDXL source](pages/DeepFryer.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `Fryer()`
+
+Base deep-fryer. Subclasses set noise intensity + sparsity.
+
+### `Fryer.save_pristine() -> int`
+
+Store the untouched state dict so :meth:`un_fry` can restore
+
+### `Fryer.un_fry() -> int`
+
+Restore the last pristine snapshot. Returns the number of
+
+### `Fryer.fry() -> dict[str, int]`
+
+Perturb a ``fraction`` of each matching parameter's elements
+
+### `LightFry()`
+
+Mild regularising perturbation. Defaults: 2% of elements,
+
+### `HeavyFry()`
+
+Severe perturbation. Defaults: 30% of elements, 0.5× param-std
+
+### `deep_fryer(tier, model, fraction=None, noise_std=None, patterns=(), seed=0, **extra) -> Fryer`
+
+Construct a deep-fryer tier by short name.
+
+## Source
+
+[`src/hypernix/training/deep_fryer.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/training/deep_fryer.py)
+

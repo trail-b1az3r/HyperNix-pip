@@ -1,0 +1,38 @@
+---
+title: "Pepper Shaker"
+module: "hypernix.pepper_shaker"
+category: "hypernix.pepper_shaker"
+---
+
+# hypernix.pepper_shaker
+
+3-tier sharp perturbations: SmallShaker (MLM-mask) / Dish (typos) / TallHandmade (negation).
+
+## Documentation pages
+
+No dedicated guide has been published for this subsystem yet. See the API reference and source module.
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `SmallShaker()`
+
+Random word masking at ``rate``. Replaces whole whitespace-
+
+### `Dish()`
+
+Typo injection. For each word with probability ``rate``,
+
+### `TallHandmade()`
+
+Negation injection. Prepends ``negator`` (\"NOT \" by default)
+
+### `pepper_shaker(tier, source, **kw) -> Shaker`
+
+Construct a pepper-shaker tier by short name.
+
+## Source
+
+[`src/hypernix/data/pepper_shaker.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/data/pepper_shaker.py)
+

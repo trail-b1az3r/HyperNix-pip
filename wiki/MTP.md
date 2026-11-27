@@ -1,1 +1,0 @@
-../docs/subsystems/old_oven/pages/MTP.md

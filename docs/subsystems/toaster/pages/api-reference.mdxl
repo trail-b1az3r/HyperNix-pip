@@ -1,0 +1,19 @@
+# hypernix.toaster API reference
+
+Implementation: `src/hypernix/data/toaster.py`
+
+## `TwoSliceToaster()`
+
+Two lines in, one entry out. ``line_a`` is treated as the
+
+## `FourSliceToaster()`
+
+Four lines in, one 2-turn chat entry out.
+
+## `ConveyorToaster()`
+
+Streaming per-line formatter. Wraps every line in a supplied
+
+## `ToasterOven()`
+
+Whole-document formatter. Lines are grouped into documents

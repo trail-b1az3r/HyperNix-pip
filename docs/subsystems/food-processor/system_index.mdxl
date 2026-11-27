@@ -1,0 +1,38 @@
+---
+title: "Food Processor"
+module: "hypernix.food_processor"
+category: "hypernix.food_processor"
+---
+
+# hypernix.food_processor
+
+4-tier bulk chunking: ChopBlade / SliceBlade / ShredBlade / PureeBlade.
+
+## Documentation pages
+
+- [FoodProcessor](../../#/docs/FoodProcessor) · [MDXL source](pages/FoodProcessor.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `ChopBlade()`
+
+Split the file on ``separator`` and yield each non-empty piece.
+
+### `SliceBlade()`
+
+Fixed-length character slicing with optional overlap. Good for
+
+### `ShredBlade()`
+
+Whitespace-tokenized sliding window.
+
+### `PureeBlade()`
+
+The whole file as one output, with internal whitespace
+
+## Source
+
+[`src/hypernix/data/food_processor.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/data/food_processor.py)
+

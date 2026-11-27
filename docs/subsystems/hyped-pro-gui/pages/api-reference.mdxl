@@ -1,0 +1,11 @@
+# hypernix.hyped_pro_gui API reference
+
+Implementation: `src/hypernix/interfaces/hyped_pro_gui.py`
+
+## `choose_qt_platform(session) -> str | None`
+
+Return a QT_QPA_PLATFORM value to try first, or None to let Qt decide.
+
+## `try_launch_qt() -> bool`
+
+Attempt to launch the Qt6 GUI. Returns False if Qt6 isn't usable at

@@ -1,0 +1,31 @@
+---
+title: "Hyped Pro Gui"
+module: "hypernix.hyped_pro_gui"
+category: "hypernix.hyped_pro_gui"
+---
+
+# hypernix.hyped_pro_gui
+
+hyped-pro desktop GUI: Qt6 (X11 + Wayland) via PySide6, GTK4 fallback.
+
+## Documentation pages
+
+- [HyperLink OnDevice](../../#/docs/HyperLink-OnDevice) · [MDXL source](pages/HyperLink-OnDevice.mdxl)
+- [Strife](../../#/docs/Strife) · [MDXL source](pages/Strife.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `choose_qt_platform(session) -> str | None`
+
+Return a QT_QPA_PLATFORM value to try first, or None to let Qt decide.
+
+### `try_launch_qt() -> bool`
+
+Attempt to launch the Qt6 GUI. Returns False if Qt6 isn't usable at
+
+## Source
+
+[`src/hypernix/interfaces/hyped_pro_gui.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/interfaces/hyped_pro_gui.py)
+
