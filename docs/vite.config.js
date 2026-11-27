@@ -239,6 +239,13 @@ function wikiPlugin() {
         fileName: 'subsystems/hypernix.core/system_index.html',
         source: '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=../hyped-pro-core/system_index.html"><link rel="canonical" href="../hyped-pro-core/system_index.html"><title>HyperNix Core · HyperNix Docs</title></head><body><p>This subsystem page has moved to <a href="../hyped-pro-core/system_index.html">Hyped Pro Core</a>.</p><script>location.replace("../hyped-pro-core/system_index.html" + location.hash)</script></body></html>',
       })
+      // Backwards-compatible public URL for the Python torch compatibility subsystem.
+      // The canonical folder slug is torch-compat (module hypernix.torch_compat).
+      this.emitFile({
+        type: 'asset',
+        fileName: 'subsystems/hypernix.torch_compat/system_index.html',
+        source: '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=../torch-compat/system_index.html"><link rel="canonical" href="../torch-compat/system_index.html"><title>Torch Compat · HyperNix Docs</title></head><body><p>This subsystem page has moved to <a href="../torch-compat/system_index.html">Torch Compat</a>.</p><script>location.replace("../torch-compat/system_index.html" + location.hash)</script></body></html>',
+      })
       // Also publish the newer Markdown pages introduced on main. The MDXL
       // subsystem pages above take precedence for names in the MDXL registry.
       for (const page of Object.values(collectSubsystemMarkdownPages())) {
