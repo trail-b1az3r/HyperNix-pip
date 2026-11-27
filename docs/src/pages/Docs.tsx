@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { WIKI_PAGES } from '../lib/data/wiki'
 import { anchorKey, highlight, renderMarkdown } from '../lib/markdown'
+import { SUBSYSTEMS, GROUP_ORDER, subsystemGroup } from '../lib/data/subsystems'
+import { MODULES } from '../lib/data/api-reference'
 
 // The documentation, laid out the way PyTorch's and Hyprland's are: groups
 // down the left, the page in the middle, "On this page" down the right,
@@ -425,6 +427,90 @@ const QUICK = [
   ['Quantization', 'Quantise a model'], ['Training', 'Train one'],
 ]
 
+function systemHref(name: string) {
+  return docHref(`@system:${name}`)
+}
+
+const GROUP_ICONS: Record<string, string> = {
+  'Data': '◈', 'Training': '⌁', 'Inference & chat': '✳',
+  'Evaluation': '◎', 'Runtime & memory': '▦', 'Ship & convert': '↗', 'Other': '◇',
+}
+
+function SubsystemIndex({ name, index }: { name: string, index: Index }) {
+  const system = SUBSYSTEMS.find((item) => item.name === name)
+  if (!system) return <div className="docs-article"><h1>System not found</h1><a href={docHref()}>Back to documentation</a></div>
+  const group = subsystemGroup(name)
+  const related = Object.entries(index.pages).filter(([key, info]) => {
+    const haystack = `${key} ${info.title} ${info.summary} ${info.group || ''}`.toLowerCase()
+    const terms: Record<string, string[]> = {
+      'Data': ['data', 'dataset', 'preprocess', 'quantiz'],
+      'Training': ['train', 'optimizer', 'pressure', 'brewer', 'checkpoint'],
+      'Inference & chat': ['chat', 'inference', 'model', 'oven', 't1-api'],
+      'Evaluation': ['evaluat', 'judge', 'score', 'range'],
+      'Runtime & memory': ['memory', 'runtime', 'freezer', 'device', 'hardware'],
+      'Ship & convert': ['convert', 'upload', 'download', 'gguf', 'quantiz'],
+    }
+    return (terms[group] || []).some((term) => haystack.includes(term))
+  }).slice(0, 6)
+  const apiModule = MODULES.find((item) => item.name === name)
+  return (
+    <div className="docs-article subsystem-article">
+      <nav className="docs-crumbs" aria-label="Breadcrumb">
+        <a href={docHref()}>Docs</a><span>/</span><a href={docHref()}>{group}</a><span>/</span>
+        <span aria-current="page">{name}</span>
+      </nav>
+      <header className="docs-head">
+        <div className="eyebrow" style={{ color: 'var(--accent-text)', marginBottom: 10 }}>{GROUP_ICONS[group] || '◇'} {group} system</div>
+        <h1><code>{name}</code></h1>
+        <p style={{ color: 'var(--text-dim)', fontSize: 16, lineHeight: 1.75, maxWidth: 760 }}>{system.desc}</p>
+        <div className="docs-meta"><span>Python subsystem</span>
+          <a href="https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix" target="_blank" rel="noreferrer">Browse source</a>
+          <a href="#/api">API reference</a>
+        </div>
+      </header>
+      <section className="docs-system-overview">
+        <div className="eyebrow">At a glance</div><h2>What this system does</h2>
+        <p>{system.desc}</p>
+        <div className="docs-system-tags"><span>hypernix package</span><span>{group}</span><span>Module: {name}</span></div>
+      </section>
+      <section className="docs-system-explore">
+        <div className="eyebrow">API surface</div><h2>Public functions and classes</h2>
+        {apiModule?.fns?.length ? <div className="docs-system-api">
+          {apiModule.fns.map((entry) => <div key={entry.fn} className="docs-system-api-row">
+            <code>{entry.fn}</code><p>{entry.desc}</p>
+          </div>)}
+        </div> : <p>The generated API inventory does not currently list individual callables for this subsystem. Browse the full Python API reference or source tree for implementation details.</p>}
+      </section>
+      <section className="docs-system-explore">
+        <div className="eyebrow">Explore</div><h2>Guides and references</h2>
+        <p>Continue with documentation related to {name}. The API reference covers public Python entry points and CLI commands.</p>
+        <div className="docs-system-grid">
+          <a href="#/api" className="docs-system-link"><strong>Python API reference <span>↗</span></strong><small>Browse public modules, functions and source locations</small></a>
+          {related.map(([key, info]) => <a key={key} href={docHref(key)} className="docs-system-link">
+            <strong>{info.title} <span>→</span></strong><small>{info.summary || 'Open this guide in the documentation'}</small>
+          </a>)}
+          <a href="https://github.com/trail-b1az3r/HyperNix-pip/tree/main/src/hypernix" target="_blank" rel="noreferrer" className="docs-system-link">
+            <strong>Source tree <span>↗</span></strong><small>Inspect the implementation in the HyperNix repository</small>
+          </a>
+        </div>
+      </section>
+      <section className="docs-system-related">
+        <div className="eyebrow">More in {group}</div><h2>Related systems</h2>
+        <div className="docs-system-grid">
+          {SUBSYSTEMS.filter((item) => subsystemGroup(item.name) === group && item.name !== name).slice(0, 8).map((item) =>
+            <a key={item.name} href={systemHref(item.name)} className="docs-system-link compact">
+              <strong>{item.name} <span>→</span></strong><small>{item.desc}</small>
+            </a>)}
+        </div>
+      </section>
+      <nav className="docs-pager" aria-label="Documentation navigation">
+        <a className="pager-card" href={docHref()}><span>Documentation</span><strong>← All systems and guides</strong></a>
+        <a className="pager-card next" href="#/api"><span>Reference</span><strong>Python API →</strong></a>
+      </nav>
+    </div>
+  )
+}
+
 function Landing({ index, openSearch }: { index: Index, openSearch: () => void }) {
   return (
     <div className="docs-landing anim-fade">
@@ -439,6 +525,23 @@ function Landing({ index, openSearch }: { index: Index, openSearch: () => void }
           {QUICK.filter(([p]) => index.pages[p]).map(([p, label]) => <a key={p} href={docHref(p)}>{label}</a>)}
         </div>
       </div>
+      <section className="docs-system-directory" aria-labelledby="docs-systems-title">
+        <div className="docs-directory-heading"><div>
+          <div className="eyebrow" style={{ color: 'var(--accent-text)' }}>HyperNix ecosystem</div>
+          <h2 id="docs-systems-title">Explore the systems</h2>
+          <p>Choose a subsystem to open its dedicated index, overview, related guides and source references.</p>
+        </div><span className="docs-system-count">{SUBSYSTEMS.length} systems</span></div>
+        {GROUP_ORDER.map((group) => {
+          const systems = SUBSYSTEMS.filter((item) => subsystemGroup(item.name) === group)
+          return <section key={group} className="docs-system-group">
+            <div className="docs-system-group-title"><span>{GROUP_ICONS[group] || '◇'}</span><h3>{group}</h3><small>{systems.length} systems</small></div>
+            <div className="docs-system-grid">{systems.map((item) => <a key={item.name} href={systemHref(item.name)} className="docs-system-card">
+              <div className="docs-system-card-top"><code>{item.name}</code><span aria-hidden="true">↗</span></div>
+              <p>{item.desc}</p><small>Open subsystem index →</small>
+            </a>)}</div>
+          </section>
+        })}
+      </section>
       <div className="docs-groups">
         {index.groups.map((g) => (
           <section key={g.id} className="docs-group-card lift-card">
@@ -483,6 +586,26 @@ function Sidebar({ index, doc, open, onPick }: { index: Index, doc?: string, ope
           </div>
         )
       })}
+      <div className="docs-side-group">
+        <div className="docs-side-title">Systems</div>
+        {GROUP_ORDER.map((group) => {
+          const systems = SUBSYSTEMS.filter((item) => subsystemGroup(item.name) === group)
+            .filter((item) => !f || item.name.toLowerCase().includes(f) || item.desc.toLowerCase().includes(f))
+          if (!systems.length) return null
+          const key = `systems:${group}`
+          const shut = !f && closed[key]
+          return <div key={group}>
+            <button type="button" className="docs-side-title" aria-expanded={!shut}
+              onClick={() => setClosed((c) => ({ ...c, [key]: !shut }))}>
+              <span className={`caret${shut ? '' : ' open'}`}>›</span>{group}
+            </button>
+            {!shut && <ul>{systems.map((item) => <li key={item.name}>
+              <a className={doc === `@system:${item.name}` ? 'active' : ''}
+                href={systemHref(item.name)} onClick={onPick}>{item.name.replace('hypernix.', '')}</a>
+            </li>)}</ul>}
+          </div>
+        })}
+      </div>
     </aside>
   )
 }
@@ -510,6 +633,43 @@ export function DocsPage({ route = {}, navigate }: { route?: Route, navigate?: (
   const doc = route.doc && index.pages[route.doc] ? route.doc : route.doc
   return (
     <div className="docs-shell">
+      <style>{`
+        .docs-system-directory{margin:34px 0 48px}
+        .docs-directory-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:22px}
+        .docs-directory-heading h2{margin:7px 0;color:var(--text);font-size:clamp(23px,3vw,31px);letter-spacing:-.035em}
+        .docs-directory-heading p{margin:0;color:var(--text-dim);font-size:13px;line-height:1.7;max-width:620px}
+        .docs-system-count{white-space:nowrap;border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-muted);font:11px var(--font-mono)}
+        .docs-system-group{margin:28px 0}
+        .docs-system-group-title{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+        .docs-system-group-title>span{color:var(--accent);font-size:18px}
+        .docs-system-group-title h3{margin:0;color:var(--text);font-size:16px}
+        .docs-system-group-title small{color:var(--text-faint);font:10px var(--font-mono)}
+        .docs-system-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(245px,100%),1fr));gap:10px}
+        .docs-system-card,.docs-system-link{display:block;min-width:0;text-decoration:none;border:1px solid var(--border-strong);border-radius:9px;background:var(--surface-1);padding:14px 15px;transition:border-color .18s,transform .18s,background .18s}
+        .docs-system-card:hover,.docs-system-link:hover{border-color:var(--accent);background:var(--surface-2);transform:translateY(-2px)}
+        .docs-system-card-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+        .docs-system-card-top code{color:var(--accent-text);font-size:12px;overflow-wrap:anywhere}
+        .docs-system-card-top span,.docs-system-link strong span{color:var(--accent);flex-shrink:0}
+        .docs-system-card p{margin:10px 0 12px;color:var(--text-dim);font-size:12px;line-height:1.65}
+        .docs-system-card>small{color:var(--accent-text);font-size:10px}
+        .docs-system-overview{margin:34px 0 30px;padding:22px 24px;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface-1)}
+        .docs-system-overview h2,.docs-system-explore h2,.docs-system-related h2{margin:8px 0;color:var(--text);font-size:21px}
+        .docs-system-overview p,.docs-system-explore>p{color:var(--text-dim);line-height:1.8;font-size:14px}
+        .docs-system-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}
+        .docs-system-tags span{border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text-muted);font:10px var(--font-mono);overflow-wrap:anywhere}
+.docs-system-api{border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:14px}
+        .docs-system-api-row{padding:13px 15px;border-bottom:1px solid var(--border)}
+        .docs-system-api-row:last-child{border-bottom:0}
+        .docs-system-api-row code{color:var(--accent-text);font-size:12px;overflow-wrap:anywhere}
+        .docs-system-api-row p{margin:6px 0 0;color:var(--text-dim);font-size:12px;line-height:1.65}
+        .docs-system-explore,.docs-system-related{margin:30px 0}
+        .docs-system-link strong{display:flex;justify-content:space-between;gap:8px;color:var(--text);font-size:12px}
+        .docs-system-link small{display:block;margin-top:7px;color:var(--text-dim);font-size:11px;line-height:1.55}
+        .docs-system-link.compact{padding:12px}
+        .docs-system-related{border-top:1px solid var(--border);padding-top:22px}
+        .subsystem-article .docs-head h1 code{font-size:clamp(25px,4vw,38px);overflow-wrap:anywhere}
+        @media(max-width:640px){.docs-directory-heading{align-items:flex-start;flex-direction:column}.docs-system-card{padding:12px}}
+      `}</style>
       <div className="docs-topbar">
         <button type="button" className="docs-menu" aria-expanded={sideOpen} onClick={() => setSideOpen(!sideOpen)}>☰ Pages</button>
         <button type="button" className="docs-searchbar" onClick={() => setSearching(true)}>
@@ -519,7 +679,8 @@ export function DocsPage({ route = {}, navigate }: { route?: Route, navigate?: (
       <div className="docs-layout">
         <Sidebar index={index} doc={doc} open={sideOpen} onPick={() => setSideOpen(false)} />
         <main className="docs-content">
-          {doc ? <Article key={doc} doc={doc} anchor={route.anchor} index={index} navigate={go} />
+          {doc?.startsWith('@system:') ? <SubsystemIndex name={doc.slice(8)} index={index} />
+            : doc ? <Article key={doc} doc={doc} anchor={route.anchor} index={index} navigate={go} />
             : <Landing index={index} openSearch={() => setSearching(true)} />}
         </main>
       </div>
