@@ -1,6 +1,6 @@
 {
   "generated_at": "2026-09-27T23:32:50Z",
-  "source": "wiki/Changelog.md",
+  "source": "docs/subsystems/core/pages/Changelog.md",
   "entries": [
     {
       "version": "0.73.0",
