@@ -1,0 +1,1 @@
+../docs/subsystems/cake_pan/pages/CakePan.md

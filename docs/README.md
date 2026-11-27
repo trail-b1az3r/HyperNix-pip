@@ -28,7 +28,7 @@ At build time `vite.config.js` discovers `subsystems/*/pages/*.md`, keeps `/wiki
 
 `public/v1/security.json` is written in the Pages build by `../scripts/security_report.py` (run it locally to see the page in `npm run dev`); it is not committed.
 
-`../scripts/generate_docs_data.py` refreshes the API reference JSON, code statistics, and the parsed changelog at `public/v1/changelog.json`. The changelog summary fields are derived from the actual canonical change bullets in `wiki/Changelog.md`; release dates are kept separate from summaries.
+`../scripts/generate_docs_data.py` refreshes the API reference JSON, code statistics, and the parsed changelog at `public/v1/changelog.json`. The changelog summary fields are derived from the actual canonical change bullets in `docs/subsystems/core/pages/Changelog.md`; release dates are kept separate from summaries.
 
 The scheduled `.github/workflows/update-docs-data.yml` workflow regenerates these files and commits only when their contents change.
 

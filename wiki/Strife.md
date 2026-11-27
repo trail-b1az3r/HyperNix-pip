@@ -1,0 +1,1 @@
+../docs/subsystems/core/pages/Strife.md

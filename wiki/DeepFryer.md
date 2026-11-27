@@ -1,0 +1,1 @@
+../docs/subsystems/deep_fryer/pages/DeepFryer.md

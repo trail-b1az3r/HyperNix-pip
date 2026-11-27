@@ -1,0 +1,1 @@
+../docs/subsystems/pans/pages/Pans.md

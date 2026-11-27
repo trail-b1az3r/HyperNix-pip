@@ -1,0 +1,1 @@
+../docs/subsystems/coffee_maker/pages/CoffeeMaker.md
