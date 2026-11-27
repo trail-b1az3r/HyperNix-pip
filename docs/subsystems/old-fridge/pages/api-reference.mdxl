@@ -1,0 +1,23 @@
+# hypernix.old_fridge API reference
+
+Implementation: `src/hypernix/system/old_fridge.py`
+
+## `freeze(model, patterns=('embed_tokens',)) -> int`
+
+Set ``requires_grad=False`` on parameters whose names match ``patterns``.
+
+## `unfreeze(model, patterns=('*',)) -> int`
+
+Inverse of :func:`freeze`. Default unfreezes everything.
+
+## `offload_to_cpu(model, patterns=('embed_tokens',)) -> int`
+
+Move submodules matched by ``patterns`` to CPU. Returns how many moved.
+
+## `chill_cache() -> None`
+
+Free unreferenced tensors from the allocator cache.
+
+## `unwrap_model(model) -> nn.Module`
+
+Return the inner module, unwrapping DDP / FSDP / DataParallel.

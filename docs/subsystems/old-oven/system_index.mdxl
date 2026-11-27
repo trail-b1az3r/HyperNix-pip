@@ -1,0 +1,66 @@
+---
+title: "Old Oven"
+module: "hypernix.old_oven"
+category: "hypernix.old_oven"
+---
+
+# hypernix.old_oven
+
+CodeOven wrapper with .complete() / .chat() / .fill() / .save_pt(). new_oven() for parametric models.
+
+## Documentation pages
+
+- [Ovens](../../#/docs/Ovens) · [MDXL source](pages/Ovens.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `CodeOven()`
+
+A loaded HyperNix-family model + tokenizer ready for generation.
+
+### `CodeOven.complete(prompt, max_new_tokens=256, temperature=0.2, top_k=40, top_p=0.95, stop=DEFAULT_STOPS, seed=None) -> str`
+
+Continue ``prompt`` as code.
+
+### `CodeOven.fill(prefix, suffix, max_new_tokens=128, temperature=0.2, top_k=40, top_p=0.95, seed=None) -> str`
+
+Fill-in-the-middle: generate text that fits between ``prefix``
+
+### `CodeOven.chat(messages, max_new_tokens=256, temperature=0.7, top_k=40, top_p=0.95, seed=None) -> str`
+
+Run a chat turn. ``messages`` is a list of ``{\"role\", \"content\"}``.
+
+### `CodeOven.train(dataset_path, out_dir=None, steps=1000, batch_size=2, context_length=512, lr=0.0003, weight_decay=0.1, grad_clip=1.0, log_every=10, save_every=500, seed=None, quiet=False, optimizer_class=None, use_abbicus=False, use_turbo_abbicus=False, use_stml=False, untrained_max_context=8192, segment_length=512, compute_framework=None) -> Path`
+
+Continue-pretrain this oven on a raw-text file.
+
+### `CodeOven.save_pt(out_path) -> Path`
+
+Save a self-contained ``torch.load``-able bundle to ``out_path``.
+
+### `preheat(repo_id='ray0rf1re/hyper-nix.1', local_dir=None, revision=None, token=None, device=None, dtype='float32', quiet=False) -> CodeOven`
+
+Download (if necessary) + load a HyperNix snapshot into a ``CodeOven``.
+
+### `new_oven(out_dir, arch='hypernix', vocab_size=32000, hidden_size=1024, intermediate_size=4096, num_hidden_layers=16, num_attention_heads=16, num_key_value_heads=None, max_position_embeddings=2048, tokenizer_source=None, device=None, dtype='float32', seed=None) -> CodeOven`
+
+Create a new untrained oven in HyperNix or Qwen2 (Qwen2.5) architecture.
+
+### `bake_code(source, prompt, **kwargs) -> str`
+
+Convenience: accepts a preheated oven or a snapshot path/URL.
+
+### `fill_middle(source, prefix, suffix, **kwargs) -> str`
+
+Convenience FIM API — accepts a preheated oven or a snapshot path.
+
+### `… 1 more`
+
+Additional documented functions/methods in this module — see source.
+
+## Source
+
+[`src/hypernix/models/old_oven.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/models/old_oven.py)
+

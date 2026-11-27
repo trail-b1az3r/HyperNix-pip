@@ -1,0 +1,38 @@
+---
+title: "Toaster"
+module: "hypernix.toaster"
+category: "hypernix.toaster"
+---
+
+# hypernix.toaster
+
+4-tier per-line formatting: TwoSliceToaster / FourSliceToaster / ConveyorToaster / ToasterOven.
+
+## Documentation pages
+
+- [Toaster](../../#/docs/Toaster) · [MDXL source](pages/Toaster.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `TwoSliceToaster()`
+
+Two lines in, one entry out. ``line_a`` is treated as the
+
+### `FourSliceToaster()`
+
+Four lines in, one 2-turn chat entry out.
+
+### `ConveyorToaster()`
+
+Streaming per-line formatter. Wraps every line in a supplied
+
+### `ToasterOven()`
+
+Whole-document formatter. Lines are grouped into documents
+
+## Source
+
+[`src/hypernix/data/toaster.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/data/toaster.py)
+

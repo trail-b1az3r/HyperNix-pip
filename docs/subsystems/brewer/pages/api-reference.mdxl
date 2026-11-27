@@ -1,0 +1,47 @@
+# hypernix.brewer API reference
+
+Implementation: `src/hypernix/training/brewer.py`
+
+## `BrewerConfig()`
+
+All hyperparameters for a ``hyperNix0x-v2`` style model.
+
+## `BrewerConfig.approx_params() -> int`
+
+Rough parameter count estimate (millions would be /1e6).
+
+## `BrewerRMSNorm(dim, eps=1e-05) -> None`
+
+Root-mean-square layer normalisation (no bias, no mean subtraction).
+
+## `BrewerEmbedding(cfg) -> None`
+
+Token embedding layer. RoPE is applied inside :class:`BrewerAttention`.
+
+## `BrewerAttention(cfg, layer_idx=0) -> None`
+
+Multi-head / Grouped Query Attention with RoPE and optional sliding window.
+
+## `BrewerFFN(cfg) -> None`
+
+SwiGLU feed-forward network.
+
+## `BrewerBlock(cfg, layer_idx) -> None`
+
+Single Pre-Norm transformer block: RMSNorm → Attention → RMSNorm → FFN.
+
+## `BrewerModel(cfg) -> None`
+
+Full decoder-only transformer stack for the ``hyperNix0x-v2`` family.
+
+## `BrewerModel.forward(input_ids, attn_mask=None) -> torch.Tensor`
+
+Forward pass.
+
+## `hypernix0x_v2_33m() -> BrewerConfig`
+
+``hyperNix0x-v2-33m`` — 6 layers, ~33.6429M params (33,642,900 parameters), ctx=4096.
+
+## `… 16 more`
+
+Additional documented functions/methods in this module — see source.

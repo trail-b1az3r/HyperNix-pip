@@ -1,0 +1,7 @@
+# hypernix.upload API reference
+
+Implementation: `src/hypernix/quant/upload.py`
+
+## `upload_gguf(files, repo_id='ray0rf1re/HyperNix.1-gguf', token=None, commit_message='Add HyperNix GGUF quantizations', private=False, create_if_missing=True) -> str`
+
+Upload one or more GGUF files to a HuggingFace model repo.

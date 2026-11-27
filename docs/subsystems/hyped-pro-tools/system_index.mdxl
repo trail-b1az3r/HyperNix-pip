@@ -1,0 +1,33 @@
+---
+title: "Hyped Pro Tools"
+module: "hypernix.hyped_pro_tools"
+category: "hypernix.hyped_pro_tools"
+---
+
+# hypernix.hyped_pro_tools
+
+Real, workspace-scoped file create/edit/read/search tools for hyped-pro's agentic chat loop.
+
+## Documentation pages
+
+- [Browser Agent](../../#/docs/Browser-Agent) · [MDXL source](pages/Browser-Agent.mdxl)
+- [Devices](../../#/docs/Devices) · [MDXL source](pages/Devices.mdxl)
+- [Vera](../../#/docs/Vera) · [MDXL source](pages/Vera.mdxl)
+- [Examples](../../#/docs/Examples) · [MDXL source](pages/Examples.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `ToolError(code, message)`
+
+A real, reportable tool failure — fed back to the model as the
+
+### `execute_tool(name, arguments) -> str`
+
+Run a tool by name with the given arguments, returning its result as
+
+## Source
+
+[`src/hypernix/interfaces/hyped_pro_tools.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/interfaces/hyped_pro_tools.py)
+

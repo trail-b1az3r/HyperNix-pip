@@ -1,0 +1,43 @@
+# hypernix.countertop API reference
+
+Implementation: `src/hypernix/chat/countertop.py`
+
+## `interactive_cli(use_rich=True) -> int`
+
+Interactive TUI/CLI menu for all HyperNix operations.
+
+## `Countertop()`
+
+A persistent multi-turn chat session bound to an oven.
+
+## `Countertop.authenticate_t1(t1_key) -> Any`
+
+Authenticate and bind a T1 API key to this Countertop session.
+
+## `Countertop.t1_meta() -> Any | None`
+
+Return the authenticated T1 key metadata, if bound.
+
+## `Countertop.t1_stats() -> dict[str, Any]`
+
+Return Gatekeeper usage statistics for the bound T1 key.
+
+## `Countertop.say(user, max_new_tokens=None, temperature=None, top_k=None, top_p=None, seed=None) -> str`
+
+Append ``user`` to the transcript, generate a reply, append
+
+## `Countertop.reset() -> None`
+
+Clear the running transcript (keeps ``system`` and config).
+
+## `Countertop.messages() -> list[dict[str, str]]`
+
+Return the full message list including the system prompt
+
+## `Countertop.render(add_generation_prompt=True) -> str`
+
+Render the current transcript through the chat template
+
+## `countertop(oven, system=None, persona=None, template=None, max_history_tokens=None, bell=None, flour=None, t1_key=None, keymaster=None, gatekeeper=None, **sampling) -> Countertop`
+
+Build a :class:`Countertop`.

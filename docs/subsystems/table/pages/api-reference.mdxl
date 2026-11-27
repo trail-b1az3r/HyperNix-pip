@@ -1,0 +1,19 @@
+# hypernix.table API reference
+
+Implementation: `src/hypernix/monitoring/table.py`
+
+## `Table()`
+
+Minimal tabular view over ``rows``, a list of ``dict[str, Any]``.
+
+## `Table.from_training_log(cls, path) -> Table`
+
+Load step/loss pairs from a training stdout capture.
+
+## `Table.from_judge_corpus(cls, path) -> Table`
+
+Load ``<JUDGE_PROMPT>...<JUDGE_LABEL>...`` lines.
+
+## `Table.select(*columns) -> Table`
+
+Drop every column not in ``columns``.

@@ -1,0 +1,161 @@
+{
+  "download": [
+    "Download",
+    "HuggingFace-Models",
+    "ModelIndex"
+  ],
+  "train": [
+    "Training",
+    "Model-Training-Guide",
+    "Abbicus",
+    "Apron",
+    "Tupperware",
+    "Camouflage",
+    "FuseBox",
+    "Gather",
+    "WakeUp"
+  ],
+  "brewer": [
+    "Architectures",
+    "Architecture",
+    "HNX0xV2Image",
+    "HyperNix0xV3",
+    "C4",
+    "MTP",
+    "Frameworks",
+    "Pascal",
+    "STML",
+    "Dflash2",
+    "Workshop"
+  ],
+  "old-oven": [
+    "Ovens"
+  ],
+  "old-fridge": [
+    "Fridges"
+  ],
+  "mediocre-fridge": [],
+  "new-fridge": [
+    "Dashboards",
+    "TvTopMax",
+    "TvTopPro",
+    "HyperLog"
+  ],
+  "new-range": [
+    "Ranges"
+  ],
+  "old-range": [],
+  "industrial-range": [],
+  "freezer": [
+    "Freezer",
+    "VRAM"
+  ],
+  "smoke-alarm": [
+    "Alarms",
+    "Error-Codes"
+  ],
+  "pans": [
+    "Pans"
+  ],
+  "microwave": [
+    "Microwave"
+  ],
+  "table": [
+    "Kitchen"
+  ],
+  "sink": [
+    "Lunchbox",
+    "Menu"
+  ],
+  "instant-pot": [
+    "RecipeBook",
+    "PipelineMechanics",
+    "Cookbook"
+  ],
+  "coffee-maker": [
+    "CoffeeMaker"
+  ],
+  "espresso-maker": [
+    "EspressoMaker"
+  ],
+  "blender": [
+    "Blender"
+  ],
+  "toaster": [
+    "Toaster"
+  ],
+  "food-processor": [
+    "FoodProcessor"
+  ],
+  "smoker": [
+    "Smoker"
+  ],
+  "deep-fryer": [
+    "DeepFryer"
+  ],
+  "cake-pan": [
+    "CakePan"
+  ],
+  "salt-shaker": [
+    "Shakers"
+  ],
+  "pepper-shaker": [],
+  "pressure-cooker": [
+    "Optimizers",
+    "Pressure-Cooker-V3",
+    "Pressure-Cooker-V4",
+    "Pressure-Cooker-V5",
+    "Pressure-Cooker-V6",
+    "Pressure-Cooker-V7"
+  ],
+  "torch-compat": [
+    "macOS-legacy",
+    "Python-3.15"
+  ],
+  "convert": [
+    "Convert"
+  ],
+  "quantize": [
+    "Quantization",
+    "HyprSlug",
+    "HyprSlug-Headers",
+    "LowBit",
+    "Imatrix"
+  ],
+  "upload": [],
+  "whisk": [
+    "Whisk"
+  ],
+  "cutting-board": [
+    "CuttingBoard",
+    "Scavenger"
+  ],
+  "countertop": [
+    "Countertop",
+    "Bell",
+    "Flour"
+  ],
+  "hyped-pro-core": [
+    "CLI",
+    "Waiter-TUI",
+    "Runtime",
+    "HnxRun"
+  ],
+  "multilama": [
+    "Llama-Easy"
+  ],
+  "hyped-pro-tools": [
+    "Browser-Agent",
+    "Devices",
+    "Vera",
+    "Examples"
+  ],
+  "hyped-pro-bridge": [
+    "Context-Relay",
+    "HyperLink-Sync"
+  ],
+  "hyped-pro-gui": [
+    "HyperLink-OnDevice",
+    "Strife"
+  ]
+}

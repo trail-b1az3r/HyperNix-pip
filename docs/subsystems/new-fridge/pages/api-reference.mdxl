@@ -1,0 +1,19 @@
+# hypernix.new_fridge API reference
+
+Implementation: `src/hypernix/evaluation/new_fridge.py`
+
+## `parse_training_log(text) -> list[tuple[int, float]]`
+
+Return ``(step, loss)`` pairs parsed from ``hypernix.train`` stdout.
+
+## `plot_loss_curve(pairs, out_path, title='Training loss') -> Path`
+
+Save a loss curve as a PNG. Returns the path written.
+
+## `plot_score_distribution(scores, out_path, title='Judge score distribution', bins=20) -> Path`
+
+Histogram of judge scores (one pass through a dataset).
+
+## `plot_round_losses(rounds, out_path, title='Multi-round training loss', round_labels=None) -> Path`
+
+Plot loss curves for multiple training rounds (e.g. from :mod:`tupperware`).

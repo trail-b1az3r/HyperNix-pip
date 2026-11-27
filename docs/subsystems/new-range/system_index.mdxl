@@ -1,0 +1,42 @@
+---
+title: "New Range"
+module: "hypernix.new_range"
+category: "hypernix.new_range"
+---
+
+# hypernix.new_range
+
+Zero-dep first-fail labeling rubric — lightest scoring tier.
+
+## Documentation pages
+
+- [Ranges](../../#/docs/Ranges) · [MDXL source](pages/Ranges.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `math_lacks_digit(prompt, response) -> bool`
+
+True if the prompt looks numeric and the response has no digits.
+
+### `is_repetition(prompt, response, min_run=8) -> bool`
+
+True if the same character or short token repeats `min_run` times.
+
+### `NewRange()`
+
+First-fail rubric labeler.
+
+### `default_rules() -> Iterable[Rule]`
+
+The out-of-the-box rule set used when no explicit ``rules`` is given.
+
+### `new_range(rules=None) -> NewRange`
+
+Construct a :class:`NewRange` with the given rules (or the defaults).
+
+## Source
+
+[`src/hypernix/evaluation/new_range.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/evaluation/new_range.py)
+

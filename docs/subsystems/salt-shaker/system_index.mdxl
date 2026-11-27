@@ -1,0 +1,42 @@
+---
+title: "Salt Shaker"
+module: "hypernix.salt_shaker"
+category: "hypernix.salt_shaker"
+---
+
+# hypernix.salt_shaker
+
+3-tier gentle data augmentation: FromTheBag / HandCrusher / PoshSaltDish.
+
+## Documentation pages
+
+- [Shakers](../../#/docs/Shakers) · [MDXL source](pages/Shakers.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `Shaker()`
+
+Abstract seasoning applicator. Subclasses override :meth:`season`.
+
+### `FromTheBag()`
+
+Cheapest tier. Per-character substitution at ``rate`` with a
+
+### `HandCrusher()`
+
+Middle tier. Token-level adjacent-swap at ``rate``. Produces
+
+### `PoshSaltDish()`
+
+Finest tier. Word-aware drop / duplicate / swap at independent
+
+### `salt_shaker(tier, source, **kw)`
+
+Construct a salt-shaker tier by short name.
+
+## Source
+
+[`src/hypernix/data/salt_shaker.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/data/salt_shaker.py)
+

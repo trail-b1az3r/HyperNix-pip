@@ -1,0 +1,31 @@
+# hypernix.espresso_maker API reference
+
+Implementation: `src/hypernix/evaluation/espresso_maker.py`
+
+## `EspressoMaker()`
+
+Base espresso maker. Subclasses set sampling parameters.
+
+## `EspressoMaker.pull(prompts, references=None) -> list[Shot]`
+
+Generate ``samples_per_prompt`` samples per prompt, score
+
+## `Ristretto()`
+
+Shortest pull. Greedy decode, 16 tokens, single sample.
+
+## `SingleShot()`
+
+Standard pull. One sample, mild-temperature decode, 64 tokens.
+
+## `DoubleShot()`
+
+Two samples per prompt; the scorer picks the winner. Provide
+
+## `Lungo()`
+
+Long pull. Many samples, high temperature, 256 tokens. Good
+
+## `espresso_maker(tier, oven, scorer=None, **kwargs) -> EspressoMaker`
+
+Construct a tier by name.

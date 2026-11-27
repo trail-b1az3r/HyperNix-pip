@@ -1,0 +1,50 @@
+---
+title: "Espresso Maker"
+module: "hypernix.espresso_maker"
+category: "hypernix.espresso_maker"
+---
+
+# hypernix.espresso_maker
+
+4-tier evaluation: Ristretto / SingleShot / DoubleShot / Lungo — prompt battery + scoring.
+
+## Documentation pages
+
+- [EspressoMaker](../../#/docs/EspressoMaker) · [MDXL source](pages/EspressoMaker.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `EspressoMaker()`
+
+Base espresso maker. Subclasses set sampling parameters.
+
+### `EspressoMaker.pull(prompts, references=None) -> list[Shot]`
+
+Generate ``samples_per_prompt`` samples per prompt, score
+
+### `Ristretto()`
+
+Shortest pull. Greedy decode, 16 tokens, single sample.
+
+### `SingleShot()`
+
+Standard pull. One sample, mild-temperature decode, 64 tokens.
+
+### `DoubleShot()`
+
+Two samples per prompt; the scorer picks the winner. Provide
+
+### `Lungo()`
+
+Long pull. Many samples, high temperature, 256 tokens. Good
+
+### `espresso_maker(tier, oven, scorer=None, **kwargs) -> EspressoMaker`
+
+Construct a tier by name.
+
+## Source
+
+[`src/hypernix/evaluation/espresso_maker.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/evaluation/espresso_maker.py)
+

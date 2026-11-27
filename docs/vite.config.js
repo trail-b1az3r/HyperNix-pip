@@ -5,12 +5,13 @@ import path from 'path'
 
 const WIKI = path.resolve(__dirname, '../wiki')
 const NAV = path.resolve(__dirname, 'src/lib/data/docs-nav.json')
+const SUBSYSTEM_PAGES_FILE = path.resolve(__dirname, 'src/lib/data/subsystem-pages.json')
+const SUBSYSTEM_DIR = path.resolve(__dirname, 'subsystems')
 const OPENAPI = path.resolve(__dirname, '../examples/t1api/openapi.json')
 const ENV_EXAMPLE = path.resolve(__dirname, '../examples/t1api/.env.example')
 
-// The wiki, served by the site itself: every wiki/*.md is copied into the
-// build as wiki/<Page>.md, and v1/docs-index.json holds the sidebar's
-// groups and a search index (titles, headings, a summary, plain text).
+// The docs site bundles general wiki pages plus subsystem-local MDXL pages.
+// v1/docs-index.json indexes both sets so search and navigation remain unified.
 // The docs page used to fetch each page from GitHub at view time, which
 // the unauthenticated API allows sixty times an hour per visitor.
 
@@ -60,11 +61,20 @@ function pageInfo(name, md) {
 
 function buildIndex() {
   const nav = JSON.parse(fs.readFileSync(NAV, 'utf-8'))
-  const files = fs.existsSync(WIKI) ? fs.readdirSync(WIKI).filter((f) => f.endsWith('.md')) : []
-  const names = files.map((f) => f.slice(0, -3))
+  const subsystemPages = JSON.parse(fs.readFileSync(SUBSYSTEM_PAGES_FILE, 'utf-8'))
+  const moved = {}
+  for (const [slug, pageNames] of Object.entries(subsystemPages)) {
+    for (const name of pageNames) moved[name] = `subsystems/${slug}/pages/${name}.mdxl`
+  }
+  const wikiFiles = fs.existsSync(WIKI) ? fs.readdirSync(WIKI).filter((f) => f.endsWith('.md')) : []
+  const names = [...new Set([...wikiFiles.map((f) => f.slice(0, -3)), ...Object.keys(moved)])]
   const pages = {}
   for (const name of names) {
-    pages[name] = pageInfo(name, fs.readFileSync(path.join(WIKI, `${name}.md`), 'utf-8'))
+    const filePath = moved[name]
+      ? path.resolve(__dirname, moved[name])
+      : path.join(WIKI, `${name}.md`)
+    pages[name] = pageInfo(name, fs.readFileSync(filePath, 'utf-8'))
+    if (moved[name]) pages[name].path = moved[name]
   }
   const listed = new Set()
   const groups = nav.groups.map((g) => {
@@ -188,9 +198,22 @@ function wikiPlugin() {
       })
     },
     generateBundle() {
-      if (!fs.existsSync(WIKI)) return
-      for (const file of fs.readdirSync(WIKI).filter((f) => f.endsWith('.md'))) {
-        this.emitFile({ type: 'asset', fileName: `wiki/${file}`, source: fs.readFileSync(path.join(WIKI, file)) })
+      if (fs.existsSync(WIKI)) {
+        for (const file of fs.readdirSync(WIKI).filter((f) => f.endsWith('.md'))) {
+          this.emitFile({ type: 'asset', fileName: `wiki/${file}`, source: fs.readFileSync(path.join(WIKI, file)) })
+        }
+      }
+      const subsystemPages = JSON.parse(fs.readFileSync(SUBSYSTEM_PAGES_FILE, 'utf-8'))
+      for (const [slug, pageNames] of Object.entries(subsystemPages)) {
+        const folder = path.join(SUBSYSTEM_DIR, slug)
+        for (const file of ['system_index.html', 'system_index.css', 'system_index.mdxl', 'pages/api-reference.mdxl']) {
+          const sourcePath = path.join(folder, file)
+          this.emitFile({ type: 'asset', fileName: `subsystems/${slug}/${file}`, source: fs.readFileSync(sourcePath) })
+        }
+        for (const name of pageNames) {
+          const fileName = `subsystems/${slug}/pages/${name}.mdxl`
+          this.emitFile({ type: 'asset', fileName, source: fs.readFileSync(path.join(folder, 'pages', `${name}.mdxl`)) })
+        }
       }
       for (const [url, build] of Object.entries(GENERATED)) {
         this.emitFile({ type: 'asset', fileName: url.slice(1), source: JSON.stringify(build()) })

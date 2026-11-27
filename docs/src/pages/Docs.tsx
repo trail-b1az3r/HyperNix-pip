@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { WIKI_PAGES } from '../lib/data/wiki'
+import SUBSYSTEM_PAGES from '../lib/data/subsystem-pages.json'
 import { anchorKey, highlight, renderMarkdown } from '../lib/markdown'
 import { SUBSYSTEMS, GROUP_ORDER, subsystemGroup } from '../lib/data/subsystems'
 import { MODULES } from '../lib/data/api-reference'
 
 // The documentation, laid out the way PyTorch's and Hyprland's are: groups
 // down the left, the page in the middle, "On this page" down the right,
-// breadcrumbs and search on top, previous/next at the bottom. Pages are the
-// repository's wiki/*.md, bundled into the site at build time (see
-// vite.config.js) with a GitHub fallback, and every page and heading has
+// breadcrumbs and search on top, previous/next at the bottom. Pages are bundled from subsystem folders and the remaining wiki at build time (see
+// vite.config.js), with a GitHub fallback. Every page and heading has
 // its own address: #/docs/<Page>/<heading>.
 
 const REPO = 'https://github.com/trail-b1az3r/HyperNix-pip'
 const RAW = 'https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main'
 
 type Heading = { depth: number, text: string }
-type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number }
+type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number; path?: string }
 const label = (index: Index, doc: string) => index.pages[doc]?.short || index.pages[doc]?.title || doc.replace(/-/g, ' ')
 type Group = { id: string, title: string, blurb: string, pages: string[] }
 type Index = { groups: Group[], pages: Record<string, PageInfo> }
 type Route = { doc?: string, anchor?: string }
+const SUBSYSTEM_PAGE_PATHS: Record<string, string> = Object.fromEntries(Object.entries(SUBSYSTEM_PAGES).flatMap(([slug, pages]) => pages.map((page) => [page, `subsystems/${slug}/pages/${page}.mdxl`])))
 
 const FALLBACK: Index = {
   groups: [{ id: 'all', title: 'Wiki', blurb: '', pages: WIKI_PAGES }],
@@ -44,8 +45,10 @@ function useIndex(): [Index, boolean] {
   return [index, ready]
 }
 
-async function loadPage(name: string): Promise<string> {
-  for (const url of [`./wiki/${name}.md`, `${RAW}/wiki/${name}.md`]) {
+async function loadPage(name: string, index?: Index): Promise<string> {
+  const movedPath = index?.pages[name]?.path || SUBSYSTEM_PAGE_PATHS[name]
+  const urls = movedPath ? [`./${movedPath}`, `${RAW}/${movedPath}`] : [`./wiki/${name}.md`, `${RAW}/wiki/${name}.md`]
+  for (const url of urls) {
     try {
       const r = await fetch(url)
       if (r.ok) {
@@ -77,7 +80,7 @@ function loadFullText(index: Index): Promise<Section[]> {
   if (FULL_TEXT) return FULL_TEXT
   FULL_TEXT = Promise.all(Object.keys(index.pages).map(async (doc) => {
     let md = ''
-    try { md = await loadPage(doc) } catch { return [] as Section[] }
+    try { md = await loadPage(doc, index) } catch { return [] as Section[] }
     const out: Section[] = []
     let heading: string | undefined
     let buf: string[] = []
@@ -309,7 +312,7 @@ function Article({ doc, anchor, index, navigate }: { doc: string, anchor?: strin
   useEffect(() => {
     let live = true
     setMd(null); setFailed(false); setToc([])
-    loadPage(doc).then((text) => { if (live) setMd(text) }).catch(() => { if (live) setFailed(true) })
+    loadPage(doc, index).then((text) => { if (live) setMd(text) }).catch(() => { if (live) setFailed(true) })
     return () => { live = false }
   }, [doc])
 
@@ -428,7 +431,8 @@ const QUICK = [
 ]
 
 function systemHref(name: string) {
-  return docHref(`@system:${name}`)
+  const slug = name.replace('hypernix.', '').replace(/_/g, '-')
+  return `./subsystems/${slug}/system_index.html`
 }
 
 const GROUP_ICONS: Record<string, string> = {
@@ -517,7 +521,7 @@ function Landing({ index, openSearch }: { index: Index, openSearch: () => void }
       <div className="docs-hero">
         <div className="eyebrow" style={{ color: 'var(--accent-text)' }}>Documentation</div>
         <h1>HyperNix docs</h1>
-        <p>Guides and reference for every part of HyperNix — the CLI, the T1 server and HyperLink, the architectures, quantisation and training. {Object.keys(index.pages).length} pages, straight from the repository's wiki.</p>
+        <p>Guides and reference for every part of HyperNix — the CLI, the T1 server and HyperLink, the architectures, quantisation and training. {Object.keys(index.pages).length} pages, straight from the repository's subsystem folders and general wiki.</p>
         <button type="button" className="docs-hero-search" onClick={openSearch}>
           <span>⌕ Search the docs</span><kbd>Ctrl</kbd><kbd>K</kbd>
         </button>

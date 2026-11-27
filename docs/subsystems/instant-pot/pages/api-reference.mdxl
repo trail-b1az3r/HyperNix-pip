@@ -1,0 +1,7 @@
+# hypernix.instant_pot API reference
+
+Implementation: `src/hypernix/training/instant_pot.py`
+
+## `brew(recipe) -> Path`
+
+Run the full pipeline described by ``recipe``; return the trained

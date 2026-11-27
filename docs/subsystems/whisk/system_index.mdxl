@@ -1,0 +1,42 @@
+---
+title: "Whisk"
+module: "hypernix.whisk"
+category: "hypernix.whisk"
+---
+
+# hypernix.whisk
+
+Checkpoint averaging and EMA (Exponential Moving Average) utilities.
+
+## Documentation pages
+
+- [Whisk](../../#/docs/Whisk) · [MDXL source](pages/Whisk.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `swa_average(items, strict=False) -> dict[str, torch.Tensor]`
+
+Uniform mean across all inputs. ``strict=False`` ignores keys
+
+### `ema(items, decay=0.99, strict=False) -> dict[str, torch.Tensor]`
+
+Exponential moving average. Earlier inputs are weighted by
+
+### `geometric_mean(items, strict=False, eps=1e-12) -> dict[str, torch.Tensor]`
+
+Element-wise geometric mean. Negative or zero values are
+
+### `whisk(items, mode='swa', decay=0.99, strict=False) -> dict[str, torch.Tensor]`
+
+Pick a whisking mode by name.
+
+### `whisk_to_snapshot(items, out_dir, tokenizer_source=None, mode='swa', decay=0.99, strict=False) -> Path`
+
+Whisk + write a full snapshot directory in one call.
+
+## Source
+
+[`src/hypernix/models/whisk.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/models/whisk.py)
+

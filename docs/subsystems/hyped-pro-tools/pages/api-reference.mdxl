@@ -1,0 +1,11 @@
+# hypernix.hyped_pro_tools API reference
+
+Implementation: `src/hypernix/interfaces/hyped_pro_tools.py`
+
+## `ToolError(code, message)`
+
+A real, reportable tool failure — fed back to the model as the
+
+## `execute_tool(name, arguments) -> str`
+
+Run a tool by name with the given arguments, returning its result as

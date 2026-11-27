@@ -1,0 +1,15 @@
+# hypernix.industrial_range API reference
+
+Implementation: `src/hypernix/evaluation/industrial_range.py`
+
+## `IndustrialRange()`
+
+LLM-as-judge labeler.
+
+## `IndustrialRange.compare(prompt, a, b) -> str`
+
+Return ``\"A\"``, ``\"B\"``, or ``\"T\"`` (tie).
+
+## `industrial_range(judge, **kwargs) -> IndustrialRange`
+
+Construct an :class:`IndustrialRange` around ``judge``.

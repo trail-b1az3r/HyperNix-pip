@@ -1,0 +1,26 @@
+---
+title: "Upload"
+module: "hypernix.upload"
+category: "hypernix.upload"
+---
+
+# hypernix.upload
+
+Push artifacts to HuggingFace Hub with multipart + model card generation.
+
+## Documentation pages
+
+No dedicated guide has been published for this subsystem yet. See the API reference and source module.
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `upload_gguf(files, repo_id='ray0rf1re/HyperNix.1-gguf', token=None, commit_message='Add HyperNix GGUF quantizations', private=False, create_if_missing=True) -> str`
+
+Upload one or more GGUF files to a HuggingFace model repo.
+
+## Source
+
+[`src/hypernix/quant/upload.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/quant/upload.py)
+

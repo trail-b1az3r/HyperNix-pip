@@ -1,0 +1,35 @@
+# hypernix.cake_pan API reference
+
+Implementation: `src/hypernix/training/cake_pan.py`
+
+## `BakeOff(reason, step) -> None`
+
+Raised when a CakePan detects a corruption-class event
+
+## `CakePan()`
+
+Hybrid CPU + GPU training guard. See module docstring.
+
+## `CakePan.save_pristine() -> None`
+
+Capture the current state dict on CPU. Every
+
+## `CakePan.roll_back() -> bool`
+
+Restore the last pristine snapshot. Returns True on
+
+## `CakePan.memory_guard() -> bool`
+
+Return True if the guard performed an offload this call.
+
+## `CakePan.bake(step_fn) -> Any`
+
+Run one training step safely.
+
+## `CakePan.oven(batches, step_fn, on_bake_off=None, max_retries_per_batch=2) -> int`
+
+Loop over ``batches``, calling ``step_fn(batch)`` under
+
+## `cake_pan(model, optimizer=None, **kwargs) -> CakePan`
+
+Construct a :class:`CakePan` with keyword configuration.

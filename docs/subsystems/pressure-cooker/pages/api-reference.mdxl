@@ -1,0 +1,43 @@
+# hypernix.pressure_cooker API reference
+
+Implementation: `src/hypernix/optimizers/pressure_cooker.py`
+
+## `PressureCooker(params, peak_lr=0.0003, warmup_steps=200, plateau_steps=1000, cooldown_steps=200, betas=(0.9, 0.95), eps=1e-08, weight_decay=0.1, lookahead_k=0, lookahead_alpha=0.5, grad_scaler=None, grad_accum_steps=1, foreach=None, fused=None, amsgrad=False) -> None`
+
+AdamW + warmup / plateau / cooldown + optional lookahead + v0.48
+
+## `StovetopCooker(params, **kwargs) -> None`
+
+CPU tier 1. Minimum-memory path.
+
+## `ElectricCooker(params, **kwargs) -> None`
+
+CPU tier 2. Fast multi-tensor path.
+
+## `InductionCooker(params, **kwargs) -> None`
+
+GPU tier 1. ``foreach=True`` + ``fused=True`` AdamW on torch
+
+## `ProCooker()`
+
+GPU tier 2. InductionCooker plus optional CUDA graph capture.
+
+## `ProCooker.warmup_graph(step_fn) -> None`
+
+Record a CUDA graph from a representative step. Must be
+
+## `ProCooker.replay_graph()`
+
+Replay the captured graph. Returns whatever the original
+
+## `UniversalCooker()`
+
+Factory that returns the right tier for the model's device.
+
+## `pressure_cooker(params, **kwargs) -> PressureCooker`
+
+Construct a :class:`PressureCooker` from keyword arguments.
+
+## `universal_cooker(params, prefer_speed=True, variant='v5s', **kw) -> Optimizer`
+
+Return the best-fit cooker for the detected parameter device.

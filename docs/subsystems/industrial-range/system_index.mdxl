@@ -1,0 +1,34 @@
+---
+title: "Industrial Range"
+module: "hypernix.industrial_range"
+category: "hypernix.industrial_range"
+---
+
+# hypernix.industrial_range
+
+LLM-as-judge wrapper routing through a CodeOven for scoring.
+
+## Documentation pages
+
+No dedicated guide has been published for this subsystem yet. See the API reference and source module.
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `IndustrialRange()`
+
+LLM-as-judge labeler.
+
+### `IndustrialRange.compare(prompt, a, b) -> str`
+
+Return ``\"A\"``, ``\"B\"``, or ``\"T\"`` (tie).
+
+### `industrial_range(judge, **kwargs) -> IndustrialRange`
+
+Construct an :class:`IndustrialRange` around ``judge``.
+
+## Source
+
+[`src/hypernix/evaluation/industrial_range.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/evaluation/industrial_range.py)
+

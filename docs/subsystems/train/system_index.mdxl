@@ -1,0 +1,58 @@
+---
+title: "Train"
+module: "hypernix.train"
+category: "hypernix.train"
+---
+
+# hypernix.train
+
+HyperNixConfig, HyperNixModel, init_from_scratch, expand_checkpoint, and full training loop.
+
+## Documentation pages
+
+- [Training](../../#/docs/Training) · [MDXL source](pages/Training.mdxl)
+- [Model Training Guide](../../#/docs/Model-Training-Guide) · [MDXL source](pages/Model-Training-Guide.mdxl)
+- [Abbicus](../../#/docs/Abbicus) · [MDXL source](pages/Abbicus.mdxl)
+- [Apron](../../#/docs/Apron) · [MDXL source](pages/Apron.mdxl)
+- [Tupperware](../../#/docs/Tupperware) · [MDXL source](pages/Tupperware.mdxl)
+- [Camouflage](../../#/docs/Camouflage) · [MDXL source](pages/Camouflage.mdxl)
+- [FuseBox](../../#/docs/FuseBox) · [MDXL source](pages/FuseBox.mdxl)
+- [Gather](../../#/docs/Gather) · [MDXL source](pages/Gather.mdxl)
+- [WakeUp](../../#/docs/WakeUp) · [MDXL source](pages/WakeUp.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `HyperNixConfig()`
+
+HyperNix model shape. Same layout as v1, parametric in every axis.
+
+### `HyperNixModel(cfg) -> None`
+
+Llama-shaped HyperNix causal LM. The tensor names match HF conventions
+
+### `save_snapshot(model, out_dir, tokenizer_source=None) -> Path`
+
+Write ``out_dir`` in HuggingFace snapshot layout.
+
+### `load_snapshot(model_dir)`
+
+Load any supported snapshot from ``model_dir``.
+
+### `expand_checkpoint(src_dir, dst_dir, hidden_size=None, intermediate_size=None, num_hidden_layers=None, num_attention_heads=None, vocab_size=None, init_std=0.02, tokenizer_source=None, seed=None) -> Path`
+
+Warm-start a bigger HyperNix model from a smaller snapshot.
+
+### `train(model_dir, dataset_path, out_dir, steps=1000, batch_size=2, context_length=512, lr=0.0003, weight_decay=0.1, grad_clip=1.0, device=None, dtype='float32', log_every=10, save_every=500, seed=None, use_abbicus=False, use_turbo_abbicus=False, use_stml=False, untrained_max_context=8192, segment_length=512) -> Path`
+
+Minimal causal-LM training loop.
+
+### `init_from_scratch(out_dir, cfg, tokenizer_source=None, init_std=0.02, seed=None) -> Path`
+
+Create a new randomly-initialized HyperNix snapshot at ``out_dir``.
+
+## Source
+
+[`src/hypernix/training/train.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/training/train.py)
+

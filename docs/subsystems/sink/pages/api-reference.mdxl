@@ -1,0 +1,19 @@
+# hypernix.sink API reference
+
+Implementation: `src/hypernix/data/sink.py`
+
+## `Sink()`
+
+Append-only text sink.
+
+## `Sink.write(line) -> bool`
+
+Append ``line`` (newline added if missing). Returns True on
+
+## `Sink.pour(iterable) -> Path`
+
+Write every item of ``iterable`` to the sink; return the
+
+## `Sink.drain() -> None`
+
+No-op right now — we open/close the file per-write for

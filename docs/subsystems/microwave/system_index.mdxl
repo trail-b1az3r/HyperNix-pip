@@ -1,0 +1,46 @@
+---
+title: "Microwave"
+module: "hypernix.microwave"
+category: "hypernix.microwave"
+---
+
+# hypernix.microwave
+
+5-tier throwaway inference: defrost → low_zap → zap → high_zap → chat_zap, plus reheat.
+
+## Documentation pages
+
+- [Microwave](../../#/docs/Microwave) · [MDXL source](pages/Microwave.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `defrost(repo_id_or_dir, device=None, dtype='float32', quiet=True)`
+
+Tier 1. Preheat and return the oven — no generation. Use this
+
+### `low_zap(repo_id_or_dir, prompt, max_new_tokens=16, temperature=0.0, top_k=1, top_p=1.0, stop=('\\n',), seed=0, device=None, dtype='float32', quiet=True) -> str`
+
+Tier 2. Short, deterministic, single-line output. Perfect for
+
+### `zap(repo_id_or_dir, prompt, max_new_tokens=64, temperature=0.2, top_k=40, top_p=0.95, stop=(), seed=None, device=None, dtype='float32', quiet=True) -> str`
+
+Tier 3. Standard \"zap\" — 64 tokens, low-temp sampling. The
+
+### `high_zap(repo_id_or_dir, prompt, max_new_tokens=512, temperature=0.7, top_k=50, top_p=0.95, stop=(), seed=None, device=None, dtype='float32', quiet=True) -> str`
+
+Tier 4. Long, hot output. Draft-a-paragraph / synth-a-story
+
+### `chat_zap(repo_id_or_dir, message, system=None, max_new_tokens=128, temperature=0.7, top_k=40, top_p=0.95, seed=None, device=None, dtype='float32', quiet=True) -> str`
+
+Tier 5. Single-turn chat. Uses the tokenizer's chat template
+
+### `reheat(oven, prior_output, continuation_prompt='', max_new_tokens=64, temperature=0.2, stop=(), seed=None) -> str`
+
+Continue a previous microwave output without reloading the model.
+
+## Source
+
+[`src/hypernix/models/microwave.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/models/microwave.py)
+

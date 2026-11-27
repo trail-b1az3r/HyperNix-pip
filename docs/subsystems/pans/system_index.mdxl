@@ -1,0 +1,50 @@
+---
+title: "Pans"
+module: "hypernix.pans"
+category: "hypernix.pans"
+---
+
+# hypernix.pans
+
+5-tier data preprocessing: FryingPan → SaucePan → Skillet → GrillPan → Wok.
+
+## Documentation pages
+
+- [Pans](../../#/docs/Pans) · [MDXL source](pages/Pans.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `Pan()`
+
+Abstract pan. Subclasses override :meth:`cook` (one line in,
+
+### `FryingPan()`
+
+Lightest tier. Strip trailing whitespace, pass everything else
+
+### `SaucePan()`
+
+Reduce. Collapse runs of internal whitespace, drop empty lines,
+
+### `Skillet()`
+
+Versatile. Applies chat / instruction formatting by wrapping
+
+### `GrillPan()`
+
+High direct heat. SaucePan-style cleaning plus deduplication
+
+### `Wok()`
+
+Heaviest. Buffers the whole source in memory, shuffles it,
+
+### `pick_pan(tier, source, **kwargs) -> Pan`
+
+Return a pan instance by tier name (``\"frying-pan\"``..``\"wok\"``).
+
+## Source
+
+[`src/hypernix/data/pans.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/data/pans.py)
+

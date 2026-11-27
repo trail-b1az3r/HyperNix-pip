@@ -1,0 +1,70 @@
+---
+title: "Quantize"
+module: "hypernix.quantize"
+category: "hypernix.quantize"
+---
+
+# hypernix.quantize
+
+llama-quantize driver for Q8_0, Q6_K, Q4_K_M, Q5_K_M — 30 quant types total.
+
+## Documentation pages
+
+- [Quantization](../../#/docs/Quantization) · [MDXL source](pages/Quantization.mdxl)
+- [HyprSlug](../../#/docs/HyprSlug) · [MDXL source](pages/HyprSlug.mdxl)
+- [HyprSlug Headers](../../#/docs/HyprSlug-Headers) · [MDXL source](pages/HyprSlug-Headers.mdxl)
+- [LowBit](../../#/docs/LowBit) · [MDXL source](pages/LowBit.mdxl)
+- [Imatrix](../../#/docs/Imatrix) · [MDXL source](pages/Imatrix.mdxl)
+
+## API reference
+
+[Open the API reference source](pages/api-reference.mdxl)
+
+### `QuantSpec()`
+
+Metadata for one llama-quantize target type.
+
+### `resolve_spec(quant_type) -> QuantSpec`
+
+Look up a :class:`QuantSpec` from any accepted alias.
+
+### `recommended() -> list[QuantSpec]`
+
+Return the curated short-list (``F16``, ``Q8_0``, ``Q6_K``,
+
+### `by_category(category) -> list[QuantSpec]`
+
+Return every spec in a category (``\"float\" / \"legacy\" / \"k\" / \"iq\"``),
+
+### `for_size(target_size_bytes, fp16_size_bytes) -> QuantSpec`
+
+Pick the largest quant spec that fits inside ``target_size_bytes``,
+
+### `estimate_size(quant_type, fp16_size_bytes) -> int`
+
+Estimate the resulting GGUF size for ``quant_type`` given the
+
+### `list_types() -> list[str]`
+
+Sorted list of every canonical type name in :data:`CATALOG`.
+
+### `quantize_gguf(source_gguf, output_gguf, quant_type, threads=None, llama_quantize_bin=None, extra_args=None, auto_fetch=True, auto=False) -> Path`
+
+Run llama-quantize to produce ``output_gguf`` from ``source_gguf``.
+
+### `QuantJob()`
+
+One quantize target in a batch run.
+
+### `HyperNixQuantizer(llama_quantize_bin=None, threads=None, auto_fetch=True, auto=False) -> None`
+
+High-level GGUF quantizer with profiles, batch runs, and size planning.
+
+### `… 6 more`
+
+Additional documented functions/methods in this module — see source.
+
+## Source
+
+[`src/hypernix/quant/quantize.py`](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/src/hypernix/quant/quantize.py)
+
