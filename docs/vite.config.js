@@ -215,6 +215,13 @@ function wikiPlugin() {
           this.emitFile({ type: 'asset', fileName, source: fs.readFileSync(path.join(folder, 'pages', `${name}.mdxl`)) })
         }
       }
+      // Backwards-compatible public URL used by older HyperNix docs links.
+      // The canonical subsystem folder is hyped-pro-core (module hypernix.hyped_pro_core).
+      this.emitFile({
+        type: 'asset',
+        fileName: 'subsystems/hypernix.core/system_index.html',
+        source: '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=../hyped-pro-core/system_index.html"><link rel="canonical" href="../hyped-pro-core/system_index.html"><title>HyperNix Core · HyperNix Docs</title></head><body><p>This subsystem page has moved to <a href="../hyped-pro-core/system_index.html">Hyped Pro Core</a>.</p><script>location.replace("../hyped-pro-core/system_index.html" + location.hash)</script></body></html>',
+      })
       for (const [url, build] of Object.entries(GENERATED)) {
         this.emitFile({ type: 'asset', fileName: url.slice(1), source: JSON.stringify(build()) })
       }
