@@ -7,20 +7,21 @@ import { MODULES } from '../lib/data/api-reference'
 
 // The documentation, laid out the way PyTorch's and Hyprland's are: groups
 // down the left, the page in the middle, "On this page" down the right,
-// breadcrumbs and search on top, previous/next at the bottom. Pages are bundled from subsystem folders and the remaining wiki at build time (see
-// vite.config.js), with a GitHub fallback. Every page and heading has
+// breadcrumbs and search on top, previous/next at the bottom. Pages are the
+// repository's wiki/*.md, bundled into the site at build time (see
+// vite.config.js) with a GitHub fallback, and every page and heading has
 // its own address: #/docs/<Page>/<heading>.
 
 const REPO = 'https://github.com/trail-b1az3r/HyperNix-pip'
 const RAW = 'https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main'
 
 type Heading = { depth: number, text: string }
-type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number; path?: string }
+type PageInfo = { title: string, short?: string, group?: string, summary: string, headings: Heading[], text: string, words: number, sourcePath?: string, path?: string }
 const label = (index: Index, doc: string) => index.pages[doc]?.short || index.pages[doc]?.title || doc.replace(/-/g, ' ')
+const SUBSYSTEM_PAGE_PATHS: Record<string, string> = Object.fromEntries(Object.entries(SUBSYSTEM_PAGES).flatMap(([slug, pages]) => pages.map((page) => [page, `subsystems/${slug}/pages/${page}.mdxl`])))
 type Group = { id: string, title: string, blurb: string, pages: string[] }
 type Index = { groups: Group[], pages: Record<string, PageInfo> }
 type Route = { doc?: string, anchor?: string }
-const SUBSYSTEM_PAGE_PATHS: Record<string, string> = Object.fromEntries(Object.entries(SUBSYSTEM_PAGES).flatMap(([slug, pages]) => pages.map((page) => [page, `subsystems/${slug}/pages/${page}.mdxl`])))
 
 const FALLBACK: Index = {
   groups: [{ id: 'all', title: 'Wiki', blurb: '', pages: WIKI_PAGES }],
@@ -46,7 +47,7 @@ function useIndex(): [Index, boolean] {
 }
 
 async function loadPage(name: string, index?: Index): Promise<string> {
-  const movedPath = index?.pages[name]?.path || SUBSYSTEM_PAGE_PATHS[name]
+  const movedPath = index?.pages[name]?.path || index?.pages[name]?.sourcePath || SUBSYSTEM_PAGE_PATHS[name]
   const urls = movedPath ? [`./${movedPath}`, `${RAW}/${movedPath}`] : [`./wiki/${name}.md`, `${RAW}/wiki/${name}.md`]
   for (const url of urls) {
     try {
@@ -384,8 +385,8 @@ function Article({ doc, anchor, index, navigate }: { doc: string, anchor?: strin
           <h1>{info?.title || doc.replace(/-/g, ' ')}</h1>
           <div className="docs-meta">
             {info?.words ? <span>{Math.max(1, Math.round(info.words / 220))} min read</span> : null}
-            <a href={`${REPO}/blob/main/wiki/${doc}.md`} target="_blank" rel="noreferrer">View source</a>
-            <a href={`${REPO}/edit/main/wiki/${doc}.md`} target="_blank" rel="noreferrer">Edit on GitHub</a>
+            <a href={`${REPO}/blob/main/${info?.sourcePath || info?.path || `wiki/${doc}.md`}`} target="_blank" rel="noreferrer">View source</a>
+            <a href={`${REPO}/edit/main/${info?.sourcePath || `wiki/${doc}.md`}`} target="_blank" rel="noreferrer">Edit on GitHub</a>
           </div>
         </header>
         {failed && (
@@ -431,8 +432,7 @@ const QUICK = [
 ]
 
 function systemHref(name: string) {
-  const slug = name.replace('hypernix.', '').replace(/_/g, '-')
-  return `./subsystems/${slug}/system_index.html`
+  return `./subsystems/${name.replace(/^hypernix\\./, '')}/system_index.html`
 }
 
 const GROUP_ICONS: Record<string, string> = {
@@ -521,7 +521,7 @@ function Landing({ index, openSearch }: { index: Index, openSearch: () => void }
       <div className="docs-hero">
         <div className="eyebrow" style={{ color: 'var(--accent-text)' }}>Documentation</div>
         <h1>HyperNix docs</h1>
-        <p>Guides and reference for every part of HyperNix — the CLI, the T1 server and HyperLink, the architectures, quantisation and training. {Object.keys(index.pages).length} pages, straight from the repository's subsystem folders and general wiki.</p>
+        <p>Guides and reference for every part of HyperNix — the CLI, the T1 server and HyperLink, the architectures, quantisation and training. {Object.keys(index.pages).length} pages, straight from the repository's wiki.</p>
         <button type="button" className="docs-hero-search" onClick={openSearch}>
           <span>⌕ Search the docs</span><kbd>Ctrl</kbd><kbd>K</kbd>
         </button>
